@@ -7,7 +7,7 @@ import type { CellAtom, Component, Structure, Vec3 } from "../structure/types";
 import { defaultColour, defaultRadius } from "./elementStyle";
 import { atomsAndBonds, type BondRule } from "./bonds";
 import { mixHex } from "./elementStyle";
-import { connectedGroups, triangles } from "./highlight";
+import { connectedGroups, prune, triangles } from "./highlight";
 import { BOUNDARY_TOLERANCE, ONE_CELL, type Range } from "./select";
 
 /** One sector of a pie sphere. */
@@ -180,6 +180,8 @@ export interface Look {
   readonly colour?: string;
   readonly radius?: number;
   readonly name?: string;
+  /** For a shared site: the order of its wedges, as element symbols. Elements not named keep their file order, after the named ones. */
+  readonly order?: readonly string[];
 }
 
 export const VACANCY_COLOUR = "#ffffff";
@@ -209,7 +211,10 @@ function styleOf(atom: CellAtom, spec: SceneSpec): { key: string; style: SphereS
   if (atom.components.length === 1 && vacant < 0.005) return { key: atom.species, style: { colour, radius, name } };
   // A pie: each element's share of the circle is its occupancy; without the vacancy wedge the shares are scaled to fill the circle.
   const total = vacant >= 0.005 ? 1 : atom.occupancy;
-  const wedges: Wedge[] = atom.components.map((c) => ({ colour: elementColour(c.element, spec.looks), fraction: c.occupancy / total, element: c.element }));
+  const order = spec.looks[atom.species]?.order ?? [];
+  const rank = (element: string): number => (order.includes(element) ? order.indexOf(element) : order.length);
+  const components = atom.components.map((c, index) => ({ c, index })).sort((p, q) => rank(p.c.element) - rank(q.c.element) || p.index - q.index).map(({ c }) => c);
+  const wedges: Wedge[] = components.map((c) => ({ colour: elementColour(c.element, spec.looks), fraction: c.occupancy / total, element: c.element }));
   if (vacant >= 0.005) wedges.push({ colour: VACANCY_COLOUR, fraction: vacant, element: "vacancy" });
   const key = `${atom.species}@${wedges.map((w) => w.fraction.toFixed(3)).join(",")}`;
   return { key, style: { colour, radius, name, wedges } };
@@ -263,7 +268,9 @@ export function largestMoment(structure: Structure): number {
 /** One sphere per atom in the chosen range (plus neighbours added by bond rules), sticks for the bonds, and the cell outline. */
 export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC): Scene {
   const hiddenSpecies = new Set(Object.entries(spec.looks).filter(([, look]) => look.hidden).map(([species]) => species));
-  const { atoms, bonds, warnings } = atomsAndBonds(structure, spec.range, spec.bonds, hiddenSpecies);
+  const selected = atomsAndBonds(structure, spec.range, spec.bonds, hiddenSpecies);
+  const { atoms, bonds } = prune(selected.atoms, selected.bonds, spec.bonds);
+  const warnings = selected.warnings;
   const styles: Record<string, SphereStyle> = {};
   // Highlights: chains and triangles in the bonds of each rule.
   const stickStyles: StickStyle[] = spec.bonds.map((r) => ({ colour: r.colour ?? DEFAULT_STICK.colour, width: r.width ?? DEFAULT_STICK.width }));

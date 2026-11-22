@@ -139,3 +139,39 @@ describe("drawing highlights", () => {
     expect(svg).toContain(`stroke="${DEFAULT_STICK.colour}"`);
   });
 });
+
+describe("leaving atoms out by a bond rule", () => {
+  it("hide unbonded: exactly the oxygens with no Si within reach disappear; nothing else changes", () => {
+    const quartz = structure("quartz_COD-9009666.cif");
+    const slab = range([0, 0, 0], [0.45, 1, 1]);
+    const siO = (more: Partial<BondRule>): BondRule => ({ centre: "Si", neighbour: "O", max: 1.8, complete: false, ...more });
+    const all = buildScene(quartz, { ...DEFAULT_SPEC, range: slab, bonds: [siO({})] });
+    const pruned = buildScene(quartz, { ...DEFAULT_SPEC, range: slab, bonds: [siO({ hideUnbonded: true })] });
+    // By brute force on the full scene: which O have a Si within 1.8 A.
+    const si = all.spheres.filter((s) => s.species === "Si");
+    const lonely = all.spheres.filter((s) => s.species === "O" && !si.some((m) => Math.hypot(m.centre[0] - s.centre[0], m.centre[1] - s.centre[1], m.centre[2] - s.centre[2]) <= 1.8));
+    expect(lonely.length).toBeGreaterThan(0);
+    expect(pruned.spheres.length).toBe(all.spheres.length - lonely.length);
+    expect(pruned.spheres.filter((s) => s.species === "Si").length).toBe(si.length);
+    expect(pruned.sticks.length).toBe(all.sticks.length);
+    // Every bond still joins the same two places.
+    const ends = (sc: typeof all) => sc.sticks.map((b) => [sc.spheres[b.i]!.centre, sc.spheres[b.j]!.centre].map((c) => c.map((x) => x.toFixed(4)).join(",")).sort().join(" - ")).sort();
+    expect(ends(pruned)).toEqual(ends(all));
+  });
+
+  it("only triangles: a ragged kagome patch keeps its triangles and loses the loose atoms and bonds", () => {
+    const ragged = range([0, 0, 0], [2.6, 2.6, 0]);
+    const all = buildScene(kagome, { ...DEFAULT_SPEC, range: ragged, bonds: [rule("Co", 2.7, { fill: true })], looks: { Sn: { hidden: true } } });
+    const tidy = buildScene(kagome, { ...DEFAULT_SPEC, range: ragged, bonds: [rule("Co", 2.7, { fill: true, onlyTriangles: true })], looks: { Sn: { hidden: true } } });
+    expect(tidy.polygons.length).toBe(all.polygons.length);
+    expect(tidy.spheres.length).toBeLessThan(all.spheres.length);
+    expect(tidy.sticks.length).toBeLessThan(all.sticks.length);
+    const corners = new Set(tidy.polygons.flatMap((p) => p.corners));
+    expect(corners.size).toBe(tidy.spheres.length); // every atom left is the corner of a triangle
+    const sides = new Set(tidy.polygons.flatMap((p) => [[0, 1], [1, 2], [0, 2]].map(([a, b]) => [p.corners[a!]!, p.corners[b!]!].sort((x, y) => x - y).join("-"))));
+    expect(tidy.sticks.length).toBe(sides.size); // every bond left is the side of a triangle
+    // The triangles are at the same places as before.
+    const places = (sc: typeof all) => sc.polygons.map((p) => p.corners.map((c) => sc.spheres[c]!.centre.map((x) => x.toFixed(4)).join(",")).sort().join(" ")).sort();
+    expect(places(tidy)).toEqual(places(all));
+  });
+});

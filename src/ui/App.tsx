@@ -50,7 +50,7 @@ export function App() {
   const [showCell, setShowCell] = useState(true);
   const [newPair, setNewPair] = useState("");
   // The user's changes to colours, sizes and names. Radii are kept as typed, so a box can be emptied while editing.
-  const [looks, setLooks] = useState<Record<string, { colour?: string; radiusText?: string; name?: string; hidden?: boolean }>>({});
+  const [looks, setLooks] = useState<Record<string, { colour?: string; radiusText?: string; name?: string; hidden?: boolean; orderText?: string }>>({});
   const [upAxis, setUpAxis] = useState<0 | 1 | 2>(2);
   const [azText, setAzText] = useState("18");
   const [elText, setElText] = useState("12");
@@ -66,7 +66,7 @@ export function App() {
   const [momentColour, setMomentColour] = useState(DEFAULT_SPEC.momentColour);
   const momentLength = Number(momentLengthText) > 0 && Number(momentLengthText) <= 20 ? Number(momentLengthText) : DEFAULT_SPEC.momentLength;
   const [showAxes, setShowAxes] = useState(true);
-  const setLook = (key: string, change: { colour?: string; radiusText?: string; name?: string; hidden?: boolean }) =>
+  const setLook = (key: string, change: { colour?: string; radiusText?: string; name?: string; hidden?: boolean; orderText?: string }) =>
     setLooks((all) => ({ ...all, [key]: { ...all[key], ...change } }));
   const last = useRef<{ x: number; y: number } | null>(null);
   // While dragging, the placement of the moment the drag began is kept, so the figure turns without jumping.
@@ -111,6 +111,7 @@ export function App() {
       const radius = Number(look.radiusText);
       out[key] = {
         ...(look.hidden ? { hidden: true } : {}),
+        ...(look.orderText !== undefined ? { order: look.orderText.split(/[\s,/]+/).filter(Boolean) } : {}),
         ...(look.colour !== undefined ? { colour: look.colour } : {}),
         ...(look.radiusText !== undefined && look.radiusText.trim() !== "" && radius >= 0.05 && radius <= 5 ? { radius } : {}),
         ...(look.name !== undefined && look.name.trim() !== "" ? { name: look.name.trim() } : {}),
@@ -420,6 +421,17 @@ export function App() {
                     <input type="text" className="name" value={looks[x.key]?.name ?? x.key} onChange={(e) => setLook(x.key, { name: e.target.value })} />
                   </div>
                   <div className="row">
+                    wedges
+                    <input
+                      type="text"
+                      className="name"
+                      title="Order of the wedges, clockwise from the top: element symbols separated by spaces"
+                      data-testid={`order-${x.key}`}
+                      value={looks[x.key]?.orderText ?? x.components.map((c) => c.element).join(" ")}
+                      onChange={(e) => setLook(x.key, { orderText: e.target.value })}
+                    />
+                  </div>
+                  <div className="row">
                     radius
                     <input
                       type="number"
@@ -513,6 +525,16 @@ export function App() {
                     <input type="checkbox" data-testid={`bond-fill-${index}`} checked={r.fill ?? false} onChange={(e) => changeRule(index, { fill: e.target.checked })} />
                     Fill triangles
                   </label>
+                  <label className="row">
+                    <input type="checkbox" data-testid={`bond-unbonded-${index}`} checked={r.hideUnbonded ?? false} onChange={(e) => changeRule(index, { hideUnbonded: e.target.checked })} />
+                    Hide {nameOf(r.neighbour)} with no such bond
+                  </label>
+                  {r.centre === r.neighbour && (
+                    <label className="row">
+                      <input type="checkbox" data-testid={`bond-triangles-${index}`} checked={r.onlyTriangles ?? false} onChange={(e) => changeRule(index, { onlyTriangles: e.target.checked })} />
+                      Keep only atoms and bonds of complete triangles
+                    </label>
+                  )}
                   <p className="sub" data-testid={`bond-count-${index}`}>
                     {r.max > 0.1 && r.max <= 10
                       ? `${bondCount(index)} bonds drawn, in ${scene?.ruleInfo[sceneRule(index)]?.groups ?? 0} connected group(s); ${scene?.ruleInfo[sceneRule(index)]?.triangles ?? 0} triangles`

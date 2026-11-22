@@ -82,6 +82,19 @@ describe("pie spheres", () => {
     expect(scene.spheres.filter((s) => s.species === "Fe/Mg").length).toBe(8);
   });
 
+  it("the wedge order can be chosen; elements not named keep their file order after the named ones", () => {
+    const first = (order: string[]) => {
+      const styles = buildScene(olivine, { ...DEFAULT_SPEC, looks: { "Fe/Mg": { order } } }).styles;
+      return Object.values(styles).find((s) => s.wedges)!.wedges!;
+    };
+    expect(first(["Mg", "Fe"]).map((w) => w.element)).toEqual(["Mg", "Fe"]);
+    expect(first(["Mg"]).map((w) => w.element)).toEqual(["Mg", "Fe"]);
+    expect(first(["Xx"]).map((w) => w.element)).toEqual(["Fe", "Mg"]);
+    // The shares stay with their elements.
+    const mg = first(["Mg", "Fe"]).find((w) => w.element === "Mg")!.fraction;
+    expect([0.122, 0.14].some((x) => Math.abs(x - mg) < 1e-9)).toBe(true);
+  });
+
   it("a partly vacant place gets a vacancy wedge, unless that is switched off", () => {
     const s = readCif(p1(["Na1 Na 0 0 0 0.5", "K1 K 0 0 0 0.25", "O1 O 0.5 0.5 0.5 0.8", "Cl1 Cl 0.5 0 0 1"]));
     const range = { ...ONE_CELL, boundary: "once" as const };
