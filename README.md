@@ -19,7 +19,8 @@ npm test         # the checks, a few seconds
 npm run build    # a static site in dist/
 ```
 
-Built with TypeScript, Vite and React. The CIF reader and symmetry code are MOTIF's own
+Built with TypeScript, Vite and React; the page's font (IBM Plex Sans, OFL licence) is part of the
+build, so the page makes no request to any other site. The CIF reader and symmetry code are MOTIF's own
 (adapted from the author's MATERIA) and are checked against gemmi: `scripts/gemmi_reference.py`
 writes the reference atom lists in `tests/reference/`.
 
@@ -75,10 +76,10 @@ writes the reference atom lists in `tests/reference/`.
 | 2 | Choose what is shown: how many cells, or a slab | done |
 | 3 | Bonds by distance for chosen element pairs; the unit cell | done |
 | 4 | Colour and size per element; pie spheres for mixed sites | done |
-| 5 | Legend and axis triad | built |
-| 6 | mCIF: magnetic moments as arrows | built |
-| 7 | Highlights: a band along a chain, filled polygons | built |
-| 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | after the main features |
+| 5 | Legend and axis triad | built, awaiting the user's check |
+| 6 | mCIF: magnetic moments as arrows | built, awaiting the user's check |
+| 7 | Highlights: a band along a chain, filled polygons | built, awaiting the user's check |
+| 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | first pass built, awaiting the user's check |
 
 Each step is checked against an independent reference before the next one starts.
 
