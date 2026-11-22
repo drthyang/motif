@@ -599,7 +599,7 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="mark">MOTIF</span>
-          <span className="tagline">Crystal structure figures from CIF and mCIF</span>
+          <span className="tagline">Crystal structure visualizer</span>
         </div>
         <div className="actions">
           <label className="button primary">

@@ -1,5 +1,7 @@
 # MOTIF
 
+Crystal structure visualizer.
+
 Clean vector figures of crystal structures, made in the browser from a CIF or mCIF file.
 
 In crystallography the *motif* is the group of atoms repeated at every lattice point.
