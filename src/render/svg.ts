@@ -59,7 +59,7 @@ export interface DrawnLine {
   readonly along?: number;
 }
 
-/** One visible part of a moment arrow: a shaft, and for the front part the head triangle. End points in px. */
+/** One part of a moment arrow (see layoutAll): a length of the rod from (x1, y1) to (x2, y2), with the cone if it is the head's part. */
 export interface DrawnArrow {
   readonly kind: "arrow";
   readonly x1: number;
@@ -67,9 +67,11 @@ export interface DrawnArrow {
   readonly x2: number;
   readonly y2: number;
   readonly width: number;
-  /** The head as three corners "x,y x,y x,y"; absent for the tail part. */
+  /** The head as three corners "x,y x,y x,y" (tip first); absent for a part of the tail half. */
   readonly head?: string;
   readonly depth: number;
+  /** The part's shapes, ready to write. */
+  readonly svg: string;
 }
 
 /** A filled polygon, or a highlight band (several wide strokes drawn as one translucent shape). */
@@ -268,30 +270,101 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     });
     drawn.push({ kind: "band", parts, colour: band.colour, opacity: band.opacity, width: band.width * scale, depth: depth - 0.05 });
   }
-  for (const arrow of scene.arrows) {
-    // The arrow passes through the atom, centred on it. The part inside the sphere is never visible, so two
-    // parts are drawn: tail end to the surface, and surface to tip. Each has its own depth, so the part
-    // pointing away from the viewer is hidden by the atom and the part pointing towards the viewer lies over it.
+  scene.arrows.forEach((arrow, arrowIndex) => {
+    // A moment is drawn as a thin round rod through the atom, centred on it, with a cone at its tip.
+    //
+    // How the rod meets the sphere decides whether it looks real. A half of the rod that points away from the
+    // viewer, or lies in the screen plane, comes out from behind the sphere: it is drawn before the sphere, from
+    // the centre outwards, and the sphere's own round outline cuts it. A half that points towards the viewer
+    // comes out of the sphere's face: it is drawn after the sphere, starting at the small circle where a rod of
+    // this thickness pierces the surface. Seen at an angle that circle is an ellipse, so the rod's foot is
+    // rounded, and a soft shadow lies on the sphere around it.
     const sphere = scene.spheres[arrow.sphere]!;
     const radius = scene.styles[sphere.style]!.radius;
     const half = Math.hypot(arrow.vector[0], arrow.vector[1], arrow.vector[2]) / 2;
-    if (half <= radius) continue;
+    if (half <= radius) return;
     const unit: Vec3 = [arrow.vector[0] / (2 * half), arrow.vector[1] / (2 * half), arrow.vector[2] / (2 * half)];
-    const at = (t: number): Vec3 => [sphere.centre[0] + unit[0] * t, sphere.centre[1] + unit[1] * t, sphere.centre[2] + unit[2] * t];
+    const at = (t: number): Vec3 => project([sphere.centre[0] + unit[0] * t, sphere.centre[1] + unit[1] * t, sphere.centre[2] + unit[2] * t]);
+    const [centre, tip, tail] = [at(0), at(half), at(-half)];
+    const towards = (tip[2] - centre[2]) / half; // how much the arrow points at the viewer: -1 to 1
+    const onScreen = Math.hypot(tip[0] - centre[0], tip[1] - centre[1]);
+    // Direction of the arrow on screen; seen end on there is none and any will do (the shapes are round).
+    const [ux, uy] = onScreen > 1e-6 ? [(tip[0] - centre[0]) / onScreen, (tip[1] - centre[1]) / onScreen] : [1, 0];
+    // Across the rod, on the side the light comes from (upper left).
+    let [px, py] = [-uy, ux];
+    if (px * -0.5 + py * -0.7 < 0) [px, py] = [-px, -py];
+    const w = (ARROW_SHAFT * scale) / 2; // half the rod's thickness, px
+    const hw = (ARROW_HEAD_WIDTH * scale) / 2;
     const headLength = Math.min(ARROW_HEAD_LENGTH, half - radius);
-    const [tail, tailEnd, start, base, tip] = [project(at(-half)), project(at(-radius)), project(at(radius)), project(at(half - headLength)), project(at(half))];
-    const width = ARROW_SHAFT * scale;
-    drawn.push({ kind: "arrow", x1: tail[0], y1: tail[1], x2: tailEnd[0], y2: tailEnd[1], width, depth: (tail[2] + tailEnd[2]) / 2 });
-    // The head: its base is perpendicular, on screen, to the arrow.
-    const [hx, hy] = [tip[0] - base[0], tip[1] - base[1]];
-    const n = Math.hypot(hx, hy);
-    const w = (ARROW_HEAD_WIDTH * scale) / 2;
-    const head =
-      n > 1e-6
-        ? `${n1(tip[0])},${n1(tip[1])} ${n1(base[0] - (hy / n) * w)},${n1(base[1] + (hx / n) * w)} ${n1(base[0] + (hy / n) * w)},${n1(base[1] - (hx / n) * w)}`
-        : undefined;
-    drawn.push({ kind: "arrow", x1: start[0], y1: start[1], x2: base[0], y2: base[1], width, depth: (start[2] + tip[2]) / 2, ...(head !== undefined ? { head } : {}) });
-  }
+    const base = at(half - headLength); // centre of the cone's base
+    const colour = scene.arrowColour;
+    const [light, dark, darker] = [mixHex(colour, "#ffffff", 0.5), mixHex(colour, "#000000", 0.3), mixHex(colour, "#000000", 0.45)];
+    const id = `arrow-${arrowIndex}`;
+    // Shading across the rod and across the cone: a round surface lit from the upper left.
+    const across = (name: string, halfWidth: number, cx: number, cy: number): string =>
+      `<linearGradient id="${name}" gradientUnits="userSpaceOnUse" x1="${n1(cx + px * halfWidth)}" y1="${n1(cy + py * halfWidth)}" x2="${n1(cx - px * halfWidth)}" y2="${n1(cy - py * halfWidth)}">` +
+      `<stop offset="0" stop-color="${colour}"/><stop offset="0.3" stop-color="${light}"/><stop offset="0.65" stop-color="${colour}"/><stop offset="1" stop-color="${dark}"/></linearGradient>`;
+    const defs = `<defs>${across(`${id}-rod`, w, centre[0], centre[1])}${across(`${id}-head`, hw, base[0], base[1])}</defs>`;
+    const corner = (p: Vec3, side: number, halfWidth: number): string => `${n1(p[0] + side * px * halfWidth)},${n1(p[1] + side * py * halfWidth)}`;
+    const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
+    const ellipse = (cls: string, p: Vec3, halfWidth: number, squash: number, fill: string, extra = ""): string =>
+      `<ellipse class="${cls}" cx="${n1(p[0])}" cy="${n1(p[1])}" rx="${n1(halfWidth * squash)}" ry="${n1(halfWidth)}" transform="rotate(${n1(angle)} ${n1(p[0])} ${n1(p[1])})" fill="${fill}"${extra}/>`;
+    /**
+     * One half of the rod, from `start` to `end` (angstrom from the centre along the arrow; negative = tail side).
+     * `foot` rounds the start into the half-ellipse of a pierced surface; `sign` is +1 for the head half.
+     */
+    const rod = (start: number, end: number, sign: 1 | -1, foot: boolean): string => {
+      const [p, q] = [at(start), at(end)];
+      let outline = `${corner(p, 1, w)} ${corner(q, 1, w)} ${corner(q, -1, w)} ${corner(p, -1, w)}`;
+      if (foot) {
+        // From the far corner round the back of the foot to the near corner: half an ellipse, as wide as the
+        // rod across it and |towards| times that along it.
+        for (let k = 1; k < 8; k++) {
+          const phi = Math.PI * (1 - k / 8);
+          const alongPx = -sign * Math.sin(phi) * w * Math.abs(towards);
+          outline += ` ${n1(p[0] + ux * alongPx + px * w * Math.cos(phi))},${n1(p[1] + uy * alongPx + py * w * Math.cos(phi))}`;
+        }
+      }
+      return `<polygon class="arrow-rod" points="${outline}" fill="url(#${id}-rod)"/>`;
+    };
+    const cone = (): string => {
+      const triangle = `<polygon class="arrow-head" points="${n1(tip[0])},${n1(tip[1])} ${corner(base, 1, hw)} ${corner(base, -1, hw)}" fill="url(#${id}-head)"/>`;
+      // Towards the viewer the cone's side is seen over its round base; away, the flat base covers the cone.
+      return towards >= 0 ? ellipse("arrow-base", base, hw, Math.abs(towards), `url(#${id}-head)`) + triangle : triangle + ellipse("arrow-base", base, hw, Math.abs(towards), darker);
+    };
+    const head = `${n1(tip[0])},${n1(tip[1])} ${corner(base, 1, hw)} ${corner(base, -1, hw)}`;
+    const headHalf = (start: number, foot: boolean): string => {
+      const shaft = rod(start, half - headLength, 1, foot);
+      return towards >= 0 ? shaft + cone() : cone() + shaft;
+    };
+    // The flat end of the tail, seen when the tail points at the viewer.
+    const tailHalf = (start: number, foot: boolean): string => rod(start, -half, -1, foot) + (towards < 0 ? ellipse("arrow-end", tail, w, Math.abs(towards), light) : "");
+    const behind = centre[2] - 0.01;
+    // 1. Both halves from the centre outwards, each no nearer than just behind the sphere: the sphere's outline cuts them.
+    drawn.push({ kind: "arrow", x1: tail[0], y1: tail[1], x2: centre[0], y2: centre[1], width: 2 * w, depth: Math.min((tail[2] + centre[2]) / 2, behind), svg: defs + tailHalf(0, false) });
+    drawn.push({ kind: "arrow", x1: centre[0], y1: centre[1], x2: base[0], y2: base[1], width: 2 * w, depth: Math.min((tip[2] + centre[2]) / 2, behind), head, svg: headHalf(0, false) });
+    // 2. The half that comes out of the sphere's face, over the sphere, from where it pierces the surface.
+    const rho = ARROW_SHAFT / 2;
+    const pierce = Math.sqrt(Math.max(0, radius * radius - rho * rho));
+    if (Math.abs(towards) > 0.02) {
+      const sign = towards > 0 ? 1 : -1; // which half points at the viewer
+      const foot = at(sign * pierce);
+      const shadow = ellipse("arrow-shadow", foot, w * 1.9, Math.max(Math.abs(towards), 0.25), "#000000", ' fill-opacity="0.2"');
+      const end = sign > 0 ? tip : tail;
+      const piece = sign > 0 ? headHalf(pierce, true) : tailHalf(-pierce, true);
+      drawn.push({
+        kind: "arrow",
+        x1: foot[0],
+        y1: foot[1],
+        x2: sign > 0 ? base[0] : tail[0],
+        y2: sign > 0 ? base[1] : tail[1],
+        width: 2 * w,
+        depth: Math.max((foot[2] + end[2]) / 2, centre[2] + 0.01),
+        ...(sign > 0 ? { head } : {}),
+        svg: shadow + piece,
+      });
+    }
+  });
   for (const [from, to] of scene.cellEdges) {
     // A cell edge is long, so it is drawn in short pieces, each at its own depth: an atom then hides
     // only the part of the edge that is really behind it. `along` keeps the dashes continuous.
@@ -566,9 +639,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       }
       out += "</g>\n";
     } else if (d.kind === "arrow") {
-      out += `<line class="arrow" x1="${n1(d.x1)}" y1="${n1(d.y1)}" x2="${n1(d.x2)}" y2="${n1(d.y2)}" stroke="${scene.arrowColour}" stroke-width="${n1(d.width)}" stroke-linecap="butt"/>`;
-      if (d.head) out += `<polygon class="arrow-head" points="${d.head}" fill="${scene.arrowColour}"/>`;
-      out += "\n";
+      out += `<g class="arrow">${d.svg}</g>\n`;
     } else {
       const look =
         d.kind === "bond"

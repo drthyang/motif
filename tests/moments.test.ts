@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CANVAS, layoutAll, renderSvg } from "../src/render/svg";
+import { DEFAULT_CANVAS, layoutAll, renderSvg, type Drawn, type DrawnArrow, type DrawnSphere } from "../src/render/svg";
 import { viewFromAngles } from "../src/render/view";
 import { buildScene, cellAxes, DEFAULT_SPEC, largestMoment, momentToCartesian } from "../src/scene/scene";
 import { expandToUnitCell, transformMoment } from "../src/structure/expand";
@@ -205,6 +205,38 @@ describe("moment arrows", () => {
     const tail = parts.find((d) => d.kind === "arrow" && d.depth < back.depth)!;
     expect(index((d) => d === tail)).toBeLessThan(index((d) => d === back));
     expect(index((d) => d === head)).toBeGreaterThan(index((d) => d === back));
+  });
+
+  it("is a rod that pierces the sphere: behind, the sphere's outline cuts it; in front, it has a rounded foot on the sphere's face", () => {
+    const isSphere = (d: Drawn): d is DrawnSphere => d.kind === "sphere";
+    const isArrow = (d: Drawn): d is DrawnArrow => d.kind === "arrow";
+    const draw = (view: ReturnType<typeof viewFromAngles>) => {
+      const order = layoutAll(scene, view, DEFAULT_CANVAS);
+      return { order, mn: order.filter(isSphere).filter((d) => d.style === "Mn"), arrows: order.filter(isArrow) };
+    };
+    // In the screen plane: two parts per atom, both from the centre and both drawn before their sphere.
+    const flat = draw(viewFromAngles(0, 0));
+    expect(flat.arrows.length).toBe(2 * 2);
+    for (const d of flat.arrows) {
+      const sphere = flat.mn.find((x) => Math.abs(x.x - d.x1) < 1e-6)!;
+      expect(flat.order.indexOf(d)).toBeLessThan(flat.order.indexOf(sphere));
+      expect(d.svg).not.toContain("arrow-shadow");
+    }
+    // Tilted: a third part per atom, after the sphere, with the shadow and a foot whose depth along the rod is
+    // sin(tilt) times its half-width (an ellipse: the circle where the rod pierces the surface, seen at an angle).
+    const tilted = draw(viewFromAngles(0, 40));
+    const over = tilted.arrows.filter((d) => d.svg.includes("arrow-shadow"));
+    expect(over.length).toBe(2); // one per Mn
+    for (const d of over) {
+      const sphere = tilted.mn.find((x) => Math.hypot(d.x1 - x.x, d.y1 - x.y) < x.r)!;
+      expect(tilted.order.indexOf(d)).toBeGreaterThan(tilted.order.indexOf(sphere));
+      // The foot is on the sphere's face, not at its rim: inside the disc by the factor cos(40 degrees).
+      expect(Math.hypot(d.x1 - sphere.x, d.y1 - sphere.y) / sphere.r).toBeCloseTo(Math.cos((40 * Math.PI) / 180), 1);
+      const rod = /class="arrow-rod" points="([^"]+)"/.exec(d.svg)![1]!.split(" ").map((q) => q.split(",").map(Number));
+      expect(rod.length).toBe(4 + 7); // four corners and the seven points of the rounded foot
+      const bulge = Math.max(...rod.slice(4).map((q) => Math.abs(q[1]! - d.y1)));
+      expect(bulge / (d.width / 2)).toBeCloseTo(Math.sin((40 * Math.PI) / 180), 1);
+    }
   });
 
   it("can be switched off, and says so when an arrow is too short to see", () => {
