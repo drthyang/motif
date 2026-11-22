@@ -172,6 +172,9 @@ export function App() {
   const [axesSizeText, setAxesSizeText] = useState("1");
   const sizeOf = (text: string): number => (Number(text) >= 0.2 && Number(text) <= 4 ? Number(text) : 1);
   const [legendSize, axesSize] = [sizeOf(legendSizeText), sizeOf(axesSizeText)];
+  const [momentHeadText, setMomentHeadText] = useState("1");
+  const [axesHeadText, setAxesHeadText] = useState("1");
+  const [momentHeadSize, axesHeadSize] = [sizeOf(momentHeadText), sizeOf(axesHeadText)];
   const [fontFamily, setFontFamily] = useState(DEFAULT_SPEC.fontFamily);
   const [customFont, setCustomFont] = useState(false);
   // Angle rules; the limits and the look are kept as typed.
@@ -282,11 +285,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -1052,6 +1055,8 @@ export function App() {
                   thickness
                   <input type="number" step={0.02} min={0.02} max={2} data-testid="moment-thickness" title="Thickness of the rod. The cone at the tip keeps its proportion to it." value={momentThicknessText} onChange={(e) => setMomentThicknessText(e.target.value)} />
                   Å
+                  head
+                  <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
                 </div>
               </Section>
             )}
@@ -1073,6 +1078,8 @@ export function App() {
                 <input type="number" step={0.1} min={0.2} max={4} data-testid="legend-size" value={legendSizeText} onChange={(e) => setLegendSizeText(e.target.value)} />×
                 axes size
                 <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-size" value={axesSizeText} onChange={(e) => setAxesSizeText(e.target.value)} />×
+                axes head
+                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-head" title="Size of the cones of the axis arrows, as a multiple of the usual." value={axesHeadText} onChange={(e) => setAxesHeadText(e.target.value)} />×
               </div>
               <div className="row">
                 font

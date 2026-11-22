@@ -118,7 +118,7 @@ export const ARROW_HEAD_WIDTH = 0.46;
 /** The arrows' rod thickness, head length and head width for a scene, in angstrom: the head keeps its proportion to the rod. */
 export function arrowSizes(scene: Scene): { shaft: number; headLength: number; headWidth: number } {
   const shaft = scene.arrowThickness ?? ARROW_SHAFT;
-  const k = shaft / ARROW_SHAFT;
+  const k = (shaft / ARROW_SHAFT) * (scene.arrowHeadSize ?? 1);
   return { shaft, headLength: ARROW_HEAD_LENGTH * k, headWidth: ARROW_HEAD_WIDTH * k };
 }
 
@@ -548,7 +548,8 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
   if (arrows.length === 0) return { svg: "", defs: "", left: canvas.width };
   // Every size of the triad follows the chosen size: arrow length and thickness, head, letters.
   const k = scene.axesSize ?? 1;
-  const [lengthPx, shaftPx, headPx, headWidthPx] = [AXIS_LENGTH * k, AXIS_SHAFT * k, AXIS_HEAD * k, AXIS_HEAD_WIDTH * k];
+  const headSize = k * (scene.axesHeadSize ?? 1);
+  const [lengthPx, shaftPx, headPx, headWidthPx] = [AXIS_LENGTH * k, AXIS_SHAFT * k, AXIS_HEAD * headSize, AXIS_HEAD_WIDTH * headSize];
   const [labelGap, fontSize] = [42 * k, 76 * k];
   // Where each letter goes, relative to the origin; an axis seen end on has no direction on screen and gets no letter.
   const letters = arrows.map((a) => {

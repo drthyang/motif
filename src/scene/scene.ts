@@ -148,6 +148,9 @@ export interface Scene {
   readonly arrowColour: string;
   /** Thickness of the arrows' rods in angstrom (absent: the default). The head is in proportion. */
   readonly arrowThickness?: number;
+  /** Size of the arrows' cone relative to its usual proportion to the rod (absent = 1); the same for the axis arrows. */
+  readonly arrowHeadSize?: number;
+  readonly axesHeadSize?: number;
   /** Weight of the lettering. */
   readonly letterWeight: number;
   /** Font of the lettering (a font name; absent means the default list). */
@@ -208,6 +211,9 @@ export interface SceneSpec {
   readonly momentColour: string;
   /** Thickness of the rod of a moment arrow, in angstrom. The cone at its tip is in proportion. */
   readonly momentThickness: number;
+  /** Size of the cone at the tip of a moment arrow, and of an axis arrow, as multiples of the usual proportion to the rod (1 = usual). */
+  readonly momentHeadSize: number;
+  readonly axesHeadSize: number;
   /** Weight of the lettering (legend, axes, angle labels): 400 regular, 500 medium, 800 heavy. */
   readonly letterWeight: number;
   /** Font of the lettering: the name of a font installed on the computer that shows the figure. */
@@ -235,7 +241,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, showLegend: true, showAxes: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
@@ -430,5 +436,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     colour: mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
     opacity: 0.55,
   }));
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

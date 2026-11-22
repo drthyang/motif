@@ -233,6 +233,11 @@ describe("legend", () => {
       return Math.hypot(pts[0]![0]! - pts[3]![0]!, pts[0]![1]! - pts[3]![1]!);
     };
     expect(width(renderSvg(big, DEFAULT_VIEW)) / width(renderSvg(usual, DEFAULT_VIEW))).toBeCloseTo(0.5, 1);
+    // The cones of the axis arrows alone: twice as wide, shafts unchanged.
+    const headOf = (svg: string): number => Number(/class="axis-base"[^>]*ry="([\d.]+)"/.exec(svg)![1]);
+    const cones = buildScene(olivine, { ...DEFAULT_SPEC, axesHeadSize: 2 });
+    expect(headOf(renderSvg(cones, DEFAULT_VIEW)) / headOf(renderSvg(usual, DEFAULT_VIEW))).toBeCloseTo(2, 9);
+    expect(width(renderSvg(cones, DEFAULT_VIEW))).toBeCloseTo(width(renderSvg(usual, DEFAULT_VIEW)), 9);
     // The structure itself is untouched.
     expect(big.spheres).toEqual(usual.spheres);
   });

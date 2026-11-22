@@ -261,6 +261,13 @@ describe("moment arrows", () => {
     };
     expect(headWidth(b.find((d) => d.head)!) / headWidth(a.find((d) => d.head)!)).toBeCloseTo(3, 1);
     expect(thick.arrows).toEqual(thin.arrows);
+    // The head alone: twice the size, the rod as it was, the tip where it was.
+    const bigHead = arrowsOf(buildScene(mnf2, { ...DEFAULT_SPEC, range: one, momentThickness: 0.1, momentHeadSize: 2 }));
+    expect(headWidth(bigHead.find((d) => d.head)!) / headWidth(a.find((d) => d.head)!)).toBeCloseTo(2, 1);
+    bigHead.forEach((d, i) => {
+      expect(d.width).toBeCloseTo(a[i]!.width, 9);
+      expect(tip(d)).toBe(tip(a[i]!));
+    });
   });
 
   it("can be switched off, and says so when an arrow is too short to see", () => {
