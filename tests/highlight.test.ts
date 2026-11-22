@@ -138,8 +138,8 @@ describe("drawing highlights", () => {
     const scene = buildScene(kagome, { ...DEFAULT_SPEC, range: range([0, 0, 0], [1, 1, 0]), bonds: [rule("Co", 2.7, { colour: "#a3242d", width: 0.46 }), { centre: "Co", neighbour: "Sn", max: 2.7, complete: false }] });
     expect(scene.stickStyles).toEqual([{ colour: "#a3242d", width: 0.46 }, DEFAULT_STICK]);
     const svg = renderSvg(scene, DEFAULT_VIEW);
-    expect(svg).toContain('stroke="#a3242d"');
-    expect(svg).toContain(`stroke="${DEFAULT_STICK.colour}"`);
+    expect(svg).toContain('<stop offset="0" stop-color="#a3242d"/>'); // the shading of those rods starts from their colour
+    expect(svg).toContain(`<stop offset="0" stop-color="${DEFAULT_STICK.colour}"/>`);
   });
 });
 

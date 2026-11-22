@@ -162,6 +162,12 @@ export interface Scene {
   /** The surface of the atoms and of the arrows (absent = soft). */
   readonly atomMaterial?: Material;
   readonly arrowMaterial?: Material;
+  /**
+   * The surface of the bonds and whether they are outlined. When `bondMaterial` is absent the bonds are drawn
+   * as plain strokes (as the page does for a very large structure).
+   */
+  readonly bondMaterial?: Material;
+  readonly bondOutline?: boolean;
   /** Short axis arrows are lengthened to stay readable (absent = yes). */
   readonly axesKeepReadable?: boolean;
   /** Outline the moment arrows; outline the axis arrows. */
@@ -233,6 +239,9 @@ export interface SceneSpec {
   /** The surface of the atoms, and of the arrows (moment arrows and axis arrows). */
   readonly atomMaterial: Material;
   readonly arrowMaterial: Material;
+  /** The surface of the bonds, and whether they have a thin darker outline. */
+  readonly bondMaterial: Material;
+  readonly bondOutline: boolean;
   /** Draw an axis arrow that points mostly into or out of the page at least 0.45 of the full length, so it stays readable. */
   readonly axesKeepReadable: boolean;
   /** Draw a thin darker outline around the moment arrows, and around the axis arrows, as the spheres have. */
@@ -265,7 +274,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, momentOutline: true, axesOutline: true, axesKeepReadable: true, atomMaterial: "soft", arrowMaterial: "soft", letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, showLegend: true, showAxes: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, momentOutline: true, axesOutline: true, axesKeepReadable: true, atomMaterial: "soft", arrowMaterial: "soft", bondMaterial: "soft", bondOutline: true, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
@@ -460,5 +469,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     colour: mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
     opacity: 0.55,
   }));
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

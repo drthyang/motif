@@ -181,6 +181,8 @@ export function App() {
   const [axesReadable, setAxesReadable] = useState(DEFAULT_SPEC.axesKeepReadable);
   const [atomMaterial, setAtomMaterial] = useState<Material>(DEFAULT_SPEC.atomMaterial);
   const [arrowMaterial, setArrowMaterial] = useState<Material>(DEFAULT_SPEC.arrowMaterial);
+  const [bondMaterial, setBondMaterial] = useState<Material>(DEFAULT_SPEC.bondMaterial);
+  const [bondOutline, setBondOutline] = useState(DEFAULT_SPEC.bondOutline);
   const materialChoice = (testId: string, value: Material, set: (m: Material) => void) => (
     <select data-testid={testId} value={value} onChange={(e) => set(e.target.value as Material)} title="Soft: a gentle highlight. Flat: one colour. Glossy: a bright highlight spot. Metal: strong light and dark with a lit rim. Glass: see-through.">
       {MATERIALS.map((m) => (
@@ -300,11 +302,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -1011,6 +1013,14 @@ Reset
               <label className="row">
                 <input type="checkbox" data-testid="show-cell" checked={showCell} onChange={(e) => setShowCell(e.target.checked)} />
                 Unit cell outline
+              </label>
+              <div className="row" title="Bonds are drawn as round rods that meet the atoms as a real rod would. Above 1,500 bonds they are drawn as plain strokes, which is much faster.">
+                bond surface
+                {materialChoice("bond-material", bondMaterial, setBondMaterial)}
+              </div>
+              <label className="row">
+                <input type="checkbox" data-testid="bond-outline" checked={bondOutline} onChange={(e) => setBondOutline(e.target.checked)} />
+                Outline the bonds
               </label>
             </Section>
             <Section tab="atoms" title="Angles" hint="Marks the angle between two drawn bonds that meet at an atom, so add the bonds first. The list shows the kinds of angle found and their sizes. Every angle of the chosen kind whose size lies in the range is marked.">

@@ -120,11 +120,80 @@ describe("unit cell outline", () => {
   });
 });
 
+describe("bonds as rods", () => {
+  // Two atoms 3 A apart along x, radius 0.5, bond 0.2 thick.
+  const pair = (material?: "soft"): Scene => ({
+    spheres: [{ style: "X", label: "p", centre: [0, 0, 0] }, { style: "X", label: "q", centre: [3, 0, 0] }],
+    sticks: [{ i: 0, j: 1, rule: 0, length: 3 }],
+    cellEdges: [],
+    stickStyles: [{ colour: "#b4bbc1", width: 0.2 }],
+    ruleInfo: [],
+    bands: [],
+    polygons: [],
+    sectors: [],
+    angleKinds: [],
+    styles: { X: { colour: "#808080", radius: 0.5 } },
+    centre: [1.5, 0, 0],
+    extent: 3,
+    arrows: [],
+    arrowColour: "#000000",
+    letterWeight: 800,
+    legend: [],
+    axes: [],
+    warnings: [],
+    ...(material ? { bondMaterial: material, bondOutline: true } : {}),
+  });
+  const names = (order: ReturnType<typeof layoutAll>): string[] => order.map((d) => (d.kind === "sphere" ? d.label : d.kind));
+
+  it("in the screen plane: two halves from the atoms' centres to the middle, both drawn before the atoms, which cut them with their outlines", () => {
+    const scene = pair("soft");
+    const view = viewFromAngles(0, 0);
+    const order = layoutAll(scene, view, DEFAULT_CANVAS);
+    expect(names(order)).toEqual(["bond", "bond", "p", "q"]);
+    const scale = pxPerAngstrom(scene, view, DEFAULT_CANVAS);
+    const [p, q] = [order.find((d) => d.kind === "sphere" && d.label === "p")!, order.find((d) => d.kind === "sphere" && d.label === "q")!];
+    if (p.kind !== "sphere" || q.kind !== "sphere") throw new Error();
+    const halves = order.filter((d) => d.kind === "bond");
+    for (const h of halves) {
+      if (h.kind !== "bond") continue;
+      const own = Math.abs(h.x1 - p.x) < 1e-6 ? p : q;
+      expect(h.x1).toBeCloseTo(own.x, 6); // starts at its atom's centre
+      expect(Math.abs(h.x2 - (p.x + q.x) / 2) / scale).toBeLessThan(0.05); // ends at the middle (a hair past it)
+      expect(h.width / scale).toBeCloseTo(0.2, 9);
+      expect(h.svg).toContain("bond-edge"); // outlined along its sides
+    }
+  });
+
+  it("pointing at the viewer: the near atom's half comes from behind it, the far atom's half comes out of its face with a rounded foot", () => {
+    const scene = pair("soft");
+    const order = layoutAll(scene, viewFromAngles(-60, 0), DEFAULT_CANVAS); // q is the nearer atom
+    expect(names(order)).toEqual(["p", "bond", "bond", "q"]);
+    const [fromP, fromQ] = order.filter((d) => d.kind === "bond");
+    if (fromP?.kind !== "bond" || fromQ?.kind !== "bond") throw new Error();
+    const corners = (svg: string): number => /class="bond" points="([^"]+)"/.exec(svg)![1]!.split(" ").length;
+    expect(corners(fromP.svg!)).toBe(4 + 7); // out of p's face: four corners and the rounded foot
+    expect(corners(fromQ.svg!)).toBe(4); // from behind q: a plain quad, cut by q's outline
+    // The foot is on p's face, inside its disc.
+    const p = order.find((d) => d.kind === "sphere" && d.label === "p")!;
+    if (p.kind !== "sphere") throw new Error();
+    expect(Math.hypot(fromP.x1 - p.x, fromP.y1 - p.y)).toBeLessThan(p.r);
+    expect(Math.hypot(fromP.x1 - p.x, fromP.y1 - p.y)).toBeGreaterThan(0.2 * p.r);
+  });
+
+  it("without a surface, or above the limit, a bond is one plain stroke as before", () => {
+    const order = layoutAll(pair(), viewFromAngles(0, 0), DEFAULT_CANVAS);
+    expect(order.filter((d) => d.kind === "bond").length).toBe(1);
+    expect(renderSvg(pair(), viewFromAngles(0, 0))).toContain('<line class="bond"');
+  });
+});
+
 describe("drawing bonds and the cell", () => {
   it("draws each bond and cell edge once", () => {
     const scene = buildScene(structure("halite-NaCl_COD-9008678"), { ...DEFAULT_SPEC, bonds: [rule("Na", "Cl", 3)], showLegend: false, showAxes: false });
     const svg = renderSvg(scene, DEFAULT_VIEW);
-    expect(svg.match(/class="bond"/g)?.length).toBe(54);
+    expect(scene.sticks.length).toBe(54);
+    expect(svg.match(/<polygon class="bond"/g)?.length).toBe(54 * 2); // a rod in two halves, one from each atom
+    expect(svg.match(/<linearGradient id="bond-\d+"/g)?.length).toBe(54); // one shading per bond, shared by its halves
     expect(scene.cellEdges.length).toBe(12);
     // Each edge (5.64 A) is drawn in 12 pieces of at most 0.5 A, with continuous dashes.
     expect(svg.match(/class="cell"/g)?.length).toBe(12 * 12);

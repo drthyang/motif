@@ -28,6 +28,8 @@ export const BOND_COLOUR = "#b4bbc1";
 export const BOND_WIDTH = 0.12;
 /** A bond starts this fraction of the radius from each atom's centre: just under the surface, so no gap shows. */
 export const BOND_START = 0.9;
+/** Up to this many bonds are drawn as shaded rods; beyond it they are plain strokes, which draw much faster. */
+export const BOND_ROD_LIMIT = 1500;
 /** Cell edges are drawn in pieces at most this long, in angstrom. */
 export const CELL_PIECE = 0.5;
 export const CELL_STROKE = 'stroke="#aab3ba" stroke-width="4" stroke-dasharray="14 12"';
@@ -57,6 +59,8 @@ export interface DrawnLine {
   readonly depth: number;
   /** Cell edges only: px from the start of the whole edge to this piece. */
   readonly along?: number;
+  /** A bond drawn as a shaded rod: this half's shapes, ready to write (absent for a plain stroke). */
+  readonly svg?: string;
 }
 
 /** One part of a moment arrow (see layoutAll): a length of the rod from (x1, y1) to (x2, y2), with the cone if it is the head's part. */
@@ -243,19 +247,83 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const [x, y, depth] = project(s.centre);
     drawn.push({ kind: "sphere", x, y, depth, r: scene.styles[s.style]!.radius * scale, style: s.style, label: s.label });
   }
-  for (const stick of scene.sticks) {
+  // Bonds. With a surface chosen (and not too many of them) each bond is a round rod, drawn as the rods of the
+  // arrows are: in two halves that meet in the middle, each belonging to the atom it starts from. A half that
+  // points away from the viewer, or lies in the screen, starts at its atom's centre and is drawn before the
+  // atom, whose outline cuts it. A half that points at the viewer comes out of the atom's face: it is drawn
+  // after the atom, from the small circle where it pierces the surface (an ellipse when seen at an angle).
+  const rods = scene.bondMaterial !== undefined && scene.sticks.length <= BOND_ROD_LIMIT;
+  scene.sticks.forEach((stick, stickIndex) => {
     const [a, b] = [scene.spheres[stick.i]!, scene.spheres[stick.j]!];
-    const [ra, rb] = [scene.styles[a.style]!.radius * BOND_START, scene.styles[b.style]!.radius * BOND_START];
-    if (stick.length <= ra + rb) continue; // the spheres overlap: nothing of the bond shows
-    // From just under one surface to just under the other, along the line of centres.
-    const at = (t: number): Vec3 => [0, 1, 2].map((i) => a.centre[i]! + (b.centre[i]! - a.centre[i]!) * t) as unknown as Vec3;
-    const [p, q] = [project(at(ra / stick.length)), project(at(1 - rb / stick.length))];
-    // Drawn just behind an atom at the same depth, so the nearer atom covers its end of the bond.
+    const [radiusA, radiusB] = [scene.styles[a.style]!.radius, scene.styles[b.style]!.radius];
+    if (stick.length <= (radiusA + radiusB) * BOND_START) return; // the spheres overlap: nothing of the bond shows
     const look = scene.stickStyles[stick.rule] ?? { colour: BOND_COLOUR, width: BOND_WIDTH };
     const colour = stick.pale ? mixHex(look.colour, "#ffffff", 0.55) : look.colour;
     const width = (stick.pale ? 0.65 : 1) * look.width * scale;
-    drawn.push({ kind: "bond", colour, x1: p[0], y1: p[1], x2: q[0], y2: q[1], width, depth: (p[2] + q[2]) / 2 - 0.1 });
-  }
+    const at = (t: number): Vec3 => [0, 1, 2].map((i) => a.centre[i]! + (b.centre[i]! - a.centre[i]!) * t) as unknown as Vec3;
+    if (!rods) {
+      // A plain stroke from just under one surface to just under the other, drawn just behind an atom at the
+      // same depth, so the nearer atom covers its end.
+      const [p, q] = [project(at((radiusA * BOND_START) / stick.length)), project(at(1 - (radiusB * BOND_START) / stick.length))];
+      drawn.push({ kind: "bond", colour, x1: p[0], y1: p[1], x2: q[0], y2: q[1], width, depth: (p[2] + q[2]) / 2 - 0.1 });
+      return;
+    }
+    const [pa, pb, middle] = [project(a.centre), project(b.centre), project(at(0.5))];
+    const onScreen = Math.hypot(pb[0] - pa[0], pb[1] - pa[1]);
+    const [ux, uy] = onScreen > 1e-6 ? [(pb[0] - pa[0]) / onScreen, (pb[1] - pa[1]) / onScreen] : [1, 0];
+    let [px, py] = [-uy, ux];
+    if (px * -0.5 + py * -0.7 < 0) [px, py] = [-px, -py]; // the lit side: upper left
+    const towards = (pb[2] - pa[2]) / stick.length; // how much the bond, from a to b, points at the viewer
+    const w = width / 2;
+    const id = `bond-${stickIndex}`;
+    const defs =
+      `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${n1(middle[0] + px * w)}" y1="${n1(middle[1] + py * w)}" x2="${n1(middle[0] - px * w)}" y2="${n1(middle[1] - py * w)}">` +
+      `${rodStops(colour, scene.bondMaterial ?? "soft")}</linearGradient></defs>`;
+    const edge = scene.bondOutline ? ` stroke="${mixHex(colour, "#000000", 0.4)}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"` : "";
+    const glass = scene.bondMaterial === "glass" ? ' fill-opacity="0.45"' : "";
+    const rho = look.width / 2; // the rod's radius, angstrom
+    /** One half: from its atom (the end `fromA` says) to just past the middle. */
+    const half = (fromA: boolean): void => {
+      const [radius, sign] = fromA ? [radiusA, 1] : [radiusB, -1];
+      const out = sign * towards; // how much this half, going outwards from its atom, points at the viewer
+      const front = out > 0.02;
+      const centre = fromA ? pa : pb;
+      // Where it starts, as a fraction of the bond from a: at the atom's centre, or where it pierces the surface.
+      const pierce = Math.sqrt(Math.max(0, radius * radius - rho * rho)) / stick.length;
+      const start = project(at(fromA ? (front ? pierce : 0) : 1 - (front ? pierce : 0)));
+      const end = project(at(0.5 + sign * 0.01)); // a hair past the middle, so the two halves leave no gap
+      const corner = (p: Vec3, side: number): string => `${n1(p[0] + side * px * w)},${n1(p[1] + side * py * w)}`;
+      let outline = `${corner(start, 1)} ${corner(end, 1)} ${corner(end, -1)} ${corner(start, -1)}`;
+      let foot = "";
+      if (front) {
+        // Round the foot: half an ellipse, as wide as the rod and |out| times that along it, bulging back into the atom.
+        for (let k = 1; k < 8; k++) {
+          const phi = Math.PI * (1 - k / 8);
+          const along = -sign * Math.sin(phi) * w * Math.abs(out);
+          foot += ` ${n1(start[0] + ux * along + px * w * Math.cos(phi))},${n1(start[1] + uy * along + py * w * Math.cos(phi))}`;
+        }
+        outline += foot;
+      }
+      // The outline runs along the two sides and round the foot, not across the middle where the halves meet.
+      const sides = edge
+        ? `<path class="bond-edge" d="M${corner(end, -1)} L${corner(start, -1)}${foot ? foot.trim().split(" ").map((q) => ` L${q}`).join("") : ""} L${corner(start, 1)} L${corner(end, 1)}" fill="none"${edge}/>`
+        : "";
+      const depth = front ? Math.max((start[2] + end[2]) / 2, centre[2] + 0.01) : Math.min((centre[2] + end[2]) / 2, centre[2] - 0.01);
+      drawn.push({
+        kind: "bond",
+        colour,
+        x1: start[0],
+        y1: start[1],
+        x2: end[0],
+        y2: end[1],
+        width,
+        depth,
+        svg: `${fromA ? defs : ""}<polygon class="bond" points="${outline}" fill="url(#${id})"${glass}/>${sides}`,
+      });
+    };
+    half(true);
+    half(false);
+  });
   for (const polygon of scene.polygons) {
     // Just behind its own atoms and bonds.
     const corners = polygon.corners.map((c) => project(scene.spheres[c]!.centre));
@@ -773,6 +841,8 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       // The outline, when asked for: every shape of the arrow in the darker tone of its colour, as the spheres have.
       const outline = scene.arrowOutline ? ` stroke="${mixHex(scene.arrowColour, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round"` : "";
       out += `<g class="arrow"${outline}${scene.arrowMaterial === "glass" ? ' fill-opacity="0.45"' : ""}>${d.svg}</g>\n`;
+    } else if (d.kind === "bond" && d.svg !== undefined) {
+      out += `${d.svg}\n`;
     } else {
       const look =
         d.kind === "bond"
