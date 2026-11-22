@@ -280,6 +280,24 @@ describe("moment arrows", () => {
     expect(outlined.replace(/ stroke="#[0-9a-f]{6}" stroke-width="1.5" stroke-linejoin="round">/g, ">")).toBe(plain);
   });
 
+  it("a cone pointing at the viewer is one shape whose base follows the round rim, so an outline does not cut across it", () => {
+    const up = buildScene(mnf2, { ...DEFAULT_SPEC, range: { from: [-0.1, -0.1, -0.1], to: [0.1, 0.1, 0.1], boundary: "both" }, momentOutline: true });
+    const svg = renderSvg(up, viewFromAngles(0, 30)); // the +c arrow leans towards the viewer
+    const head = /class="arrow-head" points="([^"]+)"/.exec(svg)![1]!.split(" ").map((p) => p.split(",").map(Number) as [number, number]);
+    expect(head.length).toBe(1 + 11); // the tip and eleven points round the rim
+    const [tip, first, last] = [head[0]!, head[1]!, head[head.length - 1]!];
+    // The rim's ends are level; every point between them lies below that line (further from the tip), deepest in the middle.
+    expect(first[1]).toBeCloseTo(last[1], 0);
+    expect(tip[1]).toBeLessThan(first[1]);
+    const depth = head.slice(1).map((q) => q[1] - first[1]);
+    for (const d of depth.slice(1, -1)) expect(d).toBeGreaterThan(0);
+    expect(Math.max(...depth)).toBeCloseTo(depth[5]!, 6);
+    // Its depth is sin(30 degrees) of its half-width: the rim is a circle seen at that angle.
+    expect(depth[5]! / (Math.abs(first[0] - last[0]) / 2)).toBeCloseTo(0.5, 1);
+    // The plain ellipse under it is not outlined.
+    expect(/class="arrow-base"[^>]*stroke="none"/.test(svg)).toBe(true);
+  });
+
   it("can be switched off, and says so when an arrow is too short to see", () => {
     expect(buildScene(mnf2, { ...DEFAULT_SPEC, showMoments: false }).arrows).toEqual([]);
     expect(renderSvg(buildScene(mnf2, { ...DEFAULT_SPEC, showMoments: false }), viewFromAngles(0, 0))).not.toContain('class="arrow"');

@@ -106,6 +106,21 @@ export interface DrawnSector {
 
 export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand | DrawnSector;
 
+/**
+ * The silhouette of a cone that points towards the viewer: from the tip to one end of the base's width, round
+ * the far half of the base's rim (an ellipse `squash` times as deep as it is wide), to the other end.
+ * (ux, uy) is the arrow's direction on screen, (px, py) the direction across it, `half` half the base's width.
+ */
+function coneOutline(tx: number, ty: number, bx: number, by: number, ux: number, uy: number, px: number, py: number, half: number, squash: number): string {
+  let points = `${n1(tx)},${n1(ty)}`;
+  for (let k = 0; k <= 10; k++) {
+    const phi = (Math.PI * k) / 10;
+    const [across, back] = [half * Math.cos(phi), half * squash * Math.sin(phi)];
+    points += ` ${n1(bx + px * across - ux * back)},${n1(by + py * across - uy * back)}`;
+  }
+  return points;
+}
+
 /** Number of straight pieces the arc of a sector is drawn with, per 180 degrees. */
 const ARC_PIECES = 48;
 /** Size of the angle labels, px. */
@@ -353,9 +368,16 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       return `<polygon class="arrow-rod" points="${outline}" fill="url(#${id}-rod)"/>`;
     };
     const cone = (): string => {
+      if (towards >= 0) {
+        // Towards the viewer the cone's side is seen right down to the far half of its round rim. It is drawn as
+        // one shape (tip, one corner, round the rim, the other corner), so an outline follows the silhouette and
+        // does not cut straight across the cone. The plain ellipse under it carries no outline.
+        return ellipse("arrow-base", base, hw, Math.abs(towards), `url(#${id}-base)`, ' stroke="none"') +
+          `<polygon class="arrow-head" points="${coneOutline(tip[0], tip[1], base[0], base[1], ux, uy, px, py, hw, Math.abs(towards))}" fill="url(#${id}-head)"/>`;
+      }
+      // Away from the viewer the flat base faces the viewer and covers the cone behind it.
       const triangle = `<polygon class="arrow-head" points="${n1(tip[0])},${n1(tip[1])} ${corner(base, 1, hw)} ${corner(base, -1, hw)}" fill="url(#${id}-head)"/>`;
-      // Towards the viewer the cone's side is seen over its round base; away, the flat base covers the cone.
-      return towards >= 0 ? ellipse("arrow-base", base, hw, Math.abs(towards), `url(#${id}-base)`) + triangle : triangle + ellipse("arrow-base", base, hw, Math.abs(towards), darker);
+      return triangle + ellipse("arrow-base", base, hw, Math.abs(towards), darker);
     };
     const head = `${n1(tip[0])},${n1(tip[1])} ${corner(base, 1, hw)} ${corner(base, -1, hw)}`;
     const headHalf = (start: number, foot: boolean): string => {
@@ -601,12 +623,16 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     const shaft = `<polygon class="axis-shaft" points="${corner(ox, oy, 1, shaftPx)} ${corner(bx, by, 1, shaftPx)} ${corner(bx, by, -1, shaftPx)} ${corner(ox, oy, -1, shaftPx)}" fill="url(#${id}-shaft)"/>`;
     // The base of the cone is a circle seen at an angle: an ellipse, as wide as the head across the arrow
     // and `tilt` times that along it.
-    const base = (fill: string): string =>
-      `<ellipse class="axis-base" cx="${n1(bx)}" cy="${n1(by)}" rx="${n1((headWidthPx / 2) * tilt)}" ry="${n1(headWidthPx / 2)}" transform="rotate(${n1(angle)} ${n1(bx)} ${n1(by)})" fill="${fill}"/>`;
+    const base = (fill: string, extra = ""): string =>
+      `<ellipse class="axis-base" cx="${n1(bx)}" cy="${n1(by)}" rx="${n1((headWidthPx / 2) * tilt)}" ry="${n1(headWidthPx / 2)}" transform="rotate(${n1(angle)} ${n1(bx)} ${n1(by)})" fill="${fill}"${extra}/>`;
     const cone = `<polygon class="axis-head" points="${n1(tx)},${n1(ty)} ${corner(bx, by, 1, headWidthPx)} ${corner(bx, by, -1, headWidthPx)}" fill="url(#${id}-head)"/>`;
     if (a.depth >= 0) {
-      // Pointing towards the viewer: the cone's side is seen, covering its base and the end of the shaft.
-      svg += shaft + base(`url(#${id}-base)`) + cone;
+      // Pointing towards the viewer: the cone's side is seen down to the far half of its rim, as one shape,
+      // covering its base and the end of the shaft (see coneOutline).
+      svg +=
+        shaft +
+        base(`url(#${id}-base)`, ' stroke="none"') +
+        `<polygon class="axis-head" points="${coneOutline(tx, ty, bx, by, ux, uy, px, py, headWidthPx / 2, tilt)}" fill="url(#${id}-head)"/>`;
     } else {
       // Pointing away: the flat base of the cone faces the viewer and covers the cone behind it; the shaft comes last.
       svg += cone + base(darker) + shaft;
