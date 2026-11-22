@@ -7,7 +7,7 @@ import { DEFAULT_CANVAS, renderSvg, wedgePaths } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
 import { atomsAndBonds } from "../src/scene/bonds";
 import { defaultColour, defaultRadius } from "../src/scene/elementStyle";
-import { buildScene, DEFAULT_SPEC, VACANCY_COLOUR } from "../src/scene/scene";
+import { buildScene, DEFAULT_SPEC, MATERIALS, VACANCY_COLOUR, type Material } from "../src/scene/scene";
 import { ONE_CELL } from "../src/scene/select";
 import { fractionalToCartesian } from "../src/structure/cell";
 import { expandToUnitCell } from "../src/structure/expand";
@@ -131,6 +131,42 @@ describe("pie spheres", () => {
     expect(svg.match(/class="wedge"/g)?.length).toBe(8 * 2);
     expect(svg.match(/fill="url\(#pie-shade\)"/g)?.length).toBe(8);
     expect(svg.match(/<circle /g)?.length).toBe(28);
+  });
+});
+
+describe("surfaces", () => {
+  const draw = (atomMaterial: Material, arrowMaterial: Material = "soft") => renderSvg(buildScene(olivine, { ...DEFAULT_SPEC, atomMaterial, arrowMaterial }), DEFAULT_VIEW);
+  const soft = draw("soft");
+  const circles = (svg: string): string[] => [...svg.matchAll(/<circle cx="([\d.-]+)" cy="([\d.-]+)" r="([\d.-]+)"/g)].map((m) => m.slice(1).join(" "));
+
+  it("soft is the look there was before, and every surface draws the same atoms at the same places and sizes", () => {
+    expect(soft).toBe(renderSvg(buildScene(olivine), DEFAULT_VIEW));
+    for (const m of MATERIALS) expect(circles(draw(m))).toEqual(circles(soft));
+  });
+
+  it("flat has no shading; glossy, metal and glass add a highlight spot to every sphere; glass is see-through", () => {
+    const atoms = buildScene(olivine).spheres.length + buildScene(olivine).legend.length;
+    expect(draw("flat")).not.toContain("<radialGradient id=\"g-");
+    for (const m of ["glossy", "metal", "glass"] as const) expect(draw(m).match(/class="gloss"/g)?.length).toBe(atoms);
+    expect(soft).not.toContain('class="gloss"');
+    expect(draw("glass")).toMatch(/<radialGradient id="g-[0-9a-f]+"[^>]*><stop offset="0" stop-color="#[0-9a-f]{6}" stop-opacity="0.1"\/>/);
+    expect(draw("glass")).toContain('<g fill-opacity="0.45"><path class="wedge"'); // pies too
+    // Metal: light comes back at the rim (the last stop is lighter than the one before it).
+    const stops = /<radialGradient id="g-[0-9a-f]+"[^>]*>(.*?)<\/radialGradient>/.exec(draw("metal"))![1]!.match(/stop-color="#[0-9a-f]{6}"/g)!;
+    const light = (stop: string): number => [1, 3, 5].reduce((sum, i) => sum + parseInt(stop.slice(13 + i - 1, 15 + i - 1), 16), 0);
+    expect(stops.length).toBe(6);
+    expect(light(stops[5]!)).toBeGreaterThan(light(stops[4]!));
+  });
+
+  it("the arrows' surface is set separately, and applies to the axis arrows too", () => {
+    const metalArrows = draw("soft", "metal");
+    expect(circles(metalArrows)).toEqual(circles(soft));
+    const axisStops = (svg: string): number => /<linearGradient id="axis-a-shaft"[^>]*>(.*?)<\/linearGradient>/.exec(svg)![1]!.match(/<stop /g)!.length;
+    expect(axisStops(soft)).toBe(4);
+    expect(axisStops(metalArrows)).toBe(6);
+    expect(draw("soft", "glass")).toMatch(/<g class="axes-outline"[^>]*fill-opacity="0.45"/);
+    // The letters of the axes stay solid.
+    for (const m of draw("soft", "glass").matchAll(/<text [^>]*font-style="italic"[^>]*>/g)) expect(m[0]).toContain('fill-opacity="1"');
   });
 });
 

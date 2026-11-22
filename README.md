@@ -104,6 +104,11 @@ writes the reference atom lists in `tests/reference/`.
 - Moment directions are checked against pymatgen (`scripts/pymatgen_moments.py`), including the
   arrow's size and its projection on each cell edge, on hexagonal test structures with
   time-reversed operations (`tests/fixtures`).
+- Surfaces: the atoms, and separately the arrows (moment arrows and axis arrows together), can be
+  drawn soft (the default), flat, glossy, metal or glass. These are vector shading only (gradient
+  stops, a highlight spot, opacity), so the figure stays an editable SVG; a glass sphere shows
+  what is behind and inside it. The GPU preview shown while a large structure moves does not draw
+  the surfaces.
 - A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
 - The view (`src/render/camera.ts`; plan from the camera research of 2026-11-22, approved by the
   user). The renderer takes a rotation matrix; for people the view is four numbers read from it,

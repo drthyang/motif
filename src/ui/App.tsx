@@ -13,7 +13,7 @@ import {
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { buildScene, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
+import { buildScene, MATERIALS, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { pairDistances, type BondRule } from "../scene/bonds";
@@ -179,6 +179,17 @@ export function App() {
   const [momentOutline, setMomentOutline] = useState(DEFAULT_SPEC.momentOutline);
   const [axesOutline, setAxesOutline] = useState(DEFAULT_SPEC.axesOutline);
   const [axesReadable, setAxesReadable] = useState(DEFAULT_SPEC.axesKeepReadable);
+  const [atomMaterial, setAtomMaterial] = useState<Material>(DEFAULT_SPEC.atomMaterial);
+  const [arrowMaterial, setArrowMaterial] = useState<Material>(DEFAULT_SPEC.arrowMaterial);
+  const materialChoice = (testId: string, value: Material, set: (m: Material) => void) => (
+    <select data-testid={testId} value={value} onChange={(e) => set(e.target.value as Material)} title="Soft: a gentle highlight. Flat: one colour. Glossy: a bright highlight spot. Metal: strong light and dark with a lit rim. Glass: see-through.">
+      {MATERIALS.map((m) => (
+        <option key={m} value={m}>
+          {m}
+        </option>
+      ))}
+    </select>
+  );
   const [fontFamily, setFontFamily] = useState(DEFAULT_SPEC.fontFamily);
   const [customFont, setCustomFont] = useState(false);
   // Angle rules; the limits and the look are kept as typed.
@@ -289,11 +300,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesKeepReadable: axesReadable, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesReadable, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -890,6 +901,10 @@ Reset
                 Show a vacant share as an empty wedge
               </label>
               <div className="row">
+                surface
+                {materialChoice("atom-material", atomMaterial, setAtomMaterial)}
+              </div>
+              <div className="row">
                 <button data-testid="reset-looks" onClick={() => setLooks({})}>Reset colours and sizes</button>
               </div>
             </Section>
@@ -1110,6 +1125,11 @@ Reset
                   <input type="checkbox" data-testid="moment-outline" checked={momentOutline} onChange={(e) => setMomentOutline(e.target.checked)} />
                   Outline the arrows
                 </label>
+                <div className="row">
+                  surface
+                  {materialChoice("arrow-material", arrowMaterial, setArrowMaterial)}
+                  <span className="sub">also the axis arrows</span>
+                </div>
               </Section>
             )}
             <Section tab="look" title="Legend and axes" hint="The arrows are the directions of the cell edges a, b, c. An arrow tilted out of the screen is drawn shorter.">
@@ -1141,6 +1161,11 @@ Reset
                 <input type="checkbox" data-testid="axes-readable" checked={axesReadable} onChange={(e) => setAxesReadable(e.target.checked)} />
                 Keep short axis arrows readable
               </label>
+              <div className="row">
+                arrow surface
+                {materialChoice("axes-material", arrowMaterial, setArrowMaterial)}
+                <span className="sub">also the moment arrows</span>
+              </div>
               <div className="row">
                 font
                 <select

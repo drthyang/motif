@@ -57,6 +57,14 @@ export interface Arrow {
   readonly vector: Vec3;
 }
 
+/**
+ * How a surface is drawn. All are plain vector shading (gradients), not a rendered scene:
+ * soft (the default, a gentle highlight), flat (one colour), glossy (a bright highlight spot),
+ * metal (strong light and dark bands with a lit rim), glass (see-through, with a highlight).
+ */
+export type Material = "soft" | "flat" | "glossy" | "metal" | "glass";
+export const MATERIALS: readonly Material[] = ["soft", "flat", "glossy", "metal", "glass"];
+
 /** A stick between two spheres. */
 export interface Stick {
   /** Indices into Scene.spheres. */
@@ -151,6 +159,9 @@ export interface Scene {
   /** Size of the arrows' cone relative to its usual proportion to the rod (absent = 1); the same for the axis arrows. */
   readonly arrowHeadSize?: number;
   readonly axesHeadSize?: number;
+  /** The surface of the atoms and of the arrows (absent = soft). */
+  readonly atomMaterial?: Material;
+  readonly arrowMaterial?: Material;
   /** Short axis arrows are lengthened to stay readable (absent = yes). */
   readonly axesKeepReadable?: boolean;
   /** Outline the moment arrows; outline the axis arrows. */
@@ -219,6 +230,9 @@ export interface SceneSpec {
   /** Size of the cone at the tip of a moment arrow, and of an axis arrow, as multiples of the usual proportion to the rod (1 = usual). */
   readonly momentHeadSize: number;
   readonly axesHeadSize: number;
+  /** The surface of the atoms, and of the arrows (moment arrows and axis arrows). */
+  readonly atomMaterial: Material;
+  readonly arrowMaterial: Material;
   /** Draw an axis arrow that points mostly into or out of the page at least 0.45 of the full length, so it stays readable. */
   readonly axesKeepReadable: boolean;
   /** Draw a thin darker outline around the moment arrows, and around the axis arrows, as the spheres have. */
@@ -251,7 +265,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, momentOutline: true, axesOutline: true, axesKeepReadable: true, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, showLegend: true, showAxes: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, momentOutline: true, axesOutline: true, axesKeepReadable: true, atomMaterial: "soft", arrowMaterial: "soft", letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
@@ -446,5 +460,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     colour: mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
     opacity: 0.55,
   }));
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

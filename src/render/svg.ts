@@ -7,7 +7,7 @@
  */
 import { mulVec } from "../structure/cell";
 import { mixHex } from "../scene/elementStyle";
-import type { Scene, Wedge } from "../scene/scene";
+import type { Material, Scene, Wedge } from "../scene/scene";
 import type { Vec3 } from "../structure/types";
 import type { View } from "./view";
 
@@ -340,12 +340,12 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const headLength = Math.min(sizes.headLength, half - radius);
     const base = at(half - headLength); // centre of the cone's base
     const colour = scene.arrowColour;
-    const [light, dark, darker] = [mixHex(colour, "#ffffff", 0.5), mixHex(colour, "#000000", 0.3), mixHex(colour, "#000000", 0.45)];
+    const [light, darker] = [mixHex(colour, "#ffffff", 0.5), mixHex(colour, "#000000", 0.45)];
     const id = `arrow-${arrowIndex}`;
     // Shading across the rod and across the cone: a round surface lit from the upper left.
     const across = (name: string, halfWidth: number, cx: number, cy: number, turned = ""): string =>
       `<linearGradient id="${name}" gradientUnits="userSpaceOnUse"${turned} x1="${n1(cx + px * halfWidth)}" y1="${n1(cy + py * halfWidth)}" x2="${n1(cx - px * halfWidth)}" y2="${n1(cy - py * halfWidth)}">` +
-      `<stop offset="0" stop-color="${colour}"/><stop offset="0.3" stop-color="${light}"/><stop offset="0.65" stop-color="${colour}"/><stop offset="1" stop-color="${dark}"/></linearGradient>`;
+      `${rodStops(colour, scene.arrowMaterial ?? "soft")}</linearGradient>`;
     const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
     // The cone's base is an ellipse turned to the arrow's direction. A shape that is turned turns its shading
     // with it, so the base gets the cone's shading turned back by the same angle: cone and base then shade as one.
@@ -473,11 +473,53 @@ const escapeXml = (text: string): string => text.replace(/&/g, "&amp;").replace(
 /** One sphere of a given style, as SVG. */
 function sphereSvg(scene: Scene, styleKey: string, x: number, y: number, r: number): string {
   const style = scene.styles[styleKey]!;
+  const material = scene.atomMaterial ?? "soft";
+  // The highlight spot of a glossy, metal or glass sphere: a small tilted ellipse up and to the left.
+  const gloss =
+    material === "glossy" || material === "metal" || material === "glass"
+      ? `<ellipse class="gloss" cx="${n1(x - 0.36 * r)}" cy="${n1(y - 0.42 * r)}" rx="${n1(0.3 * r)}" ry="${n1(0.19 * r)}" transform="rotate(-38 ${n1(x - 0.36 * r)} ${n1(y - 0.42 * r)})" fill="url(#gloss)"/>`
+      : "";
   if (style.wedges) {
-    return `${wedgePaths(x, y, r, style.wedges)}<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="url(#${PIE_SHADE})" stroke="${PIE_OUTLINE}" stroke-width="2"/>\n`;
+    // A pie: flat wedges under one shading circle. Glass makes the wedges see-through; flat leaves the shading out.
+    const wedges = material === "glass" ? `<g fill-opacity="0.45">${wedgePaths(x, y, r, style.wedges)}</g>` : wedgePaths(x, y, r, style.wedges);
+    const shade = material === "flat" ? "none" : `url(#${PIE_SHADE})`;
+    return `${wedges}<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="${shade}" stroke="${PIE_OUTLINE}" stroke-width="2"/>${gloss}\n`;
   }
-  const outline = mixHex(style.colour, "#000000", 0.35);
-  return `<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="url(#${gradientId(style.colour)})" stroke="${outline}" stroke-width="2"/>\n`;
+  const outline = mixHex(style.colour, "#000000", material === "metal" ? 0.5 : 0.35);
+  const fill = material === "flat" ? style.colour : `url(#${gradientId(style.colour)})`;
+  return `<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="${fill}" stroke="${outline}" stroke-width="2"${material === "glass" ? ' stroke-opacity="0.75"' : ""}/>${gloss}\n`;
+}
+
+/** The colour stops of a sphere's radial shading, from the highlight (up and to the left) to the rim. */
+function sphereStops(colour: string, material: Material): string {
+  const stop = (offset: number, c: string, opacity?: number): string => `<stop offset="${offset}" stop-color="${c}"${opacity === undefined ? "" : ` stop-opacity="${opacity}"`}/>`;
+  const [w, k] = [(t: number): string => mixHex(colour, "#ffffff", t), (t: number): string => mixHex(colour, "#000000", t)];
+  switch (material) {
+    case "glossy": // a brighter centre and a deeper rim than soft; the spot is added on top
+      return stop(0, w(0.55)) + stop(0.4, colour) + stop(1, k(0.5));
+    case "metal": // a bright highlight, a quick fall to dark, and light coming back at the rim
+      return stop(0, w(0.9)) + stop(0.22, w(0.4)) + stop(0.5, k(0.2)) + stop(0.78, k(0.6)) + stop(0.93, k(0.35)) + stop(1, w(0.2));
+    case "glass": // nearly clear in the middle, more colour towards the rim, where one looks through more glass
+      return stop(0, w(0.6), 0.1) + stop(0.6, colour, 0.28) + stop(1, k(0.2), 0.72);
+    default: // soft (flat uses no gradient)
+      return stop(0, w(0.65)) + stop(0.55, colour) + stop(1, k(0.35));
+  }
+}
+
+/** The colour stops of the shading across a rod or a cone, from the lit side to the far side. */
+function rodStops(colour: string, material: Material): string {
+  const stop = (offset: number, c: string): string => `<stop offset="${offset}" stop-color="${c}"/>`;
+  const [w, k] = [(t: number): string => mixHex(colour, "#ffffff", t), (t: number): string => mixHex(colour, "#000000", t)];
+  switch (material) {
+    case "flat":
+      return stop(0, colour) + stop(1, colour);
+    case "glossy":
+      return stop(0, colour) + stop(0.22, w(0.8)) + stop(0.42, colour) + stop(1, k(0.45));
+    case "metal": // bands of light and dark, as a polished rod shows
+      return stop(0, k(0.25)) + stop(0.2, w(0.85)) + stop(0.4, colour) + stop(0.68, k(0.55)) + stop(0.88, w(0.25)) + stop(1, k(0.35));
+    default: // soft, and glass (which is soft shading made see-through)
+      return stop(0, colour) + stop(0.3, w(colour === AXIS_COLOUR ? 0.55 : 0.5)) + stop(0.65, colour) + stop(1, k(0.3));
+  }
 }
 
 /**
@@ -636,7 +678,7 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     // Shading across the arrow: lightest a third of the way in from the lit side, darkest on the far side.
     const across = (name: string, width: number, cx: number, cy: number, turned = ""): string =>
       `<linearGradient id="${name}" gradientUnits="userSpaceOnUse"${turned} x1="${n1(cx + (px * width) / 2)}" y1="${n1(cy + (py * width) / 2)}" x2="${n1(cx - (px * width) / 2)}" y2="${n1(cy - (py * width) / 2)}">` +
-      `<stop offset="0" stop-color="${AXIS_COLOUR}"/><stop offset="0.3" stop-color="${light}"/><stop offset="0.65" stop-color="${AXIS_COLOUR}"/><stop offset="1" stop-color="${dark}"/></linearGradient>\n`;
+      `${rodStops(AXIS_COLOUR, scene.arrowMaterial ?? "soft")}</linearGradient>\n`;
     const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
     // The base ellipse is turned to the arrow's direction, which would turn its shading too; turn that back.
     const turnedBack = ` gradientTransform="rotate(${n1(-angle)} ${n1(bx)} ${n1(by)})"`;
@@ -663,7 +705,7 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
       // The baseline is set 0.3 em below the wanted centre, so no reader needs to support "dominant-baseline".
       svg +=
         `<text x="${n1(ox + letter.x)}" y="${n1(oy + letter.y + 0.3 * fontSize)}" text-anchor="middle" font-family="${fontList(scene.fontFamily)}" ` +
-        `font-weight="${scene.letterWeight}" font-style="italic" font-size="${fontSize}" fill="${AXIS_COLOUR}" stroke="none">${a.name}</text>`;
+        `font-weight="${scene.letterWeight}" font-style="italic" font-size="${fontSize}" fill="${AXIS_COLOUR}" fill-opacity="1" stroke="none">${a.name}</text>`;
     }
     svg += "\n";
   }
@@ -688,13 +730,14 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
     if (style.wedges) pies = true;
     else plain.add(style.colour);
   }
-  for (const colour of plain) {
+  const material = scene.atomMaterial ?? "soft";
+  for (const colour of material === "flat" ? [] : plain) {
     // One radial gradient per colour, highlight up and to the left.
-    out +=
-      `<radialGradient id="${gradientId(colour)}" cx="36%" cy="30%" r="72%">` +
-      `<stop offset="0" stop-color="${mixHex(colour, "#ffffff", 0.65)}"/>` +
-      `<stop offset="0.55" stop-color="${colour}"/>` +
-      `<stop offset="1" stop-color="${mixHex(colour, "#000000", 0.35)}"/></radialGradient>\n`;
+    out += `<radialGradient id="${gradientId(colour)}" cx="36%" cy="30%" r="72%">${sphereStops(colour, material)}</radialGradient>\n`;
+  }
+  if (material === "glossy" || material === "metal" || material === "glass") {
+    // The highlight spot: white, fading out.
+    out += `<radialGradient id="gloss"><stop offset="0" stop-color="#fff" stop-opacity="${material === "metal" ? 0.75 : 0.85}"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>\n`;
   }
   if (pies) {
     // Laid over the flat wedges of a pie sphere: a highlight up and to the left, a shadow at the rim.
@@ -729,7 +772,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
     } else if (d.kind === "arrow") {
       // The outline, when asked for: every shape of the arrow in the darker tone of its colour, as the spheres have.
       const outline = scene.arrowOutline ? ` stroke="${mixHex(scene.arrowColour, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round"` : "";
-      out += `<g class="arrow"${outline}>${d.svg}</g>\n`;
+      out += `<g class="arrow"${outline}${scene.arrowMaterial === "glass" ? ' fill-opacity="0.45"' : ""}>${d.svg}</g>\n`;
     } else {
       const look =
         d.kind === "bond"
@@ -756,8 +799,11 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       `<text class="legend" x="${n1(item.textX)}" y="${n1(item.y + 0.35 * item.fontSize)}" font-family="${fontList(scene.fontFamily)}" font-weight="${scene.letterWeight}" ` +
       `font-size="${n1(item.fontSize)}" fill="${LEGEND_COLOUR}">${escapeXml(item.name)}</text>\n`;
   }
+  const axesGlass = scene.arrowMaterial === "glass" ? ' fill-opacity="0.45"' : "";
   out += scene.axesOutline
-    ? `<g class="axes-outline" stroke="${mixHex(AXIS_COLOUR, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round">${axes.svg}</g>\n`
-    : axes.svg;
+    ? `<g class="axes-outline" stroke="${mixHex(AXIS_COLOUR, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round"${axesGlass}>${axes.svg}</g>\n`
+    : axesGlass
+      ? `<g${axesGlass}>${axes.svg}</g>\n`
+      : axes.svg;
   return `${out}</svg>\n`;
 }
