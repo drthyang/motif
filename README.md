@@ -101,7 +101,27 @@ writes the reference atom lists in `tests/reference/`.
   arrow's size and its projection on each cell edge, on hexagonal test structures with
   time-reversed operations (`tests/fixtures`).
 - A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
-- The view can be set by the cell axis that points up, a turn about it and a tilt.
+- The view (`src/render/camera.ts`; plan from the camera research of 2026-11-22, approved by the
+  user). The renderer takes a rotation matrix; for people the view is four numbers read from it,
+  so they are always true: the cell axis that is up, turn about it (positive brings the front to
+  the right), tilt (positive looks from above, -90 to 90) and roll about the line of sight
+  (anticlockwise, applied last). They are shown under the figure as one line that can be copied
+  and pasted back, with the nearest low-index direction and how far off the view is.
+  - Drag: turntable by default (left-right turns about the up axis, up-down tilts and stops at
+    +-90, the up axis stays upright; a circle of the mouse does not roll the figure); Alt + drag
+    rolls; a free mode remains.
+  - "Look along [u v w]" or "normal to (h k l)": the direction points at the viewer. Up is the
+    given direction's part perpendicular to the line of sight; by default c, or b when looking
+    along c. Buttons for a, b, c, a*, b*, c*, "other side" and "turn 90".
+  - Releasing a drag within 4 degrees of a direction with indices up to 2 snaps onto it by the
+    smallest turn (can be switched off).
+  - Saved views are the four numbers, kept in the browser, so a view means the same axes in
+    another structure; a switch keeps the view when another file is loaded.
+  - Scale: fitted to each view (default), steady at every angle, or a fixed number of px per A.
+  - A change of view by a click is shown as a short turn on screen (can be switched off; skipped
+    when the system asks for reduced motion). It is never part of the saved figure.
+- The legend can follow the size of the structure: its largest sphere as large as that atom is
+  drawn, letters in proportion (within limits), so it scales with the zoom.
 - Arrows (the user's rule, for step 6 and later): a magnetic moment is drawn as an arrow passing
   through its atom, centred on it. An atomic displacement (a distortion mode, not yet a planned
   step) is drawn as an arrow starting at the centre of its atom.
@@ -118,6 +138,7 @@ writes the reference atom lists in `tests/reference/`.
 | 5 | Legend and axis triad | built, awaiting the user's check |
 | 6 | mCIF: magnetic moments as arrows | built, awaiting the user's check |
 | 7 | Highlights: a band along a chain, filled polygons | built, awaiting the user's check |
+| 10 | Camera: view as numbers, turntable drag, crystal directions, snapping, saved views, steady scale, animated turn | built, awaiting the user's check |
 | 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | first pass built, awaiting the user's check |
 | 9 | Bond angles: a translucent sector between two bonds, with the angle written beside it | built, awaiting the user's check |
 

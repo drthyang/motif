@@ -6,10 +6,14 @@ import { svgToPng } from "../render/png";
 import { previewFrame } from "../preview/data";
 import { PREVIEW_FROM, usePreview } from "../preview/usePreview";
 import { AnglePlot } from "./AnglePlot";
-import { DEFAULT_CANVAS, fitView, renderSvg, structureCentre, structureHeight, type Fit } from "../render/svg";
+import { DEFAULT_CANVAS, fitView, renderSvg, steadyFit, structureCentre, structureHeight, type Fit } from "../render/svg";
 import { NO_ZOOM, isZoomed, panBy, zoomAbout, zoomToBox, zoomedFit, type Zoom } from "../render/zoom";
-import { DEFAULT_VIEW, dragView, viewWithAxisUp, type View } from "../render/view";
-import { buildScene, cellAxes, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
+import {
+  between, directAxes, directionVector, fromBehind, lowIndexDirections, nearestDirection, numbersFromView, readView, rolled, snapTo, viewAlong, viewFromNumbers,
+  writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
+} from "../render/camera";
+import { DEFAULT_VIEW, dragView, type View } from "../render/view";
+import { buildScene, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { pairDistances, type BondRule } from "../scene/bonds";
@@ -59,17 +63,111 @@ export function App() {
   const [newPair, setNewPair] = useState("");
   // The user's changes to colours, sizes and names. Radii are kept as typed, so a box can be emptied while editing.
   const [looks, setLooks] = useState<Record<string, { colour?: string; radiusText?: string; name?: string; hidden?: boolean; orderText?: string }>>({});
-  const [upAxis, setUpAxis] = useState<0 | 1 | 2>(2);
-  const [azText, setAzText] = useState("18");
-  const [elText, setElText] = useState("12");
-  const applyView = (up: 0 | 1 | 2, az: string, el: string) => {
-    if (!structure || !Number.isFinite(Number(az)) || !Number.isFinite(Number(el)) || az.trim() === "" || el.trim() === "") return;
-    const [a, b, c] = cellAxes(structure).map((x) => x.direction);
-    setView(viewWithAxisUp([a!, b!, c!], up, Number(az), Number(el)));
+  // ---- The view. It is kept as a rotation matrix; the four numbers (axis up, turn, tilt, roll) are read from it,
+  // so they are always true, whatever moved the view.
+  const [upAxis, setUpAxis] = useState<Axis>(2);
+  const axes = useMemo(() => (structure ? directAxes(structure.cell) : null), [structure]);
+  const numbers: ViewNumbers = useMemo(() => (axes ? numbersFromView(axes, view, upAxis) : { up: upAxis, turn: 18, tilt: 12, roll: 0 }), [axes, view, upAxis]);
+  const lastNumbers = useRef(numbers);
+  lastNumbers.current = numbers;
+  // The number boxes hold what was typed while typing; any other change of the view rewrites them.
+  const [numberText, setNumberText] = useState({ turn: "18", tilt: "12", roll: "0" });
+  const typing = useRef(false);
+  useEffect(() => {
+    if (typing.current) {
+      typing.current = false;
+      return;
+    }
+    const f = (x: number): string => String(Math.round(x * 10) / 10 + 0);
+    setNumberText({ turn: f(numbers.turn), tilt: f(numbers.tilt), roll: f(numbers.roll) });
+  }, [numbers]);
+  const [dragMode, setDragMode] = useState<"turntable" | "free">("turntable");
+  const [snap, setSnap] = useState(true);
+  const [animate, setAnimate] = useState(true);
+  const [keepView, setKeepView] = useState(false);
+  const [scaleMode, setScaleMode] = useState<"outline" | "steady" | "fixed">("outline");
+  const [fixedScaleText, setFixedScaleText] = useState("60");
+  const [alongKind, setAlongKind] = useState<Direction["kind"]>("uvw");
+  const [alongText, setAlongText] = useState("0 0 1");
+  const [upKind, setUpKind] = useState<Direction["kind"]>("uvw");
+  const [upText, setUpText] = useState("");
+  const [viewNote, setViewNote] = useState("");
+  const [pasted, setPasted] = useState("");
+  const [savedViews, setSavedViews] = useState<(ViewNumbers & { name: string })[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("motif.views") ?? "[]") as (ViewNumbers & { name: string })[];
+    } catch {
+      return [];
+    }
+  });
+  const [newViewName, setNewViewName] = useState("");
+  const storeViews = (views: (ViewNumbers & { name: string })[]) => {
+    setSavedViews(views);
+    try {
+      localStorage.setItem("motif.views", JSON.stringify(views));
+    } catch {
+      // The list still works for this visit.
+    }
   };
+  /** Change the view by a click: a short turn on screen (never part of the saved figure), or at once. */
+  const turning = useRef(0);
+  const goTo = (target: View) => {
+    cancelAnimationFrame(turning.current);
+    const reduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!animate || reduced) {
+      setView(target);
+      return;
+    }
+    const from = view;
+    const start = performance.now();
+    const step = (now: number) => {
+      const t = Math.min(1, (now - start) / TURN_MS);
+      setView(between(from, target, t * t * (3 - 2 * t))); // slow in, slow out
+      if (t < 1) turning.current = requestAnimationFrame(step);
+    };
+    turning.current = requestAnimationFrame(step);
+  };
+  const applyNumbers = (n: ViewNumbers) => {
+    if (!axes || ![n.turn, n.tilt, n.roll].every(Number.isFinite) || Math.abs(n.tilt) > 90) return;
+    setUpAxis(n.up);
+    setView(viewFromNumbers(axes, n));
+  };
+  const typeNumber = (key: "turn" | "tilt" | "roll", text: string) => {
+    typing.current = true;
+    const next = { ...numberText, [key]: text };
+    setNumberText(next);
+    if (Object.values(next).every((x) => x.trim() !== "")) applyNumbers({ up: upAxis, turn: Number(next.turn), tilt: Number(next.tilt), roll: Number(next.roll) });
+  };
+  const parseIndices = (text: string): [number, number, number] | null => {
+    const parts = text.trim().split(/[\s,]+/).map(Number);
+    return parts.length === 3 && parts.every(Number.isFinite) && parts.some((x) => x !== 0) ? (parts as [number, number, number]) : null;
+  };
+  /** Look along a direction (pointing at the viewer). Up: the hint if given, else c, or b when looking along c. */
+  const lookAlong = (direction: Direction, hint?: Direction) => {
+    if (!structure || !axes) return;
+    const towards = directionVector(structure.cell, direction);
+    const candidates = [...(hint ? [directionVector(structure.cell, hint)] : []), axes[2], axes[1], axes[0]];
+    for (const up of candidates) {
+      const target = viewAlong(towards, up);
+      if (target) {
+        setViewNote(hint && up !== candidates[0] ? "The up direction lies along the line of sight; c (or b) was used instead." : "");
+        goTo(target);
+        return;
+      }
+    }
+  };
+  // The direction a release would snap to (indices up to 2), and the one named under the figure: that one when
+  // it is within reach, otherwise the nearest of the simplest directions (indices up to 1).
+  const near = useMemo(() => (structure ? nearestDirection(structure.cell, view) : null), [structure, view]);
+  const named = useMemo(
+    () => (structure && near ? (near.angle <= SNAP_DEGREES ? near : nearestDirection(structure.cell, view, SIMPLE_DIRECTIONS)) : null),
+    [structure, view, near],
+  );
+  const viewLine = `${writeView(numbers)}${named ? (named.angle < 0.05 ? ` · along ${writeDirection(named.direction)}` : ` · ${named.angle.toFixed(1)}° from ${writeDirection(named.direction)}`) : ""}`;
   const [showVacancy, setShowVacancy] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
   const [letterWeight, setLetterWeight] = useState(DEFAULT_SPEC.letterWeight);
+  const [legendFollows, setLegendFollows] = useState(false);
   const [fontFamily, setFontFamily] = useState(DEFAULT_SPEC.fontFamily);
   const [customFont, setCustomFont] = useState(false);
   // Angle rules; the limits and the look are kept as typed.
@@ -109,6 +207,8 @@ export function App() {
   const [zoom, setZoom] = useState<Zoom>(NO_ZOOM);
   const [saveZoomed, setSaveZoomed] = useState(true);
 
+  const keepViewRef = useRef(false);
+  keepViewRef.current = keepView;
   const load = useCallback((text: string, name: string) => {
     try {
       const read = readCif(text);
@@ -117,7 +217,9 @@ export function App() {
       setStructure(read);
       setFileName(name);
       setError("");
-      setView(DEFAULT_VIEW);
+      // A new file starts from the default view, or (if asked) keeps the present one in the new cell's own
+      // terms: the same axis up, the same turn, tilt and roll.
+      setView(keepViewRef.current ? viewFromNumbers(directAxes(read.cell), lastNumbers.current) : DEFAULT_VIEW);
       setRangeText(ONE_CELL_TEXT);
       setZoom(NO_ZOOM);
       setBondRules([]);
@@ -126,9 +228,7 @@ export function App() {
       setAngleRules([]);
       setAngleHover(null);
       setNewAngle("");
-      setUpAxis(2);
-      setAzText("18");
-      setElText("12");
+      if (!keepViewRef.current) setUpAxis(2);
     } catch (e) {
       setError(`${name}: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -176,11 +276,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, letterWeight, fontFamily, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, letterWeight, fontFamily, legendFollowsZoom: legendFollows, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, letterWeight, fontFamily, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, letterWeight, fontFamily, legendFollows, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -244,10 +344,13 @@ export function App() {
   }, [moving, view, zoom, heldFit]);
   const previewing = usePreviewNow && moving && preview.loaded === scene;
   const canvasOptions = useMemo(() => ({ ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }), [transparent]);
-  const fit = useMemo(
-    () => (scene ? zoomedFit(heldFit ?? fitView(scene, view, DEFAULT_CANVAS), zoom, structureCentre(scene, DEFAULT_CANVAS)) : null),
-    [scene, view, heldFit, zoom],
-  );
+  const fixedScale = Number(fixedScaleText) >= 2 && Number(fixedScaleText) <= 1000 ? Number(fixedScaleText) : 60;
+  const fit = useMemo(() => {
+    if (!scene) return null;
+    // Fitted to the outline of each view (held still during a drag), or a scale that does not depend on the view.
+    const base = scaleMode === "outline" ? (heldFit ?? fitView(scene, view, DEFAULT_CANVAS)) : steadyFit(scene, DEFAULT_CANVAS, scaleMode === "fixed" ? fixedScale : undefined);
+    return zoomedFit(base, zoom, structureCentre(scene, DEFAULT_CANVAS));
+  }, [scene, view, heldFit, zoom, scaleMode, fixedScale]);
   // Ask the worker for each frame of the movement; `firstFrame` is the first of this movement.
   const [firstFrame, setFirstFrame] = useState(0);
   const wasPreviewing = useRef(false);
@@ -368,8 +471,20 @@ export function App() {
       const k = canvasScale();
       setZoom((z) => panBy(z, dx * k, dy * k));
     } else {
-      const k = (2 * Math.PI) / DRAG_PX_PER_TURN;
-      setView((v) => dragView(v, dx * k, dy * k));
+      cancelAnimationFrame(turning.current);
+      const degrees = 360 / DRAG_PX_PER_TURN;
+      if (e.altKey) {
+        // Alt + drag: roll about the line of sight; dragging right turns the picture clockwise.
+        setView((v) => rolled(v, -dx * degrees));
+      } else if (dragMode === "turntable" && axes) {
+        // Left-right turns about the up axis, up-down tilts; the up axis stays as upright as the roll says.
+        setView((v) => {
+          const n = numbersFromView(axes, v, upAxis);
+          return viewFromNumbers(axes, { up: upAxis, turn: n.turn + dx * degrees, tilt: Math.max(-90, Math.min(90, n.tilt + dy * degrees)), roll: n.roll });
+        });
+      } else {
+        setView((v) => dragView(v, (dx * degrees * Math.PI) / 180, (dy * degrees * Math.PI) / 180));
+      }
     }
   };
   const onPointerUp = (e: PointerEvent) => {
@@ -380,6 +495,10 @@ export function App() {
     }
     setBox(null);
     if (pointers.current.size === 0) {
+      // Released close to a low-index direction: click onto it exactly.
+      if (gesture.current === "turn" && snap && near && near.angle > 0.02 && near.angle <= SNAP_DEGREES && structure) {
+        goTo(snapTo(view, directionVector(structure.cell, near.direction)));
+      }
       last.current = null;
       gesture.current = null;
       setHeldFit(null); // refit to the new orientation
@@ -558,8 +677,12 @@ export function App() {
                 </div>
               </div>
               <div className="stage-foot">
+                <p className="view-line" data-testid="view-line" title="The view, always as it is now. Copy it to use the same view again.">
+                  {viewLine}
+                  <button className="plain copy" title="Copy the view" onClick={() => void navigator.clipboard?.writeText(writeView(numbers))}>⧉</button>
+                </p>
                 <p className="hint">
-                  Drag to turn · Shift + drag to move · Ctrl/⌘ + wheel or pinch to zoom · double-click to fit.
+                  Drag to turn · Alt + drag to roll · Shift + drag to move · Ctrl/⌘ + wheel or pinch to zoom · double-click to fit.
                   {transparent && " The checker marks where the figure is transparent."}
                 </p>
                 {isZoomed(zoom) && (
@@ -926,6 +1049,10 @@ export function App() {
                 <input type="checkbox" data-testid="show-legend" checked={showLegend} onChange={(e) => setShowLegend(e.target.checked)} />
                 Legend
               </label>
+              <label className="row" title="The legend's spheres are drawn at the size of the atoms in the figure, and its letters in proportion, so the legend grows and shrinks with the zoom.">
+                <input type="checkbox" data-testid="legend-follows" checked={legendFollows} onChange={(e) => setLegendFollows(e.target.checked)} />
+                Legend follows the size of the structure
+              </label>
               <label className="row">
                 <input type="checkbox" data-testid="show-axes" checked={showAxes} onChange={(e) => setShowAxes(e.target.checked)} />
                 Axes a, b, c
@@ -965,30 +1092,145 @@ export function App() {
                 </select>
               </div>
             </Section>
-            <Section title="View" hint="Turn and tilt are measured with the chosen cell axis pointing up. Dragging the figure turns it freely.">
+            <Section title="View" hint="The view is four numbers: the cell axis that is up, turn about it, tilt (from above when positive) and roll about the line of sight. The line under the figure always shows them, and the nearest low-index direction. A direction given here points at you.">
               <div className="row">
                 up
-                <select
-                  data-testid="view-up"
-                  value={upAxis}
-                  onChange={(e) => {
-                    const up = Number(e.target.value) as 0 | 1 | 2;
-                    setUpAxis(up);
-                    applyView(up, azText, elText);
-                  }}
-                >
+                <select data-testid="view-up" value={upAxis} onChange={(e) => applyNumbers({ ...numbers, up: Number(e.target.value) as Axis, turn: Number(numberText.turn), tilt: Number(numberText.tilt), roll: Number(numberText.roll) })}>
                   <option value={0}>a</option>
                   <option value={1}>b</option>
                   <option value={2}>c</option>
                 </select>
                 turn
-                <input type="number" step={5} data-testid="view-az" value={azText} onChange={(e) => { setAzText(e.target.value); applyView(upAxis, e.target.value, elText); }} />
-                °
+                <input type="number" step={5} data-testid="view-az" value={numberText.turn} onChange={(e) => typeNumber("turn", e.target.value)} />°
               </div>
               <div className="row">
                 tilt
-                <input type="number" step={5} data-testid="view-el" value={elText} onChange={(e) => { setElText(e.target.value); applyView(upAxis, azText, e.target.value); }} />
-                ° (from above when positive)
+                <input type="number" step={5} min={-90} max={90} data-testid="view-el" value={numberText.tilt} onChange={(e) => typeNumber("tilt", e.target.value)} />°
+                roll
+                <input type="number" step={5} data-testid="view-roll" value={numberText.roll} onChange={(e) => typeNumber("roll", e.target.value)} />°
+              </div>
+              <div className="row">
+                look along
+                {(["a", "b", "c"] as const).map((name, k) => {
+                  const indices: [number, number, number] = [0, 0, 0];
+                  indices[k] = 1;
+                  return (
+                    <span key={name} className="row">
+                      <button data-testid={`along-${name}`} title={`Along ${name}, pointing at you`} onClick={() => lookAlong({ kind: "uvw", indices })}>{name}</button>
+                      <button data-testid={`along-${name}-star`} title={`Along ${name}*, the normal to the planes, pointing at you`} onClick={() => lookAlong({ kind: "hkl", indices })}>{name}*</button>
+                    </span>
+                  );
+                })}
+              </div>
+              <div className="row">
+                <select data-testid="along-kind" value={alongKind} onChange={(e) => setAlongKind(e.target.value as Direction["kind"])}>
+                  <option value="uvw">along [u v w]</option>
+                  <option value="hkl">normal to (h k l)</option>
+                </select>
+                <input type="text" className="indices" data-testid="along-text" value={alongText} onChange={(e) => setAlongText(e.target.value)} />
+              </div>
+              <div className="row">
+                <select value={upKind} onChange={(e) => setUpKind(e.target.value as Direction["kind"])}>
+                  <option value="uvw">up [u v w]</option>
+                  <option value="hkl">up (h k l)</option>
+                </select>
+                <input type="text" className="indices" data-testid="up-text" placeholder="automatic" value={upText} onChange={(e) => setUpText(e.target.value)} />
+                <button
+                  data-testid="along-apply"
+                  disabled={!parseIndices(alongText)}
+                  onClick={() => {
+                    const d = parseIndices(alongText);
+                    const u = parseIndices(upText);
+                    if (d) lookAlong({ kind: alongKind, indices: d }, u ? { kind: upKind, indices: u } : undefined);
+                  }}
+                >
+                  Look
+                </button>
+              </div>
+              {viewNote && <p className="sub">{viewNote}</p>}
+              <div className="row">
+                <button data-testid="view-behind" title="The same line of sight, seen from the opposite side" onClick={() => goTo(fromBehind(view))}>Other side</button>
+                <button data-testid="view-quarter" title="Turn the picture a quarter turn about the line of sight" onClick={() => goTo(rolled(view, 90))}>Turn 90°</button>
+                <button
+                  data-testid="view-reset"
+                  onClick={() => {
+                    setUpAxis(2);
+                    goTo(DEFAULT_VIEW);
+                  }}
+                >
+                  Reset
+                </button>
+              </div>
+              <div className="row">
+                drag
+                <select data-testid="drag-mode" value={dragMode} onChange={(e) => setDragMode(e.target.value as "turntable" | "free")} title="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the screen's axes, any way round.">
+                  <option value="turntable">turntable (up axis stays up)</option>
+                  <option value="free">free</option>
+                </select>
+              </div>
+              <label className="row" title={`Releasing a drag within ${SNAP_DEGREES} degrees of a low-index direction ([u v w] or a plane normal, indices up to 2) clicks the view onto it.`}>
+                <input type="checkbox" data-testid="snap" checked={snap} onChange={(e) => setSnap(e.target.checked)} />
+                Snap to low-index directions on release
+              </label>
+              <label className="row" title="A short turn on screen when the view changes by a click, so you can follow the axes. It is never part of the saved figure.">
+                <input type="checkbox" data-testid="animate" checked={animate} onChange={(e) => setAnimate(e.target.checked)} />
+                Animate a change of view
+              </label>
+              <div className="row">
+                scale
+                <select data-testid="scale-mode" value={scaleMode} onChange={(e) => setScaleMode(e.target.value as "outline" | "steady" | "fixed")} title="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure.">
+                  <option value="outline">fit each view</option>
+                  <option value="steady">steady at every angle</option>
+                  <option value="fixed">fixed</option>
+                </select>
+                {scaleMode === "fixed" && (
+                  <>
+                    <input type="number" min={2} max={1000} step={5} data-testid="fixed-scale" value={fixedScaleText} onChange={(e) => setFixedScaleText(e.target.value)} />
+                    px per Å
+                  </>
+                )}
+              </div>
+              <div className="rule">
+                <p className="sub">Saved views (kept in this browser). A view is its four numbers, so it means the same axes in another structure.</p>
+                {savedViews.map((v, k) => (
+                  <div className="row" key={`${v.name}-${k}`}>
+                    <button data-testid={`saved-${k}`} title={writeView(v)} onClick={() => { setUpAxis(v.up); if (axes) goTo(viewFromNumbers(axes, v)); }}>{v.name}</button>
+                    <button title="Remove" onClick={() => storeViews(savedViews.filter((_, i) => i !== k))}>×</button>
+                  </div>
+                ))}
+                <div className="row">
+                  <input type="text" className="name" data-testid="view-name" placeholder="Name this view" value={newViewName} onChange={(e) => setNewViewName(e.target.value)} />
+                  <button
+                    data-testid="view-save"
+                    disabled={newViewName.trim() === ""}
+                    onClick={() => {
+                      storeViews([...savedViews, { ...numbers, name: newViewName.trim() }]);
+                      setNewViewName("");
+                    }}
+                  >
+                    Save
+                  </button>
+                </div>
+                <div className="row">
+                  <input type="text" className="name" data-testid="view-paste" placeholder="Paste a view line" value={pasted} onChange={(e) => setPasted(e.target.value)} />
+                  <button
+                    data-testid="view-apply"
+                    disabled={!readView(pasted)}
+                    onClick={() => {
+                      const n = readView(pasted);
+                      if (n && axes) {
+                        setUpAxis(n.up);
+                        goTo(viewFromNumbers(axes, n));
+                      }
+                    }}
+                  >
+                    Apply
+                  </button>
+                </div>
+                <label className="row">
+                  <input type="checkbox" data-testid="keep-view" checked={keepView} onChange={(e) => setKeepView(e.target.checked)} />
+                  Keep the view when another file is loaded
+                </label>
               </div>
               <label className="row" title="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
                 <input type="checkbox" data-testid="smooth" checked={smooth} onChange={(e) => setSmooth(e.target.checked)} />
@@ -1003,18 +1245,6 @@ export function App() {
                 </div>
               )}
               {preview.failed && <p className="sub" data-testid="preview-failed">Not available in this browser ({preview.failed}); the vector figure is redrawn instead.</p>}
-              <div className="row">
-                <button
-                  onClick={() => {
-                    setUpAxis(2);
-                    setAzText("18");
-                    setElText("12");
-                    setView(DEFAULT_VIEW);
-                  }}
-                >
-                  Reset view
-                </button>
-              </div>
             </Section>
           </aside>
         )}
@@ -1028,6 +1258,11 @@ export function App() {
 }
 
 const VERSION = "0.1";
+/** A drag released within this many degrees of a low-index direction snaps onto it. */
+const SNAP_DEGREES = 4;
+/** Length of the turn shown when the view changes by a click, ms. */
+const TURN_MS = 320;
+const SIMPLE_DIRECTIONS = lowIndexDirections(1);
 
 // For testing: "?preview=all" uses the GPU preview for every structure, "?settle=ms" sets how long the view
 // must be still before the full figure is drawn again.

@@ -150,6 +150,8 @@ export interface Scene {
   readonly letterWeight: number;
   /** Font of the lettering (a font name; absent means the default list). */
   readonly fontFamily?: string;
+  /** The legend is drawn at the scale of the structure. */
+  readonly legendFollowsZoom?: boolean;
   /** Legend entries, in file order: one per name. Empty when the legend is off. */
   readonly legend: readonly LegendEntry[];
   /** The directions of the cell axes a, b, c as unit vectors in angstrom space. Empty when the axes are off. */
@@ -203,6 +205,8 @@ export interface SceneSpec {
   readonly letterWeight: number;
   /** Font of the lettering: the name of a font installed on the computer that shows the figure. */
   readonly fontFamily: string;
+  /** Draw the legend's spheres at the size of the atoms in the figure (so the legend follows the zoom), its letters in proportion. */
+  readonly legendFollowsZoom: boolean;
   /** Draw a row of spheres with their names under the structure. */
   readonly showLegend: boolean;
   /** Draw the a, b, c arrows under the structure. */
@@ -221,7 +225,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", letterWeight: 400, fontFamily: "Avenir", showLegend: true, showAxes: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
@@ -416,5 +420,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     colour: mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
     opacity: 0.55,
   }));
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

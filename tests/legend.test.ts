@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AXIS_LENGTH, BAND, DEFAULT_CANVAS, FONT, axisArrows, fontList, layout, legendLayout, pxPerAngstrom, renderSvg, structureHeight, textWidth } from "../src/render/svg";
+import { AXIS_LENGTH, BAND, DEFAULT_CANVAS, FONT, LEGEND_FOLLOW_MAX, LEGEND_FOLLOW_MIN, axisArrows, fitView, fontList, layout, legendLayout, pxPerAngstrom, renderSvg, structureHeight, textWidth } from "../src/render/svg";
 import { DEFAULT_VIEW, dragView, viewFromAngles } from "../src/render/view";
 import { buildScene, cellAxes, DEFAULT_SPEC, type Scene } from "../src/scene/scene";
 import { fractionalToCartesian } from "../src/structure/cell";
@@ -152,6 +152,27 @@ describe("legend", () => {
     const [si, o] = [items.find((i) => i.name === "Si")!, items.find((i) => i.name === "O")!];
     expect(si.r / o.r).toBeCloseTo(scene.styles["Si"]!.radius / scene.styles["O"]!.radius, 9);
     expect(Math.max(...items.map((i) => i.r))).toBeCloseTo(44, 9);
+  });
+
+  it("can follow the size of the structure: the largest legend sphere is as large as that atom is drawn, letters in proportion", () => {
+    const scene = buildScene(olivine, { ...DEFAULT_SPEC, legendFollowsZoom: true });
+    const usual = legendLayout(scene, DEFAULT_CANVAS, 5000);
+    const largest = Math.max(...scene.legend.map((e) => scene.styles[e.style]!.radius));
+    for (const pxPerAngstrom of [30, 60, 80]) {
+      const items = legendLayout(scene, DEFAULT_CANVAS, 5000, pxPerAngstrom);
+      expect(Math.max(...items.map((i) => i.r))).toBeCloseTo(largest * pxPerAngstrom, 9); // the atom's size in the figure
+      expect(items[0]!.fontSize / usual[0]!.fontSize).toBeCloseTo((largest * pxPerAngstrom) / 44, 9);
+    }
+    // Within limits, so it stays readable and inside its band.
+    expect(Math.max(...legendLayout(scene, DEFAULT_CANVAS, 5000, 1000).map((i) => i.r))).toBeCloseTo(44 * LEGEND_FOLLOW_MAX, 9);
+    expect(Math.max(...legendLayout(scene, DEFAULT_CANVAS, 5000, 1).map((i) => i.r))).toBeCloseTo(44 * LEGEND_FOLLOW_MIN, 9);
+    // In the figure: zooming in makes the legend larger; with the option off the zoom does not touch it.
+    const size = (svg: string): number => Number(/class="legend"[^>]*font-size="([\d.]+)"/.exec(svg)![1]);
+    const base = { ...fitView(scene, DEFAULT_VIEW, DEFAULT_CANVAS), scale: 40 }; // well inside the limits
+    const zoomed = { ...base, scale: 60 };
+    expect(size(renderSvg(scene, DEFAULT_VIEW, DEFAULT_CANVAS, zoomed)) / size(renderSvg(scene, DEFAULT_VIEW, DEFAULT_CANVAS, base))).toBeCloseTo(1.5, 1);
+    const fixed = buildScene(olivine);
+    expect(size(renderSvg(fixed, DEFAULT_VIEW, DEFAULT_CANVAS, zoomed))).toBe(size(renderSvg(fixed, DEFAULT_VIEW, DEFAULT_CANVAS, base)));
   });
 
   it("shrinks to fit the space it is given, and escapes names", () => {

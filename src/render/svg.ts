@@ -183,6 +183,17 @@ export function fitView(scene: Scene, view: View, canvas: Canvas): Fit {
   return { scale, x: canvas.width / 2 - ((box.x0 + box.x1) / 2) * scale, y: height / 2 + ((box.y0 + box.y1) / 2) * scale };
 }
 
+/**
+ * A placement that does not depend on the view: the scene's centre at the middle of the space, at a scale
+ * that holds the structure at every angle (or at a stated scale, px per angstrom). Turning then never
+ * changes the size of anything.
+ */
+export function steadyFit(scene: Scene, canvas: Canvas, pxPerAngstrom?: number): Fit {
+  const height = structureHeight(scene, canvas);
+  const scale = pxPerAngstrom ?? Math.min((Math.min(canvas.width, height) - 2 * canvas.margin) / (2 * scene.extent), MAX_SCALE);
+  return { scale, x: canvas.width / 2, y: height / 2 };
+}
+
 /** Largest drawing scale, px per angstrom: a single small atom is not blown up further than this. */
 export const MAX_SCALE = 220;
 
@@ -464,10 +475,14 @@ export interface LegendItem {
  * atoms' radii (largest 44 px). Text width is estimated (the exact width depends on the reader's font), and
  * the whole row is shrunk if it would not fit in `available` px.
  */
-export function legendLayout(scene: Scene, canvas: Canvas, available: number): LegendItem[] {
+export function legendLayout(scene: Scene, canvas: Canvas, available: number, pxPerAngstrom?: number): LegendItem[] {
   if (scene.legend.length === 0) return [];
   const largest = Math.max(...scene.legend.map((e) => scene.styles[e.style]!.radius));
-  const place = (k: number): { items: LegendItem[]; end: number } => {
+  // Following the structure: the largest legend sphere is as large as that atom is drawn (within what the
+  // band can hold), and everything else in the legend is in proportion to it.
+  const follow = pxPerAngstrom === undefined ? 1 : Math.max(LEGEND_FOLLOW_MIN, Math.min(LEGEND_FOLLOW_MAX, (largest * pxPerAngstrom) / 44));
+  const place = (shrink: number): { items: LegendItem[]; end: number } => {
+    const k = shrink * follow;
     const items: LegendItem[] = [];
     let x = 60 * k;
     for (const e of scene.legend) {
@@ -482,6 +497,10 @@ export function legendLayout(scene: Scene, canvas: Canvas, available: number): L
   const full = place(1);
   return full.end <= available ? full.items : place(available / full.end).items;
 }
+
+/** Limits of a legend that follows the structure, as multiples of its usual size: it stays readable and inside its band. */
+export const LEGEND_FOLLOW_MIN = 0.35;
+export const LEGEND_FOLLOW_MAX = 1.9;
 
 /** An axis arrow as placed, in px: the shaft from the origin to the base of the head, the head triangle, the letter. */
 export interface AxisArrow {
@@ -665,7 +684,8 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
   if (fit?.clip) out += "</g>\n";
   if (part === "structure") return `${out}</svg>\n`;
   // The band under the structure: axes on the right, legend on the left in the space that remains.
-  for (const item of legendLayout(scene, canvas, axes.left - 40)) {
+  const legendScale = scene.legendFollowsZoom ? (fit ?? fitView(scene, view, canvas)).scale : undefined;
+  for (const item of legendLayout(scene, canvas, axes.left - 40, legendScale)) {
     out += sphereSvg(scene, item.style, item.x, item.y, item.r);
     // Baseline 0.35 em below the sphere's centre: capitals are then centred on it.
     out +=

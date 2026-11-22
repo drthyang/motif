@@ -137,3 +137,7 @@ input[type="color"] { width: 32px; height: 27px; padding: 1px; border: 1px solid
 /* The GPU preview: exactly over the drawing, which is centred in the frame with the canvas's own shape. */
 .preview { position: absolute; pointer-events: none; }
 .preview-note { position: absolute; left: 10px; top: 10px; padding: 3px 8px; font-size: var(--fz-small); color: var(--secondary); background: rgba(255, 255, 255, 0.92); border: 1px solid var(--border); border-radius: 8px; pointer-events: none; }
+.view-line { margin: 0; font-size: var(--fz-small); color: var(--ink); font-variant-numeric: tabular-nums; }
+.view-line .copy { font-size: 13px; color: var(--faint); margin-left: 6px; }
+input.indices { width: 86px; }
+.stage-foot { flex-direction: column; align-items: stretch; gap: 2px; }
