@@ -303,12 +303,15 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const [light, dark, darker] = [mixHex(colour, "#ffffff", 0.5), mixHex(colour, "#000000", 0.3), mixHex(colour, "#000000", 0.45)];
     const id = `arrow-${arrowIndex}`;
     // Shading across the rod and across the cone: a round surface lit from the upper left.
-    const across = (name: string, halfWidth: number, cx: number, cy: number): string =>
-      `<linearGradient id="${name}" gradientUnits="userSpaceOnUse" x1="${n1(cx + px * halfWidth)}" y1="${n1(cy + py * halfWidth)}" x2="${n1(cx - px * halfWidth)}" y2="${n1(cy - py * halfWidth)}">` +
+    const across = (name: string, halfWidth: number, cx: number, cy: number, turned = ""): string =>
+      `<linearGradient id="${name}" gradientUnits="userSpaceOnUse"${turned} x1="${n1(cx + px * halfWidth)}" y1="${n1(cy + py * halfWidth)}" x2="${n1(cx - px * halfWidth)}" y2="${n1(cy - py * halfWidth)}">` +
       `<stop offset="0" stop-color="${colour}"/><stop offset="0.3" stop-color="${light}"/><stop offset="0.65" stop-color="${colour}"/><stop offset="1" stop-color="${dark}"/></linearGradient>`;
-    const defs = `<defs>${across(`${id}-rod`, w, centre[0], centre[1])}${across(`${id}-head`, hw, base[0], base[1])}</defs>`;
-    const corner = (p: Vec3, side: number, halfWidth: number): string => `${n1(p[0] + side * px * halfWidth)},${n1(p[1] + side * py * halfWidth)}`;
     const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
+    // The cone's base is an ellipse turned to the arrow's direction. A shape that is turned turns its shading
+    // with it, so the base gets the cone's shading turned back by the same angle: cone and base then shade as one.
+    const turnedBack = ` gradientTransform="rotate(${n1(-angle)} ${n1(base[0])} ${n1(base[1])})"`;
+    const defs = `<defs>${across(`${id}-rod`, w, centre[0], centre[1])}${across(`${id}-head`, hw, base[0], base[1])}${across(`${id}-base`, hw, base[0], base[1], turnedBack)}</defs>`;
+    const corner = (p: Vec3, side: number, halfWidth: number): string => `${n1(p[0] + side * px * halfWidth)},${n1(p[1] + side * py * halfWidth)}`;
     const ellipse = (cls: string, p: Vec3, halfWidth: number, squash: number, fill: string, extra = ""): string =>
       `<ellipse class="${cls}" cx="${n1(p[0])}" cy="${n1(p[1])}" rx="${n1(halfWidth * squash)}" ry="${n1(halfWidth)}" transform="rotate(${n1(angle)} ${n1(p[0])} ${n1(p[1])})" fill="${fill}"${extra}/>`;
     /**
@@ -332,7 +335,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const cone = (): string => {
       const triangle = `<polygon class="arrow-head" points="${n1(tip[0])},${n1(tip[1])} ${corner(base, 1, hw)} ${corner(base, -1, hw)}" fill="url(#${id}-head)"/>`;
       // Towards the viewer the cone's side is seen over its round base; away, the flat base covers the cone.
-      return towards >= 0 ? ellipse("arrow-base", base, hw, Math.abs(towards), `url(#${id}-head)`) + triangle : triangle + ellipse("arrow-base", base, hw, Math.abs(towards), darker);
+      return towards >= 0 ? ellipse("arrow-base", base, hw, Math.abs(towards), `url(#${id}-base)`) + triangle : triangle + ellipse("arrow-base", base, hw, Math.abs(towards), darker);
     };
     const head = `${n1(tip[0])},${n1(tip[1])} ${corner(base, 1, hw)} ${corner(base, -1, hw)}`;
     const headHalf = (start: number, foot: boolean): string => {
@@ -554,21 +557,23 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     const [bx, by] = [tx - ux * headOnScreen, ty - uy * headOnScreen]; // centre of the cone's base
     const id = `axis-${a.name}`;
     // Shading across the arrow: lightest a third of the way in from the lit side, darkest on the far side.
-    const across = (name: string, width: number, cx: number, cy: number): string =>
-      `<linearGradient id="${name}" gradientUnits="userSpaceOnUse" x1="${n1(cx + (px * width) / 2)}" y1="${n1(cy + (py * width) / 2)}" x2="${n1(cx - (px * width) / 2)}" y2="${n1(cy - (py * width) / 2)}">` +
+    const across = (name: string, width: number, cx: number, cy: number, turned = ""): string =>
+      `<linearGradient id="${name}" gradientUnits="userSpaceOnUse"${turned} x1="${n1(cx + (px * width) / 2)}" y1="${n1(cy + (py * width) / 2)}" x2="${n1(cx - (px * width) / 2)}" y2="${n1(cy - (py * width) / 2)}">` +
       `<stop offset="0" stop-color="${AXIS_COLOUR}"/><stop offset="0.3" stop-color="${light}"/><stop offset="0.65" stop-color="${AXIS_COLOUR}"/><stop offset="1" stop-color="${dark}"/></linearGradient>\n`;
-    defs += across(`${id}-shaft`, AXIS_SHAFT, ox, oy) + across(`${id}-head`, AXIS_HEAD_WIDTH, bx, by);
+    const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
+    // The base ellipse is turned to the arrow's direction, which would turn its shading too; turn that back.
+    const turnedBack = ` gradientTransform="rotate(${n1(-angle)} ${n1(bx)} ${n1(by)})"`;
+    defs += across(`${id}-shaft`, AXIS_SHAFT, ox, oy) + across(`${id}-head`, AXIS_HEAD_WIDTH, bx, by) + across(`${id}-base`, AXIS_HEAD_WIDTH, bx, by, turnedBack);
     const corner = (x: number, y: number, side: number, width: number): string => `${n1(x + (side * px * width) / 2)},${n1(y + (side * py * width) / 2)}`;
     const shaft = `<polygon class="axis-shaft" points="${corner(ox, oy, 1, AXIS_SHAFT)} ${corner(bx, by, 1, AXIS_SHAFT)} ${corner(bx, by, -1, AXIS_SHAFT)} ${corner(ox, oy, -1, AXIS_SHAFT)}" fill="url(#${id}-shaft)"/>`;
     // The base of the cone is a circle seen at an angle: an ellipse, as wide as the head across the arrow
     // and `tilt` times that along it.
-    const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
     const base = (fill: string): string =>
       `<ellipse class="axis-base" cx="${n1(bx)}" cy="${n1(by)}" rx="${n1((AXIS_HEAD_WIDTH / 2) * tilt)}" ry="${n1(AXIS_HEAD_WIDTH / 2)}" transform="rotate(${n1(angle)} ${n1(bx)} ${n1(by)})" fill="${fill}"/>`;
     const cone = `<polygon class="axis-head" points="${n1(tx)},${n1(ty)} ${corner(bx, by, 1, AXIS_HEAD_WIDTH)} ${corner(bx, by, -1, AXIS_HEAD_WIDTH)}" fill="url(#${id}-head)"/>`;
     if (a.depth >= 0) {
       // Pointing towards the viewer: the cone's side is seen, covering its base and the end of the shaft.
-      svg += shaft + base(`url(#${id}-head)`) + cone;
+      svg += shaft + base(`url(#${id}-base)`) + cone;
     } else {
       // Pointing away: the flat base of the cone faces the viewer and covers the cone behind it; the shaft comes last.
       svg += cone + base(darker) + shaft;
