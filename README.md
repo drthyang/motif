@@ -40,8 +40,8 @@ writes the reference atom lists in `tests/reference/`.
   a *shared site*, named by its elements ("Fe/Mg") until the user renames it. It is drawn as a pie
   sphere: wedges clockwise from the top in file order, each spanning 360° × its occupancy. A partly
   vacant place gets a pale wedge for the vacant share (this can be switched off).
-- Bonds are drawn as round rods (surface: soft, flat, glossy, metal or glass; a thin outline by
-  default), in two halves that meet in the middle. A half that points at the viewer comes out of
+- Bonds are drawn as round rods (surface: soft, flat, glossy, metal or glass; a thin outline can
+  be switched on, off by default at the user's choice), in two halves that meet in the middle. A half that points at the viewer comes out of
   its atom's face with a rounded foot; a half that points away is cut by the atom's outline.
   Above 1,500 bonds they are plain strokes, which draw much faster.
 - Bonds: a rule names two elements and a longest distance. A rule may also add the neighbours just

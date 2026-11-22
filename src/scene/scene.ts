@@ -291,7 +291,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, momentOutline: true, axesOutline: true, axesKeepReadable: true, atomMaterial: "soft", arrowMaterial: "soft", bondMaterial: "soft", bondOutline: true, cellStyle: "depth", cellWidth: 3, glassOpacity: 0.3, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, showLegend: true, showAxes: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, momentOutline: true, axesOutline: true, axesKeepReadable: true, atomMaterial: "soft", arrowMaterial: "soft", bondMaterial: "soft", bondOutline: false, cellStyle: "depth", cellWidth: 3, glassOpacity: 0.3, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {

@@ -195,7 +195,7 @@ export function App() {
     setAtomMaterial(preset.atoms);
     setBondMaterial(preset.bonds);
     setArrowMaterial(preset.arrows);
-    setBondOutline(preset.outlines);
+    setBondOutline(preset.bondOutline);
     setMomentOutline(preset.outlines);
     setAxesOutline(preset.outlines);
     setLetterWeight(preset.weight);
@@ -1446,13 +1446,17 @@ Reset
 
 const VERSION = "0.1";
 
-/** One-click looks. Each sets the surfaces, the outlines, the lettering weight and the size of legend and axes. */
-const PRESETS: Record<string, { atoms: Material; bonds: Material; arrows: Material; outlines: boolean; weight: number; legendSize: number; axesSize: number }> = {
-  Slide: { atoms: "soft", bonds: "soft", arrows: "soft", outlines: true, weight: 400, legendSize: 1, axesSize: 1 },
-  Paper: { atoms: "flat", bonds: "flat", arrows: "flat", outlines: true, weight: 400, legendSize: 0.7, axesSize: 0.8 },
-  Glossy: { atoms: "glossy", bonds: "glossy", arrows: "glossy", outlines: true, weight: 500, legendSize: 1, axesSize: 1 },
-  Metal: { atoms: "metal", bonds: "metal", arrows: "metal", outlines: true, weight: 500, legendSize: 1, axesSize: 1 },
-  Glass: { atoms: "glass", bonds: "soft", arrows: "soft", outlines: false, weight: 400, legendSize: 1, axesSize: 1 },
+/**
+ * One-click looks. Each sets the surfaces, the outlines, the lettering weight and the size of legend and axes.
+ * `outlines` is for the arrows; bonds are outlined only in the flat "Paper" look, where the line is what
+ * separates a bond from the atom behind it.
+ */
+const PRESETS: Record<string, { atoms: Material; bonds: Material; arrows: Material; outlines: boolean; bondOutline: boolean; weight: number; legendSize: number; axesSize: number }> = {
+  Slide: { atoms: "soft", bonds: "soft", arrows: "soft", outlines: true, bondOutline: false, weight: 400, legendSize: 1, axesSize: 1 },
+  Paper: { atoms: "flat", bonds: "flat", arrows: "flat", outlines: true, bondOutline: true, weight: 400, legendSize: 0.7, axesSize: 0.8 },
+  Glossy: { atoms: "glossy", bonds: "glossy", arrows: "glossy", outlines: true, bondOutline: false, weight: 500, legendSize: 1, axesSize: 1 },
+  Metal: { atoms: "metal", bonds: "metal", arrows: "metal", outlines: true, bondOutline: false, weight: 500, legendSize: 1, axesSize: 1 },
+  Glass: { atoms: "glass", bonds: "soft", arrows: "soft", outlines: false, bondOutline: false, weight: 400, legendSize: 1, axesSize: 1 },
 };
 /** Limits of the canvas height (its width is 1440): a very flat or very tall window still gives a usable figure. */
 const CANVAS_MIN_HEIGHT = 620;
