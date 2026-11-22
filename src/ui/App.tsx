@@ -60,6 +60,7 @@ export function App() {
   const [pngWidth, setPngWidth] = useState(2880);
   const [over, setOver] = useState(false);
   const [tab, setTab] = useState<TabId>("structure");
+  const [showHelp, setShowHelp] = useState(false);
   const [rangeText, setRangeText] = useState<string[]>(ONE_CELL_TEXT);
   const [repeatBoundary, setRepeatBoundary] = useState(true);
   const [bondRules, setBondRules] = useState<(BondRule & { maxText: string; widthText?: string })[]>([]);
@@ -705,6 +706,15 @@ export function App() {
                 <span data-testid="counts">{scene.spheres.length} atoms{counts && `: ${counts}`}</span>
               </div>
               <div className="toolbar">
+                <button
+                  className={`help${showHelp ? " on" : ""}`}
+                  data-testid="help"
+                  title="Drag to turn · Alt + drag to roll · Shift + drag to move · Ctrl/⌘ + wheel or pinch to zoom · double-click to fit"
+                  aria-pressed={showHelp}
+                  onClick={() => setShowHelp((x) => !x)}
+                >
+                  ?
+                </button>
 <div className="tools" role="group" aria-label="Look along a cell axis, pointing at you">
 <span className="tool-label">along</span>
 {(["a", "b", "c"] as const).map((name, k) => {
@@ -784,7 +794,7 @@ Reset
                   {viewLine}
                   <button className="plain copy" title="Copy the view" onClick={() => void navigator.clipboard?.writeText(writeView(numbers))}>⧉</button>
                 </p>
-                <p className="hint">
+                <p className="hint" style={{ visibility: showHelp ? "visible" : "hidden" }}>
                   Drag to turn · Alt + drag to roll · Shift + drag to move · Ctrl/⌘ + wheel or pinch to zoom · double-click to fit.
                   {transparent && " The checker marks where the figure is transparent."}
                 </p>
@@ -1437,7 +1447,7 @@ Reset
         )}
       </main>
       <footer className="foot">
-        <span>The file is read in this page and never leaves your computer.</span>
+        <span>Your file stays on this computer.</span>
         <span>MOTIF {VERSION}</span>
       </footer>
     </div>
