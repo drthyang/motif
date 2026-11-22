@@ -146,6 +146,8 @@ export interface Scene {
   /** Moment arrows. Empty when the structure has no moments or they are switched off. */
   readonly arrows: readonly Arrow[];
   readonly arrowColour: string;
+  /** Thickness of the arrows' rods in angstrom (absent: the default). The head is in proportion. */
+  readonly arrowThickness?: number;
   /** Weight of the lettering. */
   readonly letterWeight: number;
   /** Font of the lettering (a font name; absent means the default list). */
@@ -201,6 +203,8 @@ export interface SceneSpec {
   /** Length in angstrom of the arrow of the largest moment in the structure; the others are in proportion. */
   readonly momentLength: number;
   readonly momentColour: string;
+  /** Thickness of the rod of a moment arrow, in angstrom. The cone at its tip is in proportion. */
+  readonly momentThickness: number;
   /** Weight of the lettering (legend, axes, angle labels): 400 regular, 500 medium, 800 heavy. */
   readonly letterWeight: number;
   /** Font of the lettering: the name of a font installed on the computer that shows the figure. */
@@ -225,7 +229,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, showLegend: true, showAxes: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
@@ -420,5 +424,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     colour: mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
     opacity: 0.55,
   }));
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

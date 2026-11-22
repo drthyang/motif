@@ -115,6 +115,12 @@ export const ANGLE_LABEL_SIZE = 40;
 export const ARROW_SHAFT = 0.16;
 export const ARROW_HEAD_LENGTH = 0.55;
 export const ARROW_HEAD_WIDTH = 0.46;
+/** The arrows' rod thickness, head length and head width for a scene, in angstrom: the head keeps its proportion to the rod. */
+export function arrowSizes(scene: Scene): { shaft: number; headLength: number; headWidth: number } {
+  const shaft = scene.arrowThickness ?? ARROW_SHAFT;
+  const k = shaft / ARROW_SHAFT;
+  return { shaft, headLength: ARROW_HEAD_LENGTH * k, headWidth: ARROW_HEAD_WIDTH * k };
+}
 
 /** Lettering of the legend and the axes. Avenir exists on macOS; elsewhere the next font in the list is used. */
 export const FONT = "Avenir, 'Avenir Next', 'Helvetica Neue', Arial, sans-serif";
@@ -172,7 +178,7 @@ export function fitView(scene: Scene, view: View, canvas: Canvas): Fit {
   for (const edge of scene.cellEdges) for (const p of edge) include(p, 0);
   for (const a of scene.arrows) {
     const c = scene.spheres[a.sphere]!.centre;
-    for (const sign of [-0.5, 0.5]) include([c[0] + sign * a.vector[0], c[1] + sign * a.vector[1], c[2] + sign * a.vector[2]], ARROW_HEAD_WIDTH / 2);
+    for (const sign of [-0.5, 0.5]) include([c[0] + sign * a.vector[0], c[1] + sign * a.vector[1], c[2] + sign * a.vector[2]], arrowSizes(scene).headWidth / 2);
   }
   const height = structureHeight(scene, canvas);
   if (box.x0 > box.x1) return { scale: 1, x: canvas.width / 2, y: height / 2 };
@@ -306,9 +312,10 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     // Across the rod, on the side the light comes from (upper left).
     let [px, py] = [-uy, ux];
     if (px * -0.5 + py * -0.7 < 0) [px, py] = [-px, -py];
-    const w = (ARROW_SHAFT * scale) / 2; // half the rod's thickness, px
-    const hw = (ARROW_HEAD_WIDTH * scale) / 2;
-    const headLength = Math.min(ARROW_HEAD_LENGTH, half - radius);
+    const sizes = arrowSizes(scene);
+    const w = (sizes.shaft * scale) / 2; // half the rod's thickness, px
+    const hw = (sizes.headWidth * scale) / 2;
+    const headLength = Math.min(sizes.headLength, half - radius);
     const base = at(half - headLength); // centre of the cone's base
     const colour = scene.arrowColour;
     const [light, dark, darker] = [mixHex(colour, "#ffffff", 0.5), mixHex(colour, "#000000", 0.3), mixHex(colour, "#000000", 0.45)];
@@ -360,7 +367,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     drawn.push({ kind: "arrow", x1: tail[0], y1: tail[1], x2: centre[0], y2: centre[1], width: 2 * w, depth: Math.min((tail[2] + centre[2]) / 2, behind), svg: defs + tailHalf(0, false) });
     drawn.push({ kind: "arrow", x1: centre[0], y1: centre[1], x2: base[0], y2: base[1], width: 2 * w, depth: Math.min((tip[2] + centre[2]) / 2, behind), head, svg: headHalf(0, false) });
     // 2. The half that comes out of the sphere's face, over the sphere, from where it pierces the surface.
-    const rho = ARROW_SHAFT / 2;
+    const rho = Math.min(sizes.shaft / 2, radius);
     const pierce = Math.sqrt(Math.max(0, radius * radius - rho * rho));
     if (Math.abs(towards) > 0.02) {
       const sign = towards > 0 ? 1 : -1; // which half points at the viewer

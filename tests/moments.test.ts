@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CANVAS, layoutAll, renderSvg, type Drawn, type DrawnArrow, type DrawnSphere } from "../src/render/svg";
+import { DEFAULT_CANVAS, fitView, layoutAll, renderSvg, type Drawn, type DrawnArrow, type DrawnSphere } from "../src/render/svg";
 import { viewFromAngles } from "../src/render/view";
 import { buildScene, cellAxes, DEFAULT_SPEC, largestMoment, momentToCartesian } from "../src/scene/scene";
 import { expandToUnitCell, transformMoment } from "../src/structure/expand";
@@ -237,6 +237,30 @@ describe("moment arrows", () => {
       const bulge = Math.max(...rod.slice(4).map((q) => Math.abs(q[1]! - d.y1)));
       expect(bulge / (d.width / 2)).toBeCloseTo(Math.sin((40 * Math.PI) / 180), 1);
     }
+  });
+
+  it("the rod's thickness can be set; the head keeps its proportion; tips and lengths do not change", () => {
+    const one = { from: [0, 0, 0] as [number, number, number], to: [1, 1, 1] as [number, number, number], boundary: "once" as const };
+    const thin = buildScene(mnf2, { ...DEFAULT_SPEC, range: one, momentThickness: 0.1 });
+    const thick = buildScene(mnf2, { ...DEFAULT_SPEC, range: one, momentThickness: 0.3 });
+    const side = viewFromAngles(0, 0);
+    const fit = fitView(thin, side, DEFAULT_CANVAS); // one placement for both, so only the thickness differs
+    const arrowsOf = (sc: typeof thin): DrawnArrow[] => layoutAll(sc, side, DEFAULT_CANVAS, fit).filter((d): d is DrawnArrow => d.kind === "arrow");
+    const [a, b] = [arrowsOf(thin), arrowsOf(thick)];
+    expect(a.length).toBe(b.length);
+    const tip = (x: DrawnArrow): string | undefined => x.head?.split(" ")[0];
+    a.forEach((d, i) => {
+      expect(b[i]!.width / d.width).toBeCloseTo(3, 9);
+      expect(d.width).toBeCloseTo(0.1 * fit.scale, 9);
+      expect(tip(b[i]!)).toBe(tip(d)); // the tip is where it was
+    });
+    // The head is three times as wide too.
+    const headWidth = (d: DrawnArrow): number => {
+      const [, p, q] = d.head!.split(" ").map((c) => c.split(",").map(Number));
+      return Math.hypot(p![0]! - q![0]!, p![1]! - q![1]!);
+    };
+    expect(headWidth(b.find((d) => d.head)!) / headWidth(a.find((d) => d.head)!)).toBeCloseTo(3, 1);
+    expect(thick.arrows).toEqual(thin.arrows);
   });
 
   it("can be switched off, and says so when an arrow is too short to see", () => {

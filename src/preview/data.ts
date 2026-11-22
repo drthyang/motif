@@ -11,7 +11,7 @@
  * bars, and the cell as plain lines. Bands, filled triangles, angle marks and
  * labels come back when the movement stops.
  */
-import { ARROW_HEAD_LENGTH, ARROW_HEAD_WIDTH, ARROW_SHAFT, BOND_COLOUR, BOND_WIDTH, type Canvas, type Fit, structureHeight } from "../render/svg";
+import { arrowSizes, BOND_COLOUR, BOND_WIDTH, type Canvas, type Fit, structureHeight } from "../render/svg";
 import type { View } from "../render/view";
 import { mixHex } from "../scene/elementStyle";
 import type { Scene } from "../scene/scene";
@@ -67,9 +67,10 @@ export function buildPreviewData(scene: Scene): PreviewData {
     const half = Math.hypot(arrow.vector[0], arrow.vector[1], arrow.vector[2]) / 2;
     if (half === 0) continue;
     const at = (t: number): Vec3 => [c[0] + (arrow.vector[0] / (2 * half)) * t, c[1] + (arrow.vector[1] / (2 * half)) * t, c[2] + (arrow.vector[2] / (2 * half)) * t];
-    const head = Math.min(ARROW_HEAD_LENGTH, half);
-    lines.push(...at(-half), ...at(half - head), ARROW_SHAFT, ...rgb(scene.arrowColour));
-    lines.push(...at(half - head), ...at(half - head * 0.35), ARROW_HEAD_WIDTH * 0.75, ...rgb(scene.arrowColour));
+    const sizes = arrowSizes(scene);
+    const head = Math.min(sizes.headLength, half);
+    lines.push(...at(-half), ...at(half - head), sizes.shaft, ...rgb(scene.arrowColour));
+    lines.push(...at(half - head), ...at(half - head * 0.35), sizes.headWidth * 0.75, ...rgb(scene.arrowColour));
   }
   for (const [from, to] of scene.cellEdges) lines.push(...from, ...to, -3, ...rgb("#aab3ba"));
   return { spheres, lines: new Float32Array(lines), centre: scene.centre, reach: scene.extent * 1.05 + 1 };
