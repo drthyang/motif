@@ -270,14 +270,17 @@ describe("moment arrows", () => {
     });
   });
 
-  it("an outline can be drawn around the arrows; without the option nothing changes", () => {
-    const plain = renderSvg(scene, viewFromAngles(20, 30));
-    const outlined = renderSvg(buildScene(mnf2, { ...DEFAULT_SPEC, range: { from: [0, 0, 0], to: [1, 1, 1], boundary: "once" }, momentLength: 3, momentOutline: true }), viewFromAngles(20, 30));
+  it("the arrows have an outline by default; switching it off changes nothing else", () => {
+    const cellOnce = { from: [0, 0, 0] as [number, number, number], to: [1, 1, 1] as [number, number, number], boundary: "once" as const };
+    const plain = renderSvg(buildScene(mnf2, { ...DEFAULT_SPEC, range: cellOnce, momentLength: 3, momentOutline: false }), viewFromAngles(20, 30));
+    const outlined = renderSvg(buildScene(mnf2, { ...DEFAULT_SPEC, range: cellOnce, momentLength: 3, momentOutline: true }), viewFromAngles(20, 30));
+    expect(DEFAULT_SPEC.momentOutline).toBe(true); // on unless switched off (the user's choice)
     expect(plain).not.toContain('<g class="arrow" stroke=');
     const groups = outlined.match(/<g class="arrow" stroke="#[0-9a-f]{6}" stroke-width="1.5" stroke-linejoin="round">/g) ?? [];
     expect(groups.length).toBe(plain.match(/<g class="arrow">/g)!.length);
     // Only the outline was added: with it stripped, the two figures are the same text.
-    expect(outlined.replace(/ stroke="#[0-9a-f]{6}" stroke-width="1.5" stroke-linejoin="round">/g, ">")).toBe(plain);
+    const strip = (svg: string): string => svg.replace(/(<g class="arrow") stroke="#[0-9a-f]{6}" stroke-width="1.5" stroke-linejoin="round">/g, "$1>");
+    expect(strip(outlined)).toBe(plain);
   });
 
   it("a cone pointing at the viewer is one shape: the tip, and the base's rim from one touching point round the back to the other", () => {

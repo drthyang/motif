@@ -175,8 +175,8 @@ export function App() {
   const [momentHeadText, setMomentHeadText] = useState("1");
   const [axesHeadText, setAxesHeadText] = useState("1");
   const [momentHeadSize, axesHeadSize] = [sizeOf(momentHeadText), sizeOf(axesHeadText)];
-  const [momentOutline, setMomentOutline] = useState(false);
-  const [axesOutline, setAxesOutline] = useState(false);
+  const [momentOutline, setMomentOutline] = useState(DEFAULT_SPEC.momentOutline);
+  const [axesOutline, setAxesOutline] = useState(DEFAULT_SPEC.axesOutline);
   const [fontFamily, setFontFamily] = useState(DEFAULT_SPEC.fontFamily);
   const [customFont, setCustomFont] = useState(false);
   // Angle rules; the limits and the look are kept as typed.

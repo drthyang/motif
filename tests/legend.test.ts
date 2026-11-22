@@ -246,7 +246,8 @@ describe("legend", () => {
     const svg = renderSvg(buildScene(quartz, { ...DEFAULT_SPEC, axesOutline: true }), DEFAULT_VIEW);
     expect(svg).toMatch(/<g class="axes-outline" stroke="#[0-9a-f]{6}" stroke-width="1.5"/);
     for (const m of svg.matchAll(/<text [^>]*font-style="italic"[^>]*>/g)) expect(m[0]).toContain('stroke="none"');
-    expect(renderSvg(buildScene(quartz), DEFAULT_VIEW)).not.toContain("axes-outline");
+    expect(renderSvg(buildScene(quartz, { ...DEFAULT_SPEC, axesOutline: false }), DEFAULT_VIEW)).not.toContain("axes-outline");
+    expect(DEFAULT_SPEC.axesOutline).toBe(true); // on unless switched off (the user's choice)
   });
 
   it("the band under the structure is there only when the legend or the axes are", () => {
