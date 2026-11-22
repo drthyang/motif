@@ -48,7 +48,8 @@ writes the reference atom lists in `tests/reference/`.
   structure is cut off at the legend band. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the
   buttons; move: Shift + drag, middle-button drag, arrow keys; fit again: double-click, 0, or
   "Fit"; "Box" then a drag zooms to a rectangle (Esc cancels). A plain wheel scrolls the page.
-  A switch says whether Save writes the zoomed view (the default for now) or the whole structure.
+  A switch says whether Save writes the zoomed view (the default; the user's answer of 2026-11-22,
+  relayed by the hub) or the whole structure.
 - Legend and axes share a band under the structure. The axis arrows are the directions of the cell
   edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
   no letter. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). The font can be chosen
