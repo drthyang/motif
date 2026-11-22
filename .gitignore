@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.DS_Store
+# Private working files (unpublished structures, style targets) never enter the repo
+local/
