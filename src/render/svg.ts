@@ -405,38 +405,78 @@ export function axisArrows(scene: Scene, view: View): AxisArrow[] {
   });
 }
 
-/** The axis triad as SVG, placed so that it sits in the bottom right corner whatever the orientation. */
-function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; left: number } {
+/** Sizes of the axis arrows, px: shaft thickness, head length and head width. */
+const AXIS_SHAFT = 13;
+const AXIS_HEAD = 42;
+const AXIS_HEAD_WIDTH = 36;
+
+/**
+ * The axis triad as SVG, placed so that it sits in the bottom right corner whatever the orientation.
+ * Each arrow is drawn as a solid: a round shaft and a cone head, shaded like the spheres (light from
+ * the upper left). The cone's round base is drawn as the ellipse it appears as, so an arrow pointing
+ * at the viewer shows the cone face on, and one pointing away shows its flat base. Still plain vector
+ * shapes with gradients.
+ */
+function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs: string; left: number } {
   const arrows = axisArrows(scene, view);
-  if (arrows.length === 0) return { svg: "", left: canvas.width };
-  const [head, labelGap, fontSize, stroke] = [32, 42, 76, 9];
+  if (arrows.length === 0) return { svg: "", defs: "", left: canvas.width };
+  const [labelGap, fontSize] = [42, 76];
   // Where each letter goes, relative to the origin; an axis seen end on has no direction on screen and gets no letter.
   const letters = arrows.map((a) => {
     const n = Math.hypot(a.dx, a.dy);
     return n < 0.12 * AXIS_LENGTH ? null : { x: a.dx + (a.dx / n) * labelGap, y: a.dy + (a.dy / n) * labelGap };
   });
-  const xs = [0, ...arrows.map((a) => a.dx), ...letters.flatMap((l) => (l ? [l.x - fontSize * 0.4, l.x + fontSize * 0.4] : []))];
-  const ys = [0, ...arrows.map((a) => a.dy), ...letters.flatMap((l) => (l ? [l.y - fontSize * 0.45, l.y + fontSize * 0.45] : []))];
+  const half = AXIS_HEAD_WIDTH / 2;
+  const xs = [-half, half, ...arrows.flatMap((a) => [a.dx - half, a.dx + half]), ...letters.flatMap((l) => (l ? [l.x - fontSize * 0.4, l.x + fontSize * 0.4] : []))];
+  const ys = [-half, half, ...arrows.flatMap((a) => [a.dy - half, a.dy + half]), ...letters.flatMap((l) => (l ? [l.y - fontSize * 0.45, l.y + fontSize * 0.45] : []))];
   const ox = canvas.width - 45 - Math.max(...xs);
   const oy = canvas.height - 25 - Math.max(...ys);
+  const [light, dark, darker] = [mixHex(AXIS_COLOUR, "#ffffff", 0.55), mixHex(AXIS_COLOUR, "#000000", 0.3), mixHex(AXIS_COLOUR, "#000000", 0.45)];
+  let defs =
+    `<radialGradient id="axis-ball" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="${light}"/>` +
+    `<stop offset="0.55" stop-color="${AXIS_COLOUR}"/><stop offset="1" stop-color="${dark}"/></radialGradient>\n`;
   let svg = "";
-  // Back to front: the arrow pointing most away from the viewer first.
+  // Back to front: the arrow pointing most away from the viewer first; the ball at the origin between
+  // the arrows that point away and those that point towards the viewer.
   const order = arrows.map((a, i) => ({ a, letter: letters[i]! })).sort((p, q) => p.a.depth - q.a.depth);
-  const drawOrigin = (): string => `<circle class="axis-origin" cx="${n1(ox)}" cy="${n1(oy)}" r="9" fill="${AXIS_COLOUR}"/>\n`;
-  let originDrawn = false;
+  const ball = (): string => `<circle class="axis-origin" cx="${n1(ox)}" cy="${n1(oy)}" r="${n1(AXIS_SHAFT * 0.85)}" fill="url(#axis-ball)"/>\n`;
+  let ballDrawn = false;
   for (const { a, letter } of order) {
-    if (!originDrawn && a.depth >= 0) {
-      svg += drawOrigin();
-      originDrawn = true;
+    if (!ballDrawn && a.depth >= 0) {
+      svg += ball();
+      ballDrawn = true;
     }
-    const n = Math.hypot(a.dx, a.dy);
-    if (n < 1) continue;
-    const [ux, uy] = [a.dx / n, a.dy / n];
-    const h = Math.min(head, 0.45 * n); // a foreshortened axis gets a smaller head
-    const [bx, by] = [ox + a.dx - ux * h, oy + a.dy - uy * h];
-    svg +=
-      `<line class="axis" x1="${n1(ox)}" y1="${n1(oy)}" x2="${n1(bx)}" y2="${n1(by)}" stroke="${AXIS_COLOUR}" stroke-width="${stroke}" stroke-linecap="round"/>` +
-      `<polygon points="${n1(ox + a.dx)},${n1(oy + a.dy)} ${n1(bx - (uy * h) / 2)},${n1(by + (ux * h) / 2)} ${n1(bx + (uy * h) / 2)},${n1(by - (ux * h) / 2)}" fill="${AXIS_COLOUR}"/>`;
+    const n = Math.hypot(a.dx, a.dy); // drawn length; AXIS_LENGTH when the axis lies in the screen
+    // Direction on screen. Seen end on there is none; any direction then serves, the shapes are round.
+    const [ux, uy] = n > 1e-6 ? [a.dx / n, a.dy / n] : [1, 0];
+    // Across the arrow, on the side the light comes from (upper left).
+    let [px, py] = [-uy, ux];
+    if (px * -0.5 + py * -0.7 < 0) [px, py] = [-px, -py];
+    const tilt = Math.abs(a.depth); // 0 in the screen plane, 1 end on
+    const [tx, ty] = [ox + a.dx, oy + a.dy]; // tip
+    const headOnScreen = AXIS_HEAD * Math.sqrt(Math.max(0, 1 - tilt * tilt));
+    const [bx, by] = [tx - ux * headOnScreen, ty - uy * headOnScreen]; // centre of the cone's base
+    const id = `axis-${a.name}`;
+    // Shading across the arrow: lightest a third of the way in from the lit side, darkest on the far side.
+    const across = (name: string, width: number, cx: number, cy: number): string =>
+      `<linearGradient id="${name}" gradientUnits="userSpaceOnUse" x1="${n1(cx + (px * width) / 2)}" y1="${n1(cy + (py * width) / 2)}" x2="${n1(cx - (px * width) / 2)}" y2="${n1(cy - (py * width) / 2)}">` +
+      `<stop offset="0" stop-color="${AXIS_COLOUR}"/><stop offset="0.3" stop-color="${light}"/><stop offset="0.65" stop-color="${AXIS_COLOUR}"/><stop offset="1" stop-color="${dark}"/></linearGradient>\n`;
+    defs += across(`${id}-shaft`, AXIS_SHAFT, ox, oy) + across(`${id}-head`, AXIS_HEAD_WIDTH, bx, by);
+    const corner = (x: number, y: number, side: number, width: number): string => `${n1(x + (side * px * width) / 2)},${n1(y + (side * py * width) / 2)}`;
+    const shaft = `<polygon class="axis-shaft" points="${corner(ox, oy, 1, AXIS_SHAFT)} ${corner(bx, by, 1, AXIS_SHAFT)} ${corner(bx, by, -1, AXIS_SHAFT)} ${corner(ox, oy, -1, AXIS_SHAFT)}" fill="url(#${id}-shaft)"/>`;
+    // The base of the cone is a circle seen at an angle: an ellipse, as wide as the head across the arrow
+    // and `tilt` times that along it.
+    const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
+    const base = (fill: string): string =>
+      `<ellipse class="axis-base" cx="${n1(bx)}" cy="${n1(by)}" rx="${n1((AXIS_HEAD_WIDTH / 2) * tilt)}" ry="${n1(AXIS_HEAD_WIDTH / 2)}" transform="rotate(${n1(angle)} ${n1(bx)} ${n1(by)})" fill="${fill}"/>`;
+    const cone = `<polygon class="axis-head" points="${n1(tx)},${n1(ty)} ${corner(bx, by, 1, AXIS_HEAD_WIDTH)} ${corner(bx, by, -1, AXIS_HEAD_WIDTH)}" fill="url(#${id}-head)"/>`;
+    if (a.depth >= 0) {
+      // Pointing towards the viewer: the cone's side is seen, covering its base and the end of the shaft.
+      svg += shaft + base(`url(#${id}-head)`) + cone;
+    } else {
+      // Pointing away: the flat base of the cone faces the viewer and covers the cone behind it; the shaft comes last.
+      svg += cone + base(darker) + shaft;
+    }
     if (letter) {
       // The baseline is set 0.3 em below the wanted centre, so no reader needs to support "dominant-baseline".
       svg +=
@@ -445,8 +485,8 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; left:
     }
     svg += "\n";
   }
-  if (!originDrawn) svg += drawOrigin();
-  return { svg, left: ox + Math.min(...xs) };
+  if (!ballDrawn) svg += ball();
+  return { svg, defs, left: ox + Math.min(...xs) };
 }
 
 export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CANVAS, fit?: Fit): string {
@@ -475,7 +515,8 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       `<radialGradient id="${PIE_SHADE}" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="#fff" stop-opacity="0.55"/>` +
       `<stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.28"/></radialGradient>\n`;
   }
-  out += "</defs>\n";
+  const axes = axesSvg(scene, view, canvas);
+  out += `${axes.defs}</defs>\n`;
   if (canvas.background !== null) out += `<rect width="${width}" height="${height}" fill="${canvas.background}"/>\n`;
   for (const d of drawn) {
     if (d.kind === "sphere") {
@@ -514,7 +555,6 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       `font-size="${ANGLE_LABEL_SIZE}" fill="${mixHex(d.colour, "#000000", 0.35)}" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${d.label.text}</text>\n`;
   }
   // The band under the structure: axes on the right, legend on the left in the space that remains.
-  const axes = axesSvg(scene, view, canvas);
   for (const item of legendLayout(scene, canvas, axes.left - 40)) {
     out += sphereSvg(scene, item.style, item.x, item.y, item.r);
     // Baseline 0.35 em below the sphere's centre: capitals are then centred on it.

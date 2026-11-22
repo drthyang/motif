@@ -90,11 +90,43 @@ describe("axes", () => {
     for (let n = 0; n < 60; n++) {
       view = dragView(view, 0.37, 0.23);
       const svg = renderSvg(scene, view);
-      for (const m of svg.matchAll(/<line class="axis" x1="([\d.-]+)" y1="([\d.-]+)" x2="([\d.-]+)" y2="([\d.-]+)"/g)) {
-        for (const i of [1, 3]) expect(Number(m[i]) >= 0 && Number(m[i]) <= DEFAULT_CANVAS.width).toBe(true);
-        for (const i of [2, 4]) expect(Number(m[i]) >= 0 && Number(m[i]) <= DEFAULT_CANVAS.height).toBe(true);
+      const shapes = [...svg.matchAll(/<polygon class="axis-(?:shaft|head)" points="([^"]+)"/g)];
+      expect(shapes.length).toBe(6); // a shaft and a head for each of a, b, c
+      for (const m of shapes) {
+        for (const point of m[1]!.split(" ")) {
+          const [x, y] = point.split(",").map(Number) as [number, number];
+          expect(x >= 0 && x <= DEFAULT_CANVAS.width && y >= 0 && y <= DEFAULT_CANVAS.height).toBe(true);
+        }
       }
     }
+  });
+
+  it("are drawn as solids: the head's tip is where the arrow ends, and its round base opens up as the arrow tilts out of the screen", () => {
+    const scene = buildScene(structure("halite-NaCl_COD-9008678.cif".replace(".cif", "")));
+    const head = (view: typeof DEFAULT_VIEW, name: string) => {
+      const svg = renderSvg(scene, view);
+      // Each arrow's shapes sit together; find the group that ends with this letter, or by order for a letterless one.
+      const groups = svg.split("\n").filter((line) => line.includes('class="axis-shaft"'));
+      const line = groups.find((g) => g.includes(`>${name}</text>`)) ?? groups.find((g) => !g.includes("</text>"))!;
+      const tip = /class="axis-head" points="([\d.-]+),([\d.-]+) /.exec(line)!;
+      const base = /class="axis-base" cx="([\d.-]+)" cy="([\d.-]+)" rx="([\d.-]+)" ry="([\d.-]+)"/.exec(line)!;
+      const origin = /class="axis-origin" cx="([\d.-]+)" cy="([\d.-]+)"/.exec(svg)!;
+      return { tip: [Number(tip[1]) - Number(origin[1]), Number(tip[2]) - Number(origin[2])], rx: Number(base[3]), ry: Number(base[4]), line };
+    };
+    const side = viewFromAngles(0, 0); // a to the right in the screen plane, b straight away from the viewer
+    const a = head(side, "a");
+    expect(a.tip[0]).toBeCloseTo(AXIS_LENGTH, 0);
+    expect(a.tip[1]).toBeCloseTo(0, 0);
+    expect(a.rx).toBeCloseTo(0, 6); // base seen edge on
+    const b = head(side, "b"); // end on, pointing away: the base is a full circle, drawn over the cone
+    expect(b.rx).toBeCloseTo(b.ry, 6);
+    expect(b.line.indexOf("axis-base")).toBeGreaterThan(b.line.indexOf("axis-head"));
+    // Turned so that b points at the viewer: the cone is drawn over its base.
+    const front = head(viewFromAngles(180, 0), "b");
+    expect(front.line.indexOf("axis-head")).toBeGreaterThan(front.line.indexOf("axis-base"));
+    // Turned 30 degrees from end on: the base is an ellipse cos(30 degrees) as wide as it is high.
+    const tilted = head(viewFromAngles(30, 0), "b");
+    expect(tilted.rx / tilted.ry).toBeCloseTo(Math.cos((30 * Math.PI) / 180), 2);
   });
 });
 
