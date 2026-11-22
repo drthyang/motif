@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Tsung-Han Yang
 
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { svgToPng } from "../render/png";
 import { previewFrame } from "../preview/data";
 import { PREVIEW_FROM, usePreview } from "../preview/usePreview";
@@ -56,6 +56,7 @@ export function App() {
   const [transparent, setTransparent] = useState(true);
   const [pngWidth, setPngWidth] = useState(2880);
   const [over, setOver] = useState(false);
+  const [tab, setTab] = useState<TabId>("structure");
   const [rangeText, setRangeText] = useState<string[]>(ONE_CELL_TEXT);
   const [repeatBoundary, setRepeatBoundary] = useState(true);
   const [bondRules, setBondRules] = useState<(BondRule & { maxText: string; widthText?: string })[]>([]);
@@ -641,6 +642,34 @@ export function App() {
                 <b>{fileName}</b>
                 <span data-testid="counts">{scene.spheres.length} atoms{counts && `: ${counts}`}</span>
               </div>
+              <div className="toolbar">
+<div className="tools" role="group" aria-label="Look along a cell axis, pointing at you">
+<span className="tool-label">along</span>
+{(["a", "b", "c"] as const).map((name, k) => {
+const indices: [number, number, number] = [0, 0, 0];
+indices[k] = 1;
+return (
+<span key={name} className="pair">
+<button data-testid={`along-${name}`} title={`Along ${name}, pointing at you`} onClick={() => lookAlong({ kind: "uvw", indices })}>{name}</button>
+<button data-testid={`along-${name}-star`} title={`Along ${name}*, the normal to the planes, pointing at you`} onClick={() => lookAlong({ kind: "hkl", indices })}>{name}*</button>
+</span>
+);
+})}
+</div>
+<div className="tools" role="group" aria-label="Turn the view">
+<button data-testid="view-behind" title="The same line of sight, seen from the opposite side" onClick={() => goTo(fromBehind(view))}>Other side</button>
+<button data-testid="view-quarter" title="Turn the picture a quarter turn about the line of sight" onClick={() => goTo(rolled(view, 90))}>Turn 90°</button>
+<button
+data-testid="view-reset"
+onClick={() => {
+setUpAxis(2);
+goTo(DEFAULT_VIEW);
+}}
+>
+Reset
+</button>
+</div>
+              </div>
               <div className="figure-wrap">
                 <div
                   ref={figureRef}
@@ -708,14 +737,30 @@ export function App() {
           ) : (
             <div className="empty">
               <p className="empty-title">Drop a CIF or mCIF file here</p>
-              <p>or use <b>Open file…</b> or <b>Examples…</b> above.</p>
+              <p>or use <b>Open file…</b> above, or start from an example:</p>
+              <div className="examples">
+                {EXAMPLES.map((x) => (
+                  <button key={x.name} data-testid={`start-${x.name}`} onClick={() => load(x.text, x.file)}>
+                    {x.name.replace(/_(COD-\d+|handwritten)$/, "").replace(/-/g, " ")}
+                  </button>
+                ))}
+              </div>
               <p className="faint">The file is read in this page and never leaves your computer.</p>
             </div>
           )}
         </section>
         {structure && scene && cell && (
           <aside className="side">
-            <Section title="Structure" hint="What the file says. Nothing here changes the figure." closed>
+            <div className="tabs" role="tablist">
+              {TABS.map((t) => (
+                <button key={t.id} role="tab" aria-selected={tab === t.id} data-testid={`tab-${t.id}`} className={tab === t.id ? "on" : ""} onClick={() => setTab(t.id)}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            <TabContext.Provider value={tab}>
+            <div className="tab-body">
+            <Section tab="structure" title="Structure" hint="What the file says. Nothing here changes the figure.">
               <table data-testid="info">
                 <tbody>
                   <tr><td>Name</td><td>{structure.name}</td></tr>
@@ -731,7 +776,7 @@ export function App() {
                 </tbody>
               </table>
             </Section>
-            <Section title="Shown" hint="The part of the crystal that is drawn: a range along each cell axis, in units of the cell edge. Whole numbers give whole cells; a narrow range gives a slab. An atom within 0.001 of a limit counts as on it.">
+            <Section tab="structure" title="Shown" hint="The part of the crystal that is drawn: a range along each cell axis, in units of the cell edge. Whole numbers give whole cells; a narrow range gives a slab. An atom within 0.001 of a limit counts as on it.">
               {AXES.map((axis, i) => (
                 <div className="row" key={axis}>
                   <i className="axis">{axis}</i> from
@@ -767,7 +812,7 @@ export function App() {
               </p>
               {rangeError && <p className="error" data-testid="range-error">{rangeError}</p>}
             </Section>
-            <Section title="Atoms" hint="Colour and size of each element. A site shared by several elements is drawn as a pie whose wedges are the occupancies. Untick an element to leave it out.">
+            <Section tab="atoms" title="Atoms" hint="Colour and size of each element. A site shared by several elements is drawn as a pie whose wedges are the occupancies. Untick an element to leave it out.">
               {contents.elements.map((element) => {
                 const pure = contents.species.find((x) => x.key === element);
                 return (
@@ -848,7 +893,7 @@ export function App() {
                 <button data-testid="reset-looks" onClick={() => setLooks({})}>Reset colours and sizes</button>
               </div>
             </Section>
-            <Section title="Bonds" hint="A bond joins every pair of the two chosen atoms that are no further apart than the distance given. The list shows the distances found in the structure, shortest first.">
+            <Section tab="atoms" title="Bonds" hint="A bond joins every pair of the two chosen atoms that are no further apart than the distance given. The list shows the distances found in the structure, shortest first.">
               {bondRules.map((r, index) => (
                 <div key={index} className="rule" data-testid={`bond-${index}`}>
                   <div className="row">
@@ -953,7 +998,7 @@ export function App() {
                 Unit cell outline
               </label>
             </Section>
-            <Section title="Angles" hint="Marks the angle between two drawn bonds that meet at an atom, so add the bonds first. The list shows the kinds of angle found and their sizes. Every angle of the chosen kind whose size lies in the range is marked.">
+            <Section tab="atoms" title="Angles" hint="Marks the angle between two drawn bonds that meet at an atom, so add the bonds first. The list shows the kinds of angle found and their sizes. Every angle of the chosen kind whose size lies in the range is marked.">
               {angleRules.map((r, index) => (
                 <div key={index} className="rule" data-testid={`angle-${index}`}>
                   <div className="row">
@@ -1043,7 +1088,7 @@ export function App() {
               )}
             </Section>
             {largestMoment(structure) > 0 && (
-              <Section title="Magnetic moments" hint="A moment is drawn as an arrow through its atom, centred on it. The arrow of the largest moment in the file has the length given here; the others are in proportion.">
+              <Section tab="atoms" title="Magnetic moments" hint="A moment is drawn as an arrow through its atom, centred on it. The arrow of the largest moment in the file has the length given here; the others are in proportion.">
                 <label className="row">
                   <input type="checkbox" data-testid="show-moments" checked={showMoments} onChange={(e) => setShowMoments(e.target.checked)} />
                   Arrows through the atoms
@@ -1067,7 +1112,7 @@ export function App() {
                 </label>
               </Section>
             )}
-            <Section title="Legend and axes" hint="The arrows are the directions of the cell edges a, b, c. An arrow tilted out of the screen is drawn shorter.">
+            <Section tab="look" title="Legend and axes" hint="The arrows are the directions of the cell edges a, b, c. An arrow tilted out of the screen is drawn shorter.">
               <label className="row">
                 <input type="checkbox" data-testid="show-legend" checked={showLegend} onChange={(e) => setShowLegend(e.target.checked)} />
                 Legend
@@ -1131,7 +1176,7 @@ export function App() {
                 </select>
               </div>
             </Section>
-            <Section title="View" hint="The view is four numbers: the cell axis that is up, turn about it, tilt (from above when positive) and roll about the line of sight. The line under the figure always shows them, and the nearest low-index direction. A direction given here points at you.">
+            <Section tab="view" title="Direction" hint="The view is four numbers: the cell axis that is up, turn about it, tilt (from above when positive) and roll about the line of sight. The line under the figure always shows them, and the nearest low-index direction. A direction given here points at you.">
               <div className="row">
                 up
                 <select data-testid="view-up" value={upAxis} onChange={(e) => applyNumbers({ ...numbers, up: Number(e.target.value) as Axis, turn: Number(numberText.turn), tilt: Number(numberText.tilt), roll: Number(numberText.roll) })}>
@@ -1140,26 +1185,13 @@ export function App() {
                   <option value={2}>c</option>
                 </select>
                 turn
-                <input type="number" step={5} data-testid="view-az" value={numberText.turn} onChange={(e) => typeNumber("turn", e.target.value)} />°
+                <input type="number" step={5} data-testid="view-az" value={numberText.turn} onChange={(e) => typeNumber("turn", e.target.value)} /><span className="deg">°</span>
               </div>
               <div className="row">
                 tilt
-                <input type="number" step={5} min={-90} max={90} data-testid="view-el" value={numberText.tilt} onChange={(e) => typeNumber("tilt", e.target.value)} />°
+                <input type="number" step={5} min={-90} max={90} data-testid="view-el" value={numberText.tilt} onChange={(e) => typeNumber("tilt", e.target.value)} /><span className="deg">°</span>
                 roll
-                <input type="number" step={5} data-testid="view-roll" value={numberText.roll} onChange={(e) => typeNumber("roll", e.target.value)} />°
-              </div>
-              <div className="row">
-                look along
-                {(["a", "b", "c"] as const).map((name, k) => {
-                  const indices: [number, number, number] = [0, 0, 0];
-                  indices[k] = 1;
-                  return (
-                    <span key={name} className="row">
-                      <button data-testid={`along-${name}`} title={`Along ${name}, pointing at you`} onClick={() => lookAlong({ kind: "uvw", indices })}>{name}</button>
-                      <button data-testid={`along-${name}-star`} title={`Along ${name}*, the normal to the planes, pointing at you`} onClick={() => lookAlong({ kind: "hkl", indices })}>{name}*</button>
-                    </span>
-                  );
-                })}
+                <input type="number" step={5} data-testid="view-roll" value={numberText.roll} onChange={(e) => typeNumber("roll", e.target.value)} /><span className="deg">°</span>
               </div>
               <div className="row">
                 <select data-testid="along-kind" value={alongKind} onChange={(e) => setAlongKind(e.target.value as Direction["kind"])}>
@@ -1187,19 +1219,8 @@ export function App() {
                 </button>
               </div>
               {viewNote && <p className="sub">{viewNote}</p>}
-              <div className="row">
-                <button data-testid="view-behind" title="The same line of sight, seen from the opposite side" onClick={() => goTo(fromBehind(view))}>Other side</button>
-                <button data-testid="view-quarter" title="Turn the picture a quarter turn about the line of sight" onClick={() => goTo(rolled(view, 90))}>Turn 90°</button>
-                <button
-                  data-testid="view-reset"
-                  onClick={() => {
-                    setUpAxis(2);
-                    goTo(DEFAULT_VIEW);
-                  }}
-                >
-                  Reset
-                </button>
-              </div>
+              </Section>
+            <Section tab="view" title="Dragging" hint="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the axes of the screen, any way round. Alt + drag rolls the picture in both.">
               <div className="row">
                 drag
                 <select data-testid="drag-mode" value={dragMode} onChange={(e) => setDragMode(e.target.value as "turntable" | "free")} title="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the screen's axes, any way round.">
@@ -1215,6 +1236,8 @@ export function App() {
                 <input type="checkbox" data-testid="animate" checked={animate} onChange={(e) => setAnimate(e.target.checked)} />
                 Animate a change of view
               </label>
+              </Section>
+            <Section tab="view" title="Scale" hint="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure of a series.">
               <div className="row">
                 scale
                 <select data-testid="scale-mode" value={scaleMode} onChange={(e) => setScaleMode(e.target.value as "outline" | "steady" | "fixed")} title="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure.">
@@ -1229,8 +1252,9 @@ export function App() {
                   </>
                 )}
               </div>
-              <div className="rule">
-                <p className="sub">Saved views (kept in this browser). A view is its four numbers, so it means the same axes in another structure.</p>
+              </Section>
+            <Section tab="view" title="Saved views" hint="Kept in this browser. A view is its four numbers (axis up, turn, tilt, roll), so it means the same axes in another structure. Paste a line copied from under the figure to use a view again.">
+                
                 {savedViews.map((v, k) => (
                   <div className="row" key={`${v.name}-${k}`}>
                     <button data-testid={`saved-${k}`} title={writeView(v)} onClick={() => { setUpAxis(v.up); if (axes) goTo(viewFromNumbers(axes, v)); }}>{v.name}</button>
@@ -1270,7 +1294,8 @@ export function App() {
                   <input type="checkbox" data-testid="keep-view" checked={keepView} onChange={(e) => setKeepView(e.target.checked)} />
                   Keep the view when another file is loaded
                 </label>
-              </div>
+              </Section>
+            <Section tab="view" title="Large structures" hint="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
               <label className="row" title="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
                 <input type="checkbox" data-testid="smooth" checked={smooth} onChange={(e) => setSmooth(e.target.checked)} />
                 Smooth movement for large structures
@@ -1285,6 +1310,8 @@ export function App() {
               )}
               {preview.failed && <p className="sub" data-testid="preview-failed">Not available in this browser ({preview.failed}); the vector figure is redrawn instead.</p>}
             </Section>
+            </div>
+            </TabContext.Provider>
           </aside>
         )}
       </main>
@@ -1334,18 +1361,47 @@ function fontInstalled(family: string): boolean {
 }
 
 /** A card of the side column that can be folded away. The "?" holds the longer explanation. */
-function Section({ title, hint, closed, children }: { title: string; hint?: string; closed?: boolean; children: ReactNode }) {
+type TabId = "structure" | "atoms" | "view" | "look";
+const TABS: { id: TabId; label: string }[] = [
+  { id: "structure", label: "Structure" },
+  { id: "atoms", label: "Atoms & bonds" },
+  { id: "view", label: "View" },
+  { id: "look", label: "Legend & axes" },
+];
+const TabContext = createContext<TabId>("structure");
+
+/**
+ * A group of controls in the side column, shown when its tab is the open one. It can be folded away, and
+ * its "?" opens the longer explanation in place (by click, so it also works by touch).
+ */
+function Section({ title, hint, closed, tab, children }: { title: string; hint?: string; closed?: boolean; tab: TabId; children: ReactNode }) {
+  const active = useContext(TabContext);
+  const [explain, setExplain] = useState(false);
+  if (tab !== active) return null;
   return (
     <details className="card section" open={!closed}>
       <summary>
         <span>{title}</span>
         {hint && (
-          <span className="info" title={hint} aria-label={hint} role="img">
+          <button
+            type="button"
+            className={`info${explain ? " on" : ""}`}
+            title={hint}
+            aria-label={`About ${title}`}
+            aria-expanded={explain}
+            onClick={(e) => {
+              e.preventDefault(); // do not fold the section
+              setExplain((x) => !x);
+            }}
+          >
             ?
-          </span>
+          </button>
         )}
       </summary>
-      <div className="section-body">{children}</div>
+      <div className="section-body">
+        {hint && explain && <p className="explain">{hint}</p>}
+        {children}
+      </div>
     </details>
   );
 }

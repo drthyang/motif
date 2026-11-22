@@ -23,8 +23,10 @@ const check = (name, ok, detail = "") => {
 async function setUp(page, query) {
   await page.goto(URL_BASE + query);
   await page.selectOption("[data-testid=example]", "olivine-FeMg_COD-1541262");
+  await page.click("[data-testid=tab-atoms]");
   await page.selectOption("[data-testid=new-pair]", "Si-O");
   await page.click("[data-testid=add-bond]");
+  await page.click("[data-testid=tab-view]");
   await page.fill("[data-testid=view-az]", "40");
   await page.fill("[data-testid=view-el]", "25");
 }
@@ -67,6 +69,7 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
     const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
     await setUp(page, "?preview=all&settle=2500");
     await page.uncheck("label.check input"); // white background
+    await page.click("[data-testid=tab-atoms]");
     await page.uncheck("[data-testid=show-cell]");
     await page.waitForTimeout(3000);
     const box = await page.locator(".figure-wrap").boundingBox();

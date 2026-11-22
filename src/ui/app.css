@@ -52,7 +52,7 @@ body { margin: 0; background: var(--page); }
 .notice.bad { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn-ink); }
 .notice.warn { background: var(--note-bg); border-color: var(--note-border); color: var(--note-ink); }
 
-.work { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(300px, 26vw, 400px); gap: var(--gap); padding: var(--gap) var(--edge); }
+.work { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) clamp(330px, 28vw, 430px); gap: var(--gap); padding: var(--gap) var(--edge); }
 .work.alone { grid-template-columns: minmax(0, 1fr); }
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
 .stage { display: flex; flex-direction: column; min-height: 0; min-width: 0; padding: var(--inset); gap: 8px; }
@@ -82,7 +82,13 @@ body { margin: 0; background: var(--page); }
 .empty-title { font-size: var(--fz-title); color: var(--ink); font-weight: 600; }
 .faint { color: var(--faint); font-size: var(--fz-small); }
 
-.side { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; overflow-y: auto; padding-right: 2px; }
+.side { display: flex; flex-direction: column; min-height: 0; }
+/* The side column: four tabs, and under them the sections of the open tab, which scroll on their own. */
+.tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 3px; background: var(--muted); border: 1px solid var(--border); border-radius: 10px; flex: none; }
+.tabs button { border: 0; background: none; padding: 7px 4px; border-radius: 7px; justify-content: center; color: var(--secondary); font-weight: 500; white-space: nowrap; }
+.tabs button:hover:not(.on) { background: rgba(255, 255, 255, 0.6); }
+.tabs button.on { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(25, 23, 20, 0.12); }
+.tab-body { display: flex; flex-direction: column; gap: calc(var(--gap) * 0.7); min-height: 0; overflow-y: auto; padding: calc(var(--gap) * 0.7) 2px 2px 0; }
 .section > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 10px var(--inset); font-weight: 600; font-size: var(--fz-small); text-transform: uppercase; letter-spacing: 0.07em; color: var(--secondary); }
 .section > summary::-webkit-details-marker { display: none; }
@@ -90,9 +96,11 @@ body { margin: 0; background: var(--page); }
 .section[open] > summary > span:first-child::before { transform: rotate(90deg); }
 .section[open] > summary { border-bottom: 1px solid var(--border); }
 .section-body { padding: 8px var(--inset) var(--inset); }
-.info { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%;
+.info { padding: 0; background: none; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%;
   border: 1px solid var(--control); color: var(--faint); font-size: 11px; font-weight: 600; text-transform: none; letter-spacing: 0; cursor: help; flex: none; }
-.info:hover { color: var(--primary); border-color: var(--primary); }
+.info:hover, .info.on { color: var(--primary); border-color: var(--primary); }
+.info.on { background: var(--primary-tint); }
+.explain { margin: 0 0 8px; padding: 8px 10px; background: var(--primary-tint); border-radius: 6px; font-size: var(--fz-small); line-height: 1.45; color: var(--ink); }
 
 .side p { margin: 4px 0; }
 .sub { color: var(--secondary); font-size: var(--fz-small); margin: 0; }
@@ -141,3 +149,24 @@ input[type="color"] { width: 32px; height: 27px; padding: 1px; border: 1px solid
 .view-line .copy { font-size: 13px; color: var(--faint); margin-left: 6px; }
 input.indices { width: 86px; }
 .stage-foot { flex-direction: column; align-items: stretch; gap: 2px; }
+
+/* The toolbar over the figure: the views one click away. */
+.toolbar { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+.tools { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.tools .pair { display: inline-flex; }
+.tools .pair button:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.tools .pair button:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -1px; color: var(--secondary); }
+.tools button { padding: 4px 9px; min-width: 30px; justify-content: center; }
+.tool-label { color: var(--secondary); font-size: var(--fz-small); margin-right: 2px; }
+/* The empty page: examples to start from. */
+.examples { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 14px 0; }
+.examples button { padding: 8px 14px; text-transform: capitalize; }
+/* Quieter sections inside a tab. */
+.section > summary { padding: 9px var(--inset); }
+.section-body { padding: 10px var(--inset) var(--inset); }
+.row { min-height: 30px; }
+@media (max-width: 860px) {
+  .tab-body { overflow: visible; }
+}
+.deg { margin-left: -4px; color: var(--secondary); }
+.view-line .copy { font-size: 15px; }

@@ -148,7 +148,7 @@ writes the reference atom lists in `tests/reference/`.
 | 6 | mCIF: magnetic moments as arrows | built, awaiting the user's check |
 | 7 | Highlights: a band along a chain, filled polygons | built, awaiting the user's check |
 | 10 | Camera: view as numbers, turntable drag, crystal directions, snapping, saved views, steady scale, animated turn | built, awaiting the user's check |
-| 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | first pass built, awaiting the user's check |
+| 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | second pass built (tabs, toolbar over the figure, example buttons), awaiting the user's check |
 | 9 | Bond angles: a translucent sector between two bonds, with the angle written beside it | built, awaiting the user's check |
 
 Each step is checked against an independent reference before the next one starts.
