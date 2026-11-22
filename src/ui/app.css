@@ -24,7 +24,9 @@ button, select, input[type="number"] { font: inherit; padding: 5px 10px; border:
 button { cursor: pointer; }
 button:hover:not(:disabled) { background: #eef0f2; }
 button:disabled { opacity: 0.45; cursor: default; }
-input[type="number"] { width: 90px; }
+input[type="number"] { width: 78px; }
+.axis { width: 12px; font-weight: 700; }
+.row .row { margin: 0; }
 select { max-width: 100%; }
 .error { color: #a3242d; }
 .warning { color: #8a5a00; }

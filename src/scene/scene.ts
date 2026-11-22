@@ -3,9 +3,9 @@
  * Positions are cartesian, in angstrom. The scene knows nothing about the view.
  */
 import { fractionalToCartesian } from "../structure/cell";
-import { expandToUnitCell } from "../structure/expand";
 import type { Structure, Vec3 } from "../structure/types";
 import { defaultColour, defaultRadius } from "./elementStyle";
+import { ONE_CELL, atomsInRange, type Range } from "./select";
 
 export interface SphereStyle {
   /** Base colour "#rrggbb"; the shading is derived from it. */
@@ -18,6 +18,8 @@ export interface Sphere {
   /** Key into Scene.styles. */
   readonly style: string;
   readonly label: string;
+  /** Fractional coordinates (for reading off; the drawing uses `centre`). */
+  readonly frac?: Vec3;
   readonly centre: Vec3;
 }
 
@@ -31,13 +33,20 @@ export interface Scene {
   readonly warnings: readonly string[];
 }
 
-/** Step 1: one unit cell, every atom with fractional coordinates in [0, 1), one sphere per site image. */
-export function buildScene(structure: Structure): Scene {
-  const { atoms, warnings } = expandToUnitCell(structure);
+/** What the user has chosen to show. Plain data: it can be saved and loaded again. */
+export interface SceneSpec {
+  readonly range: Range;
+}
+
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL };
+
+/** One sphere per atom in the chosen range. */
+export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC): Scene {
+  const { atoms, warnings } = atomsInRange(structure, spec.range);
   const styles: Record<string, SphereStyle> = {};
   const spheres: Sphere[] = atoms.map((atom) => {
     styles[atom.element] ??= { colour: defaultColour(atom.element), radius: defaultRadius(atom.element) };
-    return { style: atom.element, label: atom.label, centre: fractionalToCartesian(structure.cell, atom.frac) };
+    return { style: atom.element, label: atom.label, frac: atom.frac, centre: fractionalToCartesian(structure.cell, atom.frac) };
   });
   // Middle of the atoms' bounding box. (Step 3 draws the unit cell; the centre is reviewed then.)
   const mid = (i: 0 | 1 | 2): number => {

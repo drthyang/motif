@@ -30,19 +30,23 @@ writes the reference atom lists in `tests/reference/`.
   Screen x is right, y is up, z is towards the viewer; the projection is orthographic.
 - The symmetry operations are taken from the file and checked to form a complete group.
   A file that gives only a space-group symbol is refused, not guessed.
+- What is shown is a range of fractional coordinates along *a*, *b*, *c*. By default an atom on the
+  boundary of the range is drawn at both ends (a cell looks complete); the other setting draws each
+  atom once per cell. An atom within 0.001 of a limit counts as on it.
 - Symmetry images of one site closer than 0.05 Å are one atom (a site on a symmetry element).
 
 ## Steps of the first version
 
 | # | Step | Status |
 |---|------|--------|
-| 1 | Read a CIF and draw the atoms; rotate; export SVG and PNG | built, awaiting the user's check |
-| 2 | Choose what is shown: how many cells, or a slab | not started |
+| 1 | Read a CIF and draw the atoms; rotate; export SVG and PNG | done |
+| 2 | Choose what is shown: how many cells, or a slab | built, awaiting the user's check |
 | 3 | Bonds by distance for chosen element pairs; the unit cell | not started |
 | 4 | Colour and size per element; pie spheres for mixed sites | not started |
 | 5 | Legend and axis triad | not started |
 | 6 | mCIF: magnetic moments as arrows | not started |
 | 7 | Highlights: a band along a chain, filled polygons | not started |
+| 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | after the main features |
 
 Each step is checked against an independent reference before the next one starts.
 

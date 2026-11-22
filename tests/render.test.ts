@@ -71,9 +71,9 @@ describe("drawing", () => {
   it("draws one circle per atom, back to front", () => {
     const s = scene("perovskite-SrTiO3_COD-9006864");
     const drawn = layout(s, DEFAULT_VIEW, DEFAULT_CANVAS);
-    expect(drawn.length).toBe(5);
+    expect(drawn.length).toBe(21);
     for (let i = 1; i < drawn.length; i++) expect(drawn[i]!.depth).toBeGreaterThanOrEqual(drawn[i - 1]!.depth);
-    expect(renderSvg(s, DEFAULT_VIEW).match(/<circle /g)?.length).toBe(5);
+    expect(renderSvg(s, DEFAULT_VIEW).match(/<circle /g)?.length).toBe(21);
   });
 
   it("puts up on screen at the top of the SVG, and right at the right", () => {

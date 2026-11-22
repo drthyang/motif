@@ -2,7 +2,8 @@ import { useCallback, useMemo, useRef, useState, type DragEvent, type PointerEve
 import { svgToPng } from "../render/png";
 import { DEFAULT_CANVAS, renderSvg } from "../render/svg";
 import { DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { buildScene } from "../scene/scene";
+import { buildScene, type Scene } from "../scene/scene";
+import type { BoundaryRule, Range } from "../scene/select";
 import { readCif } from "../structure/readCif";
 import type { Structure } from "../structure/types";
 
@@ -23,6 +24,16 @@ function download(blob: Blob, fileName: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+const AXES = ["a", "b", "c"] as const;
+const ONE_CELL_TEXT = ["0", "0", "0", "1", "1", "1"];
+
+/** The range typed in the six boxes (from a, b, c, then to a, b, c), or null while a box holds no number. */
+function rangeFromText(text: readonly string[], boundary: BoundaryRule): Range | null {
+  const v = text.map((t) => (t.trim() === "" ? NaN : Number(t)));
+  if (v.some((x) => !Number.isFinite(x))) return null;
+  return { from: [v[0]!, v[1]!, v[2]!], to: [v[3]!, v[4]!, v[5]!], boundary };
+}
+
 export function App() {
   const [structure, setStructure] = useState<Structure | null>(null);
   const [fileName, setFileName] = useState("");
@@ -31,22 +42,43 @@ export function App() {
   const [transparent, setTransparent] = useState(true);
   const [pngWidth, setPngWidth] = useState(2880);
   const [over, setOver] = useState(false);
+  const [rangeText, setRangeText] = useState<string[]>(ONE_CELL_TEXT);
+  const [repeatBoundary, setRepeatBoundary] = useState(true);
   const last = useRef<{ x: number; y: number } | null>(null);
 
   const load = useCallback((text: string, name: string) => {
     try {
       const read = readCif(text);
       buildScene(read); // fail here, with a message, rather than while drawing
+      lastScene.current = null;
       setStructure(read);
       setFileName(name);
       setError("");
       setView(DEFAULT_VIEW);
+      setRangeText(ONE_CELL_TEXT);
     } catch (e) {
       setError(`${name}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, []);
 
-  const scene = useMemo(() => (structure ? buildScene(structure) : null), [structure]);
+  // The scene for the chosen range; while the range is unusable the last good scene stays on screen.
+  const lastScene = useRef<Scene | null>(null);
+  const { scene, rangeError } = useMemo((): { scene: Scene | null; rangeError: string } => {
+    if (!structure) return { scene: null, rangeError: "" };
+    const range = rangeFromText(rangeText, repeatBoundary ? "both" : "once");
+    if (!range) return { scene: lastScene.current, rangeError: "Fill in all six limits." };
+    try {
+      return { scene: buildScene(structure, { range }), rangeError: "" };
+    } catch (e) {
+      return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
+    }
+  }, [structure, rangeText, repeatBoundary]);
+  lastScene.current = scene;
+  const counts = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const s of scene?.spheres ?? []) n.set(s.style, (n.get(s.style) ?? 0) + 1);
+    return [...n].map(([element, k]) => `${element} ${k}`).join(", ");
+  }, [scene]);
   const svg = useMemo(
     () => (scene ? renderSvg(scene, view, { ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }) : ""),
     [scene, view, transparent],
@@ -153,12 +185,49 @@ export function App() {
                 <tr><td>α, β, γ (°)</td><td>{cell.alpha}, {cell.beta}, {cell.gamma}</td></tr>
                 <tr><td>Symmetry operations</td><td>{structure.operations.length}</td></tr>
                 <tr><td>Sites in the file</td><td>{structure.sites.length}</td></tr>
-                <tr><td>Atoms drawn</td><td>{scene.spheres.length} (one unit cell)</td></tr>
+                <tr><td>Atoms drawn</td><td data-testid="counts">{scene.spheres.length}{counts && ` (${counts})`}</td></tr>
               </tbody>
             </table>
             {scene.warnings.map((w) => (
               <p key={w} className="warning">{w}</p>
             ))}
+
+            <h2>Shown</h2>
+            <p className="sub">Range along each cell axis, in units of the cell edge. A narrow range is a slab.</p>
+            {AXES.map((axis, i) => (
+              <div className="row" key={axis}>
+                <i className="axis">{axis}</i> from
+                {[i, i + 3].map((k) => (
+                  <span key={k} className="row">
+                    {k >= 3 && "to"}
+                    <input
+                      type="number"
+                      step={0.1}
+                      data-testid={`range-${k}`}
+                      value={rangeText[k]}
+                      onChange={(e) => setRangeText((t) => t.map((old, j) => (j === k ? e.target.value : old)))}
+                    />
+                  </span>
+                ))}
+              </div>
+            ))}
+            <div className="row">
+              {[1, 2, 3].map((n) => (
+                <button key={n} data-testid={`cells-${n}`} onClick={() => setRangeText(["0", "0", "0", `${n}`, `${n}`, `${n}`])}>
+                  {n}×{n}×{n}
+                </button>
+              ))}
+            </div>
+            <label className="row">
+              <input type="checkbox" data-testid="repeat-boundary" checked={repeatBoundary} onChange={(e) => setRepeatBoundary(e.target.checked)} />
+              Repeat atoms on the boundary
+            </label>
+            <p className="sub">
+              {repeatBoundary
+                ? "An atom on the edge of the range is drawn at both ends, so a cell looks complete."
+                : "Each atom is drawn once per cell: the true content of the cell."}
+            </p>
+            {rangeError && <p className="error" data-testid="range-error">{rangeError}</p>}
 
             <h2>View</h2>
             <p className="sub">Drag the figure to rotate.</p>
