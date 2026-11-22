@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState, type DragEvent, type PointerEvent } from "react";
 import { svgToPng } from "../render/png";
-import { DEFAULT_CANVAS, renderSvg } from "../render/svg";
+import { DEFAULT_CANVAS, fitView, renderSvg, type Fit } from "../render/svg";
 import { DEFAULT_VIEW, dragView, type View } from "../render/view";
 import { buildScene, elementColour, speciesRadius, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
@@ -52,9 +52,13 @@ export function App() {
   // The user's changes to colours, sizes and names. Radii are kept as typed, so a box can be emptied while editing.
   const [looks, setLooks] = useState<Record<string, { colour?: string; radiusText?: string; name?: string }>>({});
   const [showVacancy, setShowVacancy] = useState(true);
+  const [showLegend, setShowLegend] = useState(true);
+  const [showAxes, setShowAxes] = useState(true);
   const setLook = (key: string, change: { colour?: string; radiusText?: string; name?: string }) =>
     setLooks((all) => ({ ...all, [key]: { ...all[key], ...change } }));
   const last = useRef<{ x: number; y: number } | null>(null);
+  // While dragging, the placement of the moment the drag began is kept, so the figure turns without jumping.
+  const [heldFit, setHeldFit] = useState<Fit | null>(null);
 
   const load = useCallback((text: string, name: string) => {
     try {
@@ -109,11 +113,11 @@ export function App() {
     try {
       // A rule whose distance box holds no usable number is left out until it does.
       const bonds = bondRules.filter((r) => r.max > 0.1 && r.max <= 10);
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -149,8 +153,8 @@ export function App() {
     return [...n].map(([name, k]) => `${name} ${k}`).join(", ");
   }, [scene]);
   const svg = useMemo(
-    () => (scene ? renderSvg(scene, view, { ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }) : ""),
-    [scene, view, transparent],
+    () => (scene ? renderSvg(scene, view, { ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }, heldFit ?? undefined) : ""),
+    [scene, view, transparent, heldFit],
   );
   const baseName = fileName.replace(/\.[^.]+$/, "") || "motif";
 
@@ -164,6 +168,7 @@ export function App() {
   const onPointerDown = (e: PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     last.current = { x: e.clientX, y: e.clientY };
+    if (scene) setHeldFit(fitView(scene, view, DEFAULT_CANVAS));
   };
   const onPointerMove = (e: PointerEvent) => {
     if (!last.current) return;
@@ -175,6 +180,7 @@ export function App() {
   };
   const onPointerUp = () => {
     last.current = null;
+    setHeldFit(null); // refit to the new orientation
   };
 
   const cell = structure?.cell;
@@ -411,6 +417,16 @@ export function App() {
             <label className="row">
               <input type="checkbox" data-testid="show-cell" checked={showCell} onChange={(e) => setShowCell(e.target.checked)} />
               Unit cell outline
+            </label>
+
+            <h2>Legend and axes</h2>
+            <label className="row">
+              <input type="checkbox" data-testid="show-legend" checked={showLegend} onChange={(e) => setShowLegend(e.target.checked)} />
+              Legend
+            </label>
+            <label className="row">
+              <input type="checkbox" data-testid="show-axes" checked={showAxes} onChange={(e) => setShowAxes(e.target.checked)} />
+              Axes a, b, c
             </label>
 
             <h2>View</h2>

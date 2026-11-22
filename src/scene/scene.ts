@@ -62,7 +62,33 @@ export interface Scene {
   readonly centre: Vec3;
   /** Radius of a ball around `centre` that holds everything drawn: the drawing scale comes from it, so rotating never rescales. */
   readonly extent: number;
+  /** Legend entries, in file order: one per name. Empty when the legend is off. */
+  readonly legend: readonly LegendEntry[];
+  /** The directions of the cell axes a, b, c as unit vectors in angstrom space. Empty when the axes are off. */
+  readonly axes: readonly Axis[];
   readonly warnings: readonly string[];
+}
+
+export interface LegendEntry {
+  /** Key into Scene.styles: the sphere drawn beside the name. */
+  readonly style: string;
+  readonly name: string;
+}
+
+export interface Axis {
+  readonly name: "a" | "b" | "c";
+  readonly direction: Vec3;
+}
+
+/** Unit vectors along the cell edges a, b, c (not a*, b*, c*: for an oblique cell they are not perpendicular). */
+export function cellAxes(structure: Structure): Axis[] {
+  return (["a", "b", "c"] as const).map((name, i) => {
+    const frac: [number, number, number] = [0, 0, 0];
+    frac[i] = 1;
+    const v = fractionalToCartesian(structure.cell, frac);
+    const n = Math.hypot(v[0], v[1], v[2]);
+    return { name, direction: [v[0] / n, v[1] / n, v[2] / n] };
+  });
 }
 
 /** What the user has chosen to show. Plain data: it can be saved and loaded again. */
@@ -78,6 +104,10 @@ export interface SceneSpec {
   readonly looks: Readonly<Record<string, Look>>;
   /** Draw the unoccupied share of a partly occupied place as a pale wedge. */
   readonly showVacancy: boolean;
+  /** Draw a row of spheres with their names under the structure. */
+  readonly showLegend: boolean;
+  /** Draw the a, b, c arrows under the structure. */
+  readonly showAxes: boolean;
 }
 
 export interface Look {
@@ -88,7 +118,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
@@ -168,5 +198,18 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
   let extent = 1;
   for (const s of spheres) extent = Math.max(extent, reach(s.centre) + styles[s.style]!.radius);
   for (const p of cellEdges.flat()) extent = Math.max(extent, reach(p));
-  return { spheres, sticks: bonds, cellEdges, styles, centre, extent, warnings };
+  // One legend entry per name, in the order the species first appear in the file.
+  const legend: LegendEntry[] = [];
+  if (spec.showLegend) {
+    const first = new Map<string, { style: string; site: number }>();
+    spheres.forEach((s, index) => {
+      const name = styles[s.style]!.name ?? s.style;
+      const site = atoms[index]!.siteIndex;
+      const seen = first.get(name);
+      if (!seen || site < seen.site) first.set(name, { style: s.style, site });
+    });
+    for (const [name, { style }] of [...first].sort((p, q) => p[1].site - q[1].site)) legend.push({ style, name });
+  }
+  const axes = spec.showAxes ? cellAxes(structure) : [];
+  return { spheres, sticks: bonds, cellEdges, styles, centre, extent, legend, axes, warnings };
 }

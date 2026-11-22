@@ -119,7 +119,7 @@ describe("unit cell outline", () => {
 
 describe("drawing bonds and the cell", () => {
   it("draws each bond and cell edge once", () => {
-    const scene = buildScene(structure("halite-NaCl_COD-9008678"), { ...DEFAULT_SPEC, bonds: [rule("Na", "Cl", 3)] });
+    const scene = buildScene(structure("halite-NaCl_COD-9008678"), { ...DEFAULT_SPEC, bonds: [rule("Na", "Cl", 3)], showLegend: false, showAxes: false });
     const svg = renderSvg(scene, DEFAULT_VIEW);
     expect(svg.match(/class="bond"/g)?.length).toBe(54);
     expect(scene.cellEdges.length).toBe(12);
@@ -137,9 +137,11 @@ describe("drawing bonds and the cell", () => {
       styles: { X: { colour: "#808080", radius: 0.5 } },
       centre: [1.5, 0, 0],
       extent: 3,
+      legend: [],
+      axes: [],
       warnings: [],
     };
-    const scale = pxPerAngstrom(scene, DEFAULT_CANVAS);
+    const scale = pxPerAngstrom(scene, viewFromAngles(0, 0), DEFAULT_CANVAS);
     const side = layoutAll(scene, viewFromAngles(0, 0), DEFAULT_CANVAS);
     const bond = side.find((d) => d.kind === "bond")!;
     if (bond.kind !== "bond") throw new Error();

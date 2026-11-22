@@ -110,7 +110,7 @@ describe("pie spheres", () => {
   });
 
   it("draws each pie as its wedges plus one shaded outline circle", () => {
-    const scene = buildScene(olivine, { ...DEFAULT_SPEC, range: { ...ONE_CELL, boundary: "once" } });
+    const scene = buildScene(olivine, { ...DEFAULT_SPEC, range: { ...ONE_CELL, boundary: "once" }, showLegend: false, showAxes: false });
     const svg = renderSvg(scene, DEFAULT_VIEW, DEFAULT_CANVAS);
     expect(svg.match(/class="wedge"/g)?.length).toBe(8 * 2);
     expect(svg.match(/fill="url\(#pie-shade\)"/g)?.length).toBe(8);

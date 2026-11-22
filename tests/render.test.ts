@@ -1,13 +1,15 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CANVAS, layout, renderSvg } from "../src/render/svg";
+import { DEFAULT_CANVAS, MAX_SCALE, fitView, layout, pxPerAngstrom, renderSvg } from "../src/render/svg";
 import { DEFAULT_VIEW, determinant, dragView, viewFromAngles, type View } from "../src/render/view";
-import { buildScene, type Scene } from "../src/scene/scene";
+import { buildScene, DEFAULT_SPEC, type Scene } from "../src/scene/scene";
 import { mulVec, orthogonalizationMatrix } from "../src/structure/cell";
 import { readCif } from "../src/structure/readCif";
 import type { Vec3 } from "../src/structure/types";
 
-const scene = (name: string): Scene => buildScene(readCif(readFileSync(`examples/${name}.cif`, "utf8")));
+// The structure alone: no legend, no axes (those are tested in tests/legend.test.ts).
+const scene = (name: string): Scene =>
+  buildScene(readCif(readFileSync(`examples/${name}.cif`, "utf8")), { ...DEFAULT_SPEC, showLegend: false, showAxes: false });
 const IDENTITY: View = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
 const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const dot = (a: Vec3, b: Vec3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -85,6 +87,8 @@ describe("drawing", () => {
       styles: { X: { colour: "#808080", radius: 0.3 } },
       centre: [0, 0, 0],
       extent: 4,
+      legend: [],
+      axes: [],
       warnings: [],
     };
     const drawn = layout(s, viewFromAngles(0, 0), DEFAULT_CANVAS);
@@ -95,18 +99,36 @@ describe("drawing", () => {
     expect((o.y - p.y) / (p.x - o.x)).toBeCloseTo(2, 9); // same scale in both directions
   });
 
-  it("keeps every atom inside the canvas at any orientation, at one fixed scale", () => {
-    const s = scene("quartz_COD-9009666");
+  it("fits the structure to the canvas at any orientation: inside the margins, touching them on one pair of sides", () => {
+    // Atoms only: with the cell outline shown, the outline would set the size.
+    const s = buildScene(readCif(readFileSync("examples/quartz_COD-9009666.cif", "utf8")), { ...DEFAULT_SPEC, showCell: false, showLegend: false, showAxes: false });
     const random = rng(3);
     let view = DEFAULT_VIEW;
-    const radius = layout(s, view, DEFAULT_CANVAS).find((d) => d.style === "Si")!.r;
+    const { width, height, margin } = DEFAULT_CANVAS;
     for (let n = 0; n < 100; n++) {
       view = dragView(view, 3 * (random() - 0.5), 3 * (random() - 0.5));
-      for (const d of layout(s, view, DEFAULT_CANVAS)) {
-        expect(d.x - d.r >= 0 && d.x + d.r <= DEFAULT_CANVAS.width && d.y - d.r >= 0 && d.y + d.r <= DEFAULT_CANVAS.height).toBe(true);
-        if (d.style === "Si") expect(d.r).toBeCloseTo(radius, 9);
-      }
+      const drawn = layout(s, view, DEFAULT_CANVAS);
+      const [x0, x1] = [Math.min(...drawn.map((d) => d.x - d.r)), Math.max(...drawn.map((d) => d.x + d.r))];
+      const [y0, y1] = [Math.min(...drawn.map((d) => d.y - d.r)), Math.max(...drawn.map((d) => d.y + d.r))];
+      expect(x0).toBeGreaterThanOrEqual(margin - 1e-6);
+      expect(x1).toBeLessThanOrEqual(width - margin + 1e-6);
+      expect(y0).toBeGreaterThanOrEqual(margin - 1e-6);
+      expect(y1).toBeLessThanOrEqual(height - margin + 1e-6);
+      const touches = Math.abs(x0 - margin) < 1e-6 || Math.abs(y0 - margin) < 1e-6;
+      // ... unless the structure is so small in this view that the largest allowed scale is reached first.
+      expect(touches || pxPerAngstrom(s, view, DEFAULT_CANVAS) === MAX_SCALE).toBe(true);
+      expect((x0 + x1) / 2).toBeCloseTo(width / 2, 6); // centred
+      expect((y0 + y1) / 2).toBeCloseTo(height / 2, 6);
     }
+  });
+
+  it("with a placement held fixed (as during a drag), turning changes neither the scale nor the centre", () => {
+    const s = scene("quartz_COD-9009666");
+    const fit = fitView(s, DEFAULT_VIEW, DEFAULT_CANVAS);
+    const before = layout(s, DEFAULT_VIEW, DEFAULT_CANVAS, fit).find((d) => d.style === "Si")!.r;
+    const turned = dragView(DEFAULT_VIEW, 1.1, -0.7);
+    expect(layout(s, turned, DEFAULT_CANVAS, fit).find((d) => d.style === "Si")!.r).toBeCloseTo(before, 12);
+    expect(pxPerAngstrom(s, turned, DEFAULT_CANVAS, fit)).toBe(fit.scale);
   });
 
   it("has a background only when asked for one", () => {

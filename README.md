@@ -41,6 +41,12 @@ writes the reference atom lists in `tests/reference/`.
   outside the range, so that every centre atom shown has all its neighbours. A bond is drawn from
   surface to surface.
 - The unit-cell outline is drawn for every whole cell inside the range (none for a slab).
+- The structure is fitted to the canvas in each view. While dragging, the placement of the moment
+  the drag began is kept, and the figure is refitted on release.
+- Legend and axes share a band under the structure. The axis arrows are the directions of the cell
+  edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
+  no letter. Lettering: Avenir Next / Avenir (macOS), else Helvetica Neue, Arial. Text stays live
+  text in the SVG; on a system without Avenir the letters look different, the drawing does not.
 - Arrows (the user's rule, for step 6 and later): a magnetic moment is drawn as an arrow passing
   through its atom, centred on it. An atomic displacement (a distortion mode, not yet a planned
   step) is drawn as an arrow starting at the centre of its atom.
@@ -53,8 +59,8 @@ writes the reference atom lists in `tests/reference/`.
 | 1 | Read a CIF and draw the atoms; rotate; export SVG and PNG | done |
 | 2 | Choose what is shown: how many cells, or a slab | done |
 | 3 | Bonds by distance for chosen element pairs; the unit cell | done |
-| 4 | Colour and size per element; pie spheres for mixed sites | built, awaiting the user's check |
-| 5 | Legend and axis triad | not started |
+| 4 | Colour and size per element; pie spheres for mixed sites | done |
+| 5 | Legend and axis triad | built |
 | 6 | mCIF: magnetic moments as arrows | not started |
 | 7 | Highlights: a band along a chain, filled polygons | not started |
 | 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | after the main features |

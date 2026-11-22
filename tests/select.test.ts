@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { buildScene } from "../src/scene/scene";
+import { buildScene, DEFAULT_SPEC } from "../src/scene/scene";
 import { atomsInRange, ONE_CELL, type Range } from "../src/scene/select";
 import { fractionalToCartesian } from "../src/structure/cell";
 import { readCif } from "../src/structure/readCif";
@@ -62,7 +62,7 @@ describe("range, against gemmi (scripts/gemmi_ranges.py)", () => {
     const s = structure(name);
     for (const c of cases) {
       it(`${name}: ${c.from.join(",")} to ${c.to.join(",")} (${c.boundary}): same ${c.atoms.length} atoms at the same places`, () => {
-        const scene = buildScene(s, { range: { from: c.from, to: c.to, boundary: c.boundary }, bonds: [], showCell: false, looks: {}, showVacancy: true });
+        const scene = buildScene(s, { ...DEFAULT_SPEC, range: { from: c.from, to: c.to, boundary: c.boundary }, showCell: false });
         expect(scene.spheres.length).toBe(c.atoms.length);
         const unmatched = [...c.atoms];
         for (const sphere of scene.spheres) {
