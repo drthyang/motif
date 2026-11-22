@@ -51,7 +51,9 @@ writes the reference atom lists in `tests/reference/`.
   A switch says whether Save writes the zoomed view (the default for now) or the whole structure.
 - Legend and axes share a band under the structure. The axis arrows are the directions of the cell
   edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
-  no letter. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). Text stays live
+  no letter. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). The font can be chosen
+  from a list or typed by name; it must be a font of the computer (the PNG is drawn from the SVG
+  alone, which cannot use a font loaded by the page), and the page says when it is missing. Text stays live
   text in the SVG; on a system without Avenir the letters look different, the drawing does not.
 - Magnetic CIF (reading approved by the user, 2026-11-22): the magnetic group is every product of an operation and a centring translation,
   each with its time reversal; the list is checked to be a group with consistent signs. Moments are

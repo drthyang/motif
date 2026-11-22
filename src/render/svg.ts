@@ -114,6 +114,17 @@ export const ARROW_HEAD_WIDTH = 0.46;
 
 /** Lettering of the legend and the axes. Avenir exists on macOS; elsewhere the next font in the list is used. */
 export const FONT = "Avenir, 'Avenir Next', 'Helvetica Neue', Arial, sans-serif";
+
+/**
+ * The font list written into the figure: the chosen font first, then the default list, so that a
+ * computer without the chosen font still shows sensible lettering. The name is reduced to letters,
+ * digits, spaces and hyphens, so nothing typed as a font name can break the SVG.
+ */
+export function fontList(family: string | undefined): string {
+  const name = (family ?? "").replace(/[^A-Za-z0-9 \-]/g, "").trim();
+  if (name === "" || name === "Avenir") return FONT;
+  return `'${name}', ${FONT}`;
+}
 export const LEGEND_COLOUR = "#4c5a62";
 export const AXIS_COLOUR = "#5c6b74";
 /** Height in px of the band under the structure that holds the legend and the axes. */
@@ -490,7 +501,7 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     if (letter) {
       // The baseline is set 0.3 em below the wanted centre, so no reader needs to support "dominant-baseline".
       svg +=
-        `<text x="${n1(ox + letter.x)}" y="${n1(oy + letter.y + 0.3 * fontSize)}" text-anchor="middle" font-family="${FONT}" ` +
+        `<text x="${n1(ox + letter.x)}" y="${n1(oy + letter.y + 0.3 * fontSize)}" text-anchor="middle" font-family="${fontList(scene.fontFamily)}" ` +
         `font-weight="${scene.letterWeight}" font-style="italic" font-size="${fontSize}" fill="${AXIS_COLOUR}">${a.name}</text>`;
     }
     svg += "\n";
@@ -565,7 +576,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
   for (const d of drawn) {
     if (d.kind !== "sector" || !d.label) continue;
     out +=
-      `<text class="angle-label" x="${n1(d.label.x)}" y="${n1(d.label.y + 0.35 * ANGLE_LABEL_SIZE)}" text-anchor="middle" font-family="${FONT}" font-weight="${Math.min(scene.letterWeight, 600)}" ` +
+      `<text class="angle-label" x="${n1(d.label.x)}" y="${n1(d.label.y + 0.35 * ANGLE_LABEL_SIZE)}" text-anchor="middle" font-family="${fontList(scene.fontFamily)}" font-weight="${Math.min(scene.letterWeight, 600)}" ` +
       `font-size="${ANGLE_LABEL_SIZE}" fill="${mixHex(d.colour, "#000000", 0.35)}" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${d.label.text}</text>\n`;
   }
   if (fit?.clip) out += "</g>\n";
@@ -574,7 +585,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
     out += sphereSvg(scene, item.style, item.x, item.y, item.r);
     // Baseline 0.35 em below the sphere's centre: capitals are then centred on it.
     out +=
-      `<text class="legend" x="${n1(item.textX)}" y="${n1(item.y + 0.35 * item.fontSize)}" font-family="${FONT}" font-weight="${scene.letterWeight}" ` +
+      `<text class="legend" x="${n1(item.textX)}" y="${n1(item.y + 0.35 * item.fontSize)}" font-family="${fontList(scene.fontFamily)}" font-weight="${scene.letterWeight}" ` +
       `font-size="${n1(item.fontSize)}" fill="${LEGEND_COLOUR}">${escapeXml(item.name)}</text>\n`;
   }
   out += axes.svg;

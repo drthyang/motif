@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AXIS_LENGTH, BAND, DEFAULT_CANVAS, axisArrows, layout, legendLayout, pxPerAngstrom, renderSvg, structureHeight, textWidth } from "../src/render/svg";
+import { AXIS_LENGTH, BAND, DEFAULT_CANVAS, FONT, axisArrows, fontList, layout, legendLayout, pxPerAngstrom, renderSvg, structureHeight, textWidth } from "../src/render/svg";
 import { DEFAULT_VIEW, dragView, viewFromAngles } from "../src/render/view";
 import { buildScene, cellAxes, DEFAULT_SPEC, type Scene } from "../src/scene/scene";
 import { fractionalToCartesian } from "../src/structure/cell";
@@ -163,6 +163,20 @@ describe("legend", () => {
     const svg = renderSvg(scene, DEFAULT_VIEW);
     expect(svg).toContain("a &lt;very&gt; long &amp; odd name");
     expect(svg).not.toContain("<very>");
+  });
+
+  it("the lettering font can be chosen; it is written first in the font list, and a name cannot break the figure", () => {
+    expect(fontList(undefined)).toBe(FONT);
+    expect(fontList("Avenir")).toBe(FONT);
+    expect(fontList("Gill Sans")).toBe(`'Gill Sans', ${FONT}`);
+    expect(fontList(`Evil" onload="x' <script>`)).toBe(`'Evil onloadx script', ${FONT}`);
+    const svg = renderSvg(buildScene(quartz, { ...DEFAULT_SPEC, fontFamily: "Gill Sans" }), DEFAULT_VIEW);
+    const families = [...svg.matchAll(/font-family="([^"]+)"/g)].map((m) => m[1]);
+    expect(families.length).toBe(2 + 3); // two legend names and the letters a, b, c
+    for (const f of families) expect(f).toBe(`'Gill Sans', ${FONT}`);
+    // Nothing else about the figure changes with the font.
+    const strip = (text: string): string => text.replace(/font-family="[^"]+"/g, "");
+    expect(strip(svg)).toBe(strip(renderSvg(buildScene(quartz), DEFAULT_VIEW)));
   });
 
   it("the band under the structure is there only when the legend or the axes are", () => {

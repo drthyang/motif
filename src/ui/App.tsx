@@ -68,6 +68,8 @@ export function App() {
   const [showVacancy, setShowVacancy] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
   const [letterWeight, setLetterWeight] = useState(DEFAULT_SPEC.letterWeight);
+  const [fontFamily, setFontFamily] = useState(DEFAULT_SPEC.fontFamily);
+  const [customFont, setCustomFont] = useState(false);
   // Angle rules; the limits and the look are kept as typed.
   const [angleRules, setAngleRules] = useState<(AngleRule & { minText: string; maxText: string; radiusText: string; opacityText: string })[]>([]);
   const [newAngle, setNewAngle] = useState("");
@@ -172,11 +174,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, letterWeight, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, letterWeight, fontFamily, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, letterWeight, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, letterWeight, fontFamily, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -851,7 +853,33 @@ export function App() {
                 Axes a, b, c
               </label>
               <div className="row">
-                lettering
+                font
+                <select
+                  data-testid="font-family"
+                  value={customFont ? "other" : fontFamily}
+                  onChange={(e) => {
+                    setCustomFont(e.target.value === "other");
+                    if (e.target.value !== "other") setFontFamily(e.target.value);
+                  }}
+                >
+                  {FONTS.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                  <option value="other">Other…</option>
+                </select>
+                {customFont && (
+                  <input type="text" className="name" data-testid="font-custom" placeholder="Font name" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} />
+                )}
+              </div>
+              {!fontInstalled(fontFamily) && (
+                <p className="sub" data-testid="font-missing">
+                  “{fontFamily}” is not installed on this computer, so another font is shown here and in the PNG. The SVG keeps the name.
+                </p>
+              )}
+              <div className="row">
+                weight
                 <select data-testid="letter-weight" value={letterWeight} onChange={(e) => setLetterWeight(Number(e.target.value))}>
                   <option value={400}>regular</option>
                   <option value={500}>medium</option>
@@ -909,6 +937,30 @@ export function App() {
 }
 
 const VERSION = "0.1";
+
+/** Fonts offered for the lettering. All are fonts of the computer, not of the page: the PNG is drawn from the SVG alone. */
+const FONTS = ["Avenir", "Avenir Next", "Helvetica Neue", "Helvetica", "Arial", "Gill Sans", "Futura", "Optima", "Verdana", "Times New Roman", "Georgia", "Palatino", "Menlo"];
+
+/**
+ * Whether this computer has a font of that name: text set in it is measured against the same text in two
+ * generic fonts; a missing font falls back to the generic one and measures the same as it both times.
+ */
+const fontChecks = new Map<string, boolean>();
+function fontInstalled(family: string): boolean {
+  const name = family.replace(/[^A-Za-z0-9 \-]/g, "").trim();
+  if (name === "") return true;
+  const known = fontChecks.get(name);
+  if (known !== undefined) return known;
+  const context = document.createElement("canvas").getContext("2d");
+  if (!context) return true;
+  const width = (font: string): number => {
+    context.font = `72px ${font}`;
+    return context.measureText("abcdefgHIJKLMNOP 0123456789 mmmwwwiii").width;
+  };
+  const installed = ["monospace", "serif"].some((generic) => Math.abs(width(`'${name}', ${generic}`) - width(generic)) > 0.01);
+  fontChecks.set(name, installed);
+  return installed;
+}
 
 /** A card of the side column that can be folded away. The "?" holds the longer explanation. */
 function Section({ title, hint, closed, children }: { title: string; hint?: string; closed?: boolean; children: ReactNode }) {
