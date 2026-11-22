@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CANVAS, MAX_SCALE, fitView, layout, pxPerAngstrom, renderSvg } from "../src/render/svg";
-import { DEFAULT_VIEW, determinant, dragView, viewFromAngles, viewWithAxisUp, type View } from "../src/render/view";
+import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, determinant, dragView, viewFromAngles, viewWithAxisUp, type View } from "../src/render/view";
 import { buildScene, DEFAULT_SPEC, type Scene } from "../src/scene/scene";
 import { mulVec, orthogonalizationMatrix } from "../src/structure/cell";
 import { readCif } from "../src/structure/readCif";
@@ -27,8 +27,22 @@ function rng(seed: number): () => number {
 }
 
 describe("view", () => {
-  it("default view: a to the right, c* up, b away from the viewer", () => {
+  it("opening view: c up, a towards the viewer and to the left, b to the right, all three well in view", () => {
     const [a, b, c] = [mulVec(DEFAULT_VIEW, [1, 0, 0]), mulVec(DEFAULT_VIEW, [0, 1, 0]), mulVec(DEFAULT_VIEW, [0, 0, 1])];
+    expect(c[1]).toBeGreaterThan(0.9); // c up the screen
+    expect(c[0]).toBeCloseTo(0, 12);
+    expect(a[0]).toBeLessThan(-0.3); // a to the left ...
+    expect(a[2]).toBeGreaterThan(0.5); // ... and towards the viewer
+    expect(a[1]).toBeLessThan(0); // seen from above, so it also points down the screen
+    expect(b[0]).toBeGreaterThan(0.8); // b to the right
+    expect(b[2]).toBeGreaterThan(0); // and a little towards the viewer
+    // None of the three is drawn shorter than about half its length (cubic cell).
+    for (const v of [a, b, c]) expect(Math.hypot(v[0], v[1])).toBeGreaterThan(0.5);
+  });
+
+  it("the plain angles: at turn 18, tilt 12, a points right, c* up and b away from the viewer", () => {
+    const view = viewFromAngles(18, 12);
+    const [a, b, c] = [mulVec(view, [1, 0, 0]), mulVec(view, [0, 1, 0]), mulVec(view, [0, 0, 1])];
     expect(a[0]).toBeGreaterThan(0.9); // screen x
     expect(c[1]).toBeGreaterThan(0.9); // screen y (up)
     expect(b[2]).toBeLessThan(-0.9); // depth: negative = into the page
@@ -81,7 +95,7 @@ describe("view", () => {
       expect(mulVec(viewWithAxisUp(axes, up, 0, 0), axes[(up + 1) % 3]!)[0]).toBeGreaterThan(0);
       expect(mulVec(viewWithAxisUp(axes, up, 0, 0), axes[(up + 1) % 3]!)[2]).toBeCloseTo(0, 12);
     }
-    const same = viewWithAxisUp(axes, 2, 18, 12);
+    const same = viewWithAxisUp(axes, 2, DEFAULT_TURN, DEFAULT_TILT);
     for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) expect(same[i]![j]).toBeCloseTo(DEFAULT_VIEW[i]![j]!, 12);
   });
 

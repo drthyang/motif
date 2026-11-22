@@ -4,7 +4,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  between, directAxes, directionVector, fromBehind, lowIndexDirections, nearestDirection, numbersFromView, readView, rolled, snapTo,
+  between, directAxes, directionVector, fromBehind, lowIndexDirections, nearestDirection, numbersFromView, openingNumbers, readView, rolled, snapTo,
   towardsViewer, viewAlong, viewFromNumbers, writeDirection, writeView, type Axis,
 } from "../src/render/camera";
 import { DEFAULT_VIEW, determinant, dragView, viewWithAxisUp, type View } from "../src/render/view";
@@ -22,13 +22,13 @@ const dot = (a: Vec3, b: Vec3): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2
 const angle = (a: Vec3, b: Vec3): number => (Math.acos(Math.max(-1, Math.min(1, dot(a, b) / (Math.hypot(...a) * Math.hypot(...b))))) * 180) / Math.PI;
 
 describe("the view as four numbers", () => {
-  it("with roll 0 it is the earlier 'axis up, turn, tilt' view; the default is c up, turn 18, tilt 12", () => {
+  it("with roll 0 it is the earlier 'axis up, turn, tilt' view; the opening view is c up, turn -120, tilt 15", () => {
     for (const c of [quartz, mono]) {
       const axes = directAxes(c);
       for (const up of [0, 1, 2] as Axis[]) same(viewFromNumbers(axes, { up, turn: 37, tilt: -22, roll: 0 }), viewWithAxisUp(axes, up, 37, -22));
     }
     const n = numbersFromView(directAxes(cell("halite-NaCl_COD-9008678.cif")), DEFAULT_VIEW, 2);
-    expect([n.turn, n.tilt, n.roll].map((x) => +x.toFixed(6))).toEqual([18, 12, 0]);
+    expect([n.turn, n.tilt, n.roll].map((x) => +x.toFixed(6))).toEqual([-120, 15, 0]);
   });
 
   it("every view has numbers, and the numbers give the view back: any up axis, any cell, after any drag", () => {
@@ -164,5 +164,36 @@ describe("snapping, turning between views", () => {
     same(between(from, half, 1), between(half, to, 0)); // half way from either end
     same(between(from, fromBehind(from), 1), fromBehind(from), 7); // a half turn works too
     same(rolled(rolled(from, 90), -90), from);
+  });
+});
+
+describe("the view a structure opens in", () => {
+  const drawnLengths = (c: typeof mono): number[] => {
+    const axes = directAxes(c);
+    const view = viewFromNumbers(axes, openingNumbers(axes));
+    return axes.map((axis) => Math.hypot(mulVec(view, axis)[0], mulVec(view, axis)[1]));
+  };
+
+  it("is c up, turn -120, tilt 15 for the usual cells (cubic, hexagonal, a monoclinic one), with every axis at least half its length", () => {
+    for (const c of [cell("halite-NaCl_COD-9008678.cif"), quartz, mono]) {
+      expect(openingNumbers(directAxes(c))).toEqual({ up: 2, turn: -120, tilt: 15, roll: 0 });
+      for (const length of drawnLengths(c)) expect(length).toBeGreaterThanOrEqual(0.5);
+    }
+  });
+
+  it("is adjusted for an oblique cell where that view would leave an axis as a stub: a still on the left, b on the right", () => {
+    const oblique = { a: 5, b: 5, c: 7, alpha: 90, beta: 90, gamma: 35 };
+    const axes = directAxes(oblique);
+    const usual = viewFromNumbers(axes, { up: 2, turn: -120, tilt: 15, roll: 0 });
+    const before = Math.min(...axes.map((axis) => Math.hypot(mulVec(usual, axis)[0], mulVec(usual, axis)[1])));
+    const n = openingNumbers(axes);
+    expect(n).not.toEqual({ up: 2, turn: -120, tilt: 15, roll: 0 });
+    expect(n.up).toBe(2);
+    expect(n.roll).toBe(0);
+    expect(Math.min(...drawnLengths(oblique))).toBeGreaterThan(before);
+    const view = viewFromNumbers(axes, n);
+    expect(mulVec(view, axes[0])[0]).toBeLessThan(0);
+    expect(mulVec(view, axes[1])[0]).toBeGreaterThan(0);
+    expect(mulVec(view, axes[2])[1]).toBeGreaterThan(0.8); // c still up
   });
 });

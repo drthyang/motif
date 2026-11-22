@@ -14,7 +14,7 @@
  */
 import { mulMat, mulVec, orthogonalizationMatrix } from "../structure/cell";
 import type { Cell, Mat3, Vec3 } from "../structure/types";
-import { type View, viewFromAngles } from "./view";
+import { DEFAULT_TILT, DEFAULT_TURN, type View, viewFromAngles } from "./view";
 
 const deg = (rad: number): number => (rad * 180) / Math.PI;
 const rad = (degrees: number): number => (degrees * Math.PI) / 180;
@@ -211,3 +211,29 @@ export function between(from: View, to: View, f: number): View {
 export const fromBehind = (view: View): View => mulMat([[-1, 0, 0], [0, 1, 0], [0, 0, -1]], view);
 /** The picture turned by `degrees` anticlockwise about the line of sight. */
 export const rolled = (view: View, degrees: number): View => mulMat(rotZ(rad(degrees)), view);
+
+/**
+ * The view a structure opens in: c up, a towards the viewer on the left, b to the right, seen a little from
+ * above, so that the three axes read well. For most cells that is turn -120, tilt 15. If one of the axes
+ * would be drawn at less than half its length there (an oblique cell), nearby turns and tilts are tried
+ * and the one whose shortest axis is longest is taken, still with a on the left and b on the right.
+ */
+export function openingNumbers(axes: Axes): ViewNumbers {
+  const shortest = (n: ViewNumbers): number => {
+    const view = viewFromNumbers(axes, n);
+    const drawn = axes.map((axis) => mulVec(view, axis));
+    if (!(drawn[0]![0] < 0 && drawn[1]![0] > 0)) return 0; // a must be on the left, b on the right
+    return Math.min(...drawn.map((d) => Math.hypot(d[0], d[1])));
+  };
+  const usual: ViewNumbers = { up: 2, turn: DEFAULT_TURN, tilt: DEFAULT_TILT, roll: 0 };
+  let best = { n: usual, score: shortest(usual) };
+  if (best.score >= 0.5) return usual;
+  for (let turn = -175; turn <= -5; turn += 5) {
+    for (const tilt of [10, 15, 20, 25, 30]) {
+      const n: ViewNumbers = { up: 2, turn, tilt, roll: 0 };
+      const score = shortest(n);
+      if (score > best.score + 1e-9) best = { n, score };
+    }
+  }
+  return best.n;
+}

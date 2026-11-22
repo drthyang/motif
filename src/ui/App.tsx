@@ -9,10 +9,10 @@ import { AnglePlot } from "./AnglePlot";
 import { DEFAULT_CANVAS, fitView, renderSvg, steadyFit, structureCentre, structureHeight, type Canvas, type Fit } from "../render/svg";
 import { NO_ZOOM, isZoomed, panBy, zoomAbout, zoomToBox, zoomedFit, type Zoom } from "../render/zoom";
 import {
-  between, directAxes, directionVector, fromBehind, lowIndexDirections, nearestDirection, numbersFromView, readView, rolled, snapTo, viewAlong, viewFromNumbers,
+  between, directAxes, directionVector, fromBehind, lowIndexDirections, nearestDirection, openingNumbers, numbersFromView, readView, rolled, snapTo, viewAlong, viewFromNumbers,
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
-import { DEFAULT_VIEW, dragView, type View } from "../render/view";
+import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, dragView, type View } from "../render/view";
 import { buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
@@ -71,11 +71,11 @@ export function App() {
   // so they are always true, whatever moved the view.
   const [upAxis, setUpAxis] = useState<Axis>(2);
   const axes = useMemo(() => (structure ? directAxes(structure.cell) : null), [structure]);
-  const numbers: ViewNumbers = useMemo(() => (axes ? numbersFromView(axes, view, upAxis) : { up: upAxis, turn: 18, tilt: 12, roll: 0 }), [axes, view, upAxis]);
+  const numbers: ViewNumbers = useMemo(() => (axes ? numbersFromView(axes, view, upAxis) : { up: upAxis, turn: DEFAULT_TURN, tilt: DEFAULT_TILT, roll: 0 }), [axes, view, upAxis]);
   const lastNumbers = useRef(numbers);
   lastNumbers.current = numbers;
   // The number boxes hold what was typed while typing; any other change of the view rewrites them.
-  const [numberText, setNumberText] = useState({ turn: "18", tilt: "12", roll: "0" });
+  const [numberText, setNumberText] = useState({ turn: String(DEFAULT_TURN), tilt: String(DEFAULT_TILT), roll: "0" });
   const typing = useRef(false);
   useEffect(() => {
     if (typing.current) {
@@ -268,7 +268,8 @@ export function App() {
       setError("");
       // A new file starts from the default view, or (if asked) keeps the present one in the new cell's own
       // terms: the same axis up, the same turn, tilt and roll.
-      setView(keepViewRef.current ? viewFromNumbers(directAxes(read.cell), lastNumbers.current) : DEFAULT_VIEW);
+      const opening = directAxes(read.cell);
+      setView(viewFromNumbers(opening, keepViewRef.current ? lastNumbers.current : openingNumbers(opening)));
       setRangeText(ONE_CELL_TEXT);
       setZoom(NO_ZOOM);
       // Bonds to start from, unless that is switched off: nearest neighbours by simple rules (see autoBonds.ts).
@@ -715,7 +716,7 @@ return (
 data-testid="view-reset"
 onClick={() => {
 setUpAxis(2);
-goTo(DEFAULT_VIEW);
+goTo(axes ? viewFromNumbers(axes, openingNumbers(axes)) : DEFAULT_VIEW);
 }}
 >
 Reset

@@ -24,11 +24,23 @@ describe("axes", () => {
     expect(dot(b!, c!)).toBeCloseTo(0, 12);
   });
 
-  it("default view of a cubic cell: a points right, c points up, b is short (it runs into the page)", () => {
+  it("opening view of a cubic cell: c up, a down to the left, b to the right, none of them a stub", () => {
     const scene = buildScene(structure("halite-NaCl_COD-9008678"));
     const [a, b, c] = ["a", "b", "c"].map((n) => arrow(scene, DEFAULT_VIEW, n));
-    expect(a!.dx).toBeGreaterThan(0.9 * AXIS_LENGTH);
     expect(c!.dy).toBeLessThan(-0.9 * AXIS_LENGTH); // SVG y runs down, so up is negative
+    expect(a!.dx).toBeLessThan(0);
+    expect(a!.dy).toBeGreaterThan(0);
+    expect(a!.depth).toBeGreaterThan(0); // towards the viewer
+    expect(b!.dx).toBeGreaterThan(0.8 * AXIS_LENGTH);
+    // Every arrow is at least as long as the "readable" length, so none has to be stretched.
+    for (const arrowOf of [a!, b!, c!]) expect(Math.hypot(arrowOf.dx, arrowOf.dy)).toBeGreaterThan(AXIS_MIN_LENGTH * AXIS_LENGTH);
+  });
+
+  it("at turn 18, tilt 12 of a cubic cell: a points right, c up, b is short (it runs into the page)", () => {
+    const scene = buildScene(structure("halite-NaCl_COD-9008678"));
+    const [a, b, c] = ["a", "b", "c"].map((n) => arrow(scene, viewFromAngles(18, 12), n));
+    expect(a!.dx).toBeGreaterThan(0.9 * AXIS_LENGTH);
+    expect(c!.dy).toBeLessThan(-0.9 * AXIS_LENGTH);
     expect(Math.hypot(b!.dx, b!.dy)).toBeLessThan(0.4 * AXIS_LENGTH);
     expect(b!.depth).toBeLessThan(0); // away from the viewer
   });

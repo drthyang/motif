@@ -27,7 +27,14 @@ export function viewFromAngles(az: number, el: number): View {
   return [right, up, towardsViewer];
 }
 
-export const DEFAULT_VIEW: View = viewFromAngles(18, 12);
+/**
+ * The view a file opens in, chosen so that the three axes read well: c up, a towards the viewer and to the
+ * left, b to the right, seen a little from above. None of the three is strongly foreshortened (in a cell
+ * with right angles a is drawn at 0.56, b at 0.87 and c at 0.97 of full length).
+ */
+export const DEFAULT_TURN = -120;
+export const DEFAULT_TILT = 15;
+export const DEFAULT_VIEW: View = viewFromAngles(DEFAULT_TURN, DEFAULT_TILT);
 
 /**
  * The same, with a chosen cell axis pointing up instead of cartesian z.

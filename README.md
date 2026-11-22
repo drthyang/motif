@@ -129,6 +129,8 @@ writes the reference atom lists in `tests/reference/`.
   options", and style presets (Slide, Paper, Glossy, Metal, Glass) that set surfaces, outlines,
   lettering weight and legend sizes together.
 - A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
+- A file opens with c up, a towards the viewer on the left and b to the right, seen a little from
+  above (turn -120, tilt 15): all three axes read well and none is a stub (the user's choice).
 - The view (`src/render/camera.ts`; plan from the camera research of 2026-11-22, approved by the
   user). The renderer takes a rotation matrix; for people the view is four numbers read from it,
   so they are always true: the cell axis that is up, turn about it (positive brings the front to
