@@ -47,6 +47,14 @@ writes the reference atom lists in `tests/reference/`.
   edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
   no letter. Lettering: Avenir Next / Avenir (macOS), else Helvetica Neue, Arial. Text stays live
   text in the SVG; on a system without Avenir the letters look different, the drawing does not.
+- Magnetic CIF: the magnetic group is every product of an operation and a centring translation,
+  each with its time reversal; the list is checked to be a group with consistent signs. Moments are
+  read as components along the unit vectors of *a*, *b*, *c* in Bohr magnetons (the `crystalaxis`
+  form, the only one read). A moment is carried to a symmetry-equivalent atom as an axial vector,
+  odd under time reversal: m' = (time reversal) × det(R) × R m. If two operations bring different
+  moments to the same atom, the page says that the moment is not allowed by the site symmetry.
+  Modulated (incommensurate) structures are refused.
+- Arrow length is proportional to the moment; the largest moment in the file gets the chosen length.
 - Arrows (the user's rule, for step 6 and later): a magnetic moment is drawn as an arrow passing
   through its atom, centred on it. An atomic displacement (a distortion mode, not yet a planned
   step) is drawn as an arrow starting at the centre of its atom.
@@ -61,7 +69,7 @@ writes the reference atom lists in `tests/reference/`.
 | 3 | Bonds by distance for chosen element pairs; the unit cell | done |
 | 4 | Colour and size per element; pie spheres for mixed sites | done |
 | 5 | Legend and axis triad | built |
-| 6 | mCIF: magnetic moments as arrows | not started |
+| 6 | mCIF: magnetic moments as arrows | built |
 | 7 | Highlights: a band along a chain, filled polygons | not started |
 | 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | after the main features |
 

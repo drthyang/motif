@@ -54,7 +54,25 @@ export interface DrawnLine {
   readonly along?: number;
 }
 
-export type Drawn = DrawnSphere | DrawnLine;
+/** One visible part of a moment arrow: a shaft, and for the front part the head triangle. End points in px. */
+export interface DrawnArrow {
+  readonly kind: "arrow";
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
+  readonly width: number;
+  /** The head as three corners "x,y x,y x,y"; absent for the tail part. */
+  readonly head?: string;
+  readonly depth: number;
+}
+
+export type Drawn = DrawnSphere | DrawnLine | DrawnArrow;
+
+/** Moment arrows, in angstrom: shaft thickness, head length and head width. */
+export const ARROW_SHAFT = 0.16;
+export const ARROW_HEAD_LENGTH = 0.55;
+export const ARROW_HEAD_WIDTH = 0.46;
 
 /** Lettering of the legend and the axes. Avenir exists on macOS; elsewhere the next font in the list is used. */
 export const FONT = "'Avenir Next', Avenir, 'Helvetica Neue', Arial, sans-serif";
@@ -92,6 +110,10 @@ export function fitView(scene: Scene, view: View, canvas: Canvas): Fit {
   };
   for (const s of scene.spheres) include(s.centre, scene.styles[s.style]!.radius);
   for (const edge of scene.cellEdges) for (const p of edge) include(p, 0);
+  for (const a of scene.arrows) {
+    const c = scene.spheres[a.sphere]!.centre;
+    for (const sign of [-0.5, 0.5]) include([c[0] + sign * a.vector[0], c[1] + sign * a.vector[1], c[2] + sign * a.vector[2]], ARROW_HEAD_WIDTH / 2);
+  }
   const height = structureHeight(scene, canvas);
   if (box.x0 > box.x1) return { scale: 1, x: canvas.width / 2, y: height / 2 };
   // At least 1 A wide and high, so a single atom is not blown up to fill the canvas.
@@ -131,6 +153,30 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const [p, q] = [project(at(ra / stick.length)), project(at(1 - rb / stick.length))];
     // Drawn just behind an atom at the same depth, so the nearer atom covers its end of the bond.
     drawn.push({ kind: "bond", x1: p[0], y1: p[1], x2: q[0], y2: q[1], width: BOND_WIDTH * scale, depth: (p[2] + q[2]) / 2 - 0.1 });
+  }
+  for (const arrow of scene.arrows) {
+    // The arrow passes through the atom, centred on it. The part inside the sphere is never visible, so two
+    // parts are drawn: tail end to the surface, and surface to tip. Each has its own depth, so the part
+    // pointing away from the viewer is hidden by the atom and the part pointing towards the viewer lies over it.
+    const sphere = scene.spheres[arrow.sphere]!;
+    const radius = scene.styles[sphere.style]!.radius;
+    const half = Math.hypot(arrow.vector[0], arrow.vector[1], arrow.vector[2]) / 2;
+    if (half <= radius) continue;
+    const unit: Vec3 = [arrow.vector[0] / (2 * half), arrow.vector[1] / (2 * half), arrow.vector[2] / (2 * half)];
+    const at = (t: number): Vec3 => [sphere.centre[0] + unit[0] * t, sphere.centre[1] + unit[1] * t, sphere.centre[2] + unit[2] * t];
+    const headLength = Math.min(ARROW_HEAD_LENGTH, half - radius);
+    const [tail, tailEnd, start, base, tip] = [project(at(-half)), project(at(-radius)), project(at(radius)), project(at(half - headLength)), project(at(half))];
+    const width = ARROW_SHAFT * scale;
+    drawn.push({ kind: "arrow", x1: tail[0], y1: tail[1], x2: tailEnd[0], y2: tailEnd[1], width, depth: (tail[2] + tailEnd[2]) / 2 });
+    // The head: its base is perpendicular, on screen, to the arrow.
+    const [hx, hy] = [tip[0] - base[0], tip[1] - base[1]];
+    const n = Math.hypot(hx, hy);
+    const w = (ARROW_HEAD_WIDTH * scale) / 2;
+    const head =
+      n > 1e-6
+        ? `${n1(tip[0])},${n1(tip[1])} ${n1(base[0] - (hy / n) * w)},${n1(base[1] + (hx / n) * w)} ${n1(base[0] + (hy / n) * w)},${n1(base[1] - (hx / n) * w)}`
+        : undefined;
+    drawn.push({ kind: "arrow", x1: start[0], y1: start[1], x2: base[0], y2: base[1], width, depth: (start[2] + tip[2]) / 2, ...(head !== undefined ? { head } : {}) });
   }
   for (const [from, to] of scene.cellEdges) {
     // A cell edge is long, so it is drawn in short pieces, each at its own depth: an atom then hides
@@ -341,6 +387,10 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
   for (const d of drawn) {
     if (d.kind === "sphere") {
       out += sphereSvg(scene, d.style, d.x, d.y, d.r);
+    } else if (d.kind === "arrow") {
+      out += `<line class="arrow" x1="${n1(d.x1)}" y1="${n1(d.y1)}" x2="${n1(d.x2)}" y2="${n1(d.y2)}" stroke="${scene.arrowColour}" stroke-width="${n1(d.width)}" stroke-linecap="butt"/>`;
+      if (d.head) out += `<polygon class="arrow-head" points="${d.head}" fill="${scene.arrowColour}"/>`;
+      out += "\n";
     } else {
       const look =
         d.kind === "bond"

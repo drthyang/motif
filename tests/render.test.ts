@@ -87,6 +87,8 @@ describe("drawing", () => {
       styles: { X: { colour: "#808080", radius: 0.3 } },
       centre: [0, 0, 0],
       extent: 4,
+      arrows: [],
+      arrowColour: "#000000",
       legend: [],
       axes: [],
       warnings: [],

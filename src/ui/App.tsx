@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState, type DragEvent, type PointerEve
 import { svgToPng } from "../render/png";
 import { DEFAULT_CANVAS, fitView, renderSvg, type Fit } from "../render/svg";
 import { DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { buildScene, elementColour, speciesRadius, type Look, type Scene } from "../scene/scene";
+import { buildScene, DEFAULT_SPEC, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
 import { pairDistances, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
@@ -11,8 +11,8 @@ import type { Structure } from "../structure/types";
 
 // Published structures shipped with the page (see examples/README.md).
 const EXAMPLES = Object.entries(
-  import.meta.glob<string>("../../examples/*.cif", { query: "?raw", import: "default", eager: true }),
-).map(([path, text]) => ({ name: path.split("/").pop()!.replace(/\.cif$/, ""), text }));
+  import.meta.glob<string>("../../examples/*.{cif,mcif}", { query: "?raw", import: "default", eager: true }),
+).map(([path, text]) => ({ file: path.split("/").pop()!, name: path.split("/").pop()!.replace(/\.m?cif$/, ""), text }));
 
 /** A full turn for a drag across this many CSS px. */
 const DRAG_PX_PER_TURN = 700;
@@ -53,6 +53,10 @@ export function App() {
   const [looks, setLooks] = useState<Record<string, { colour?: string; radiusText?: string; name?: string }>>({});
   const [showVacancy, setShowVacancy] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
+  const [showMoments, setShowMoments] = useState(true);
+  const [momentLengthText, setMomentLengthText] = useState(String(DEFAULT_SPEC.momentLength));
+  const [momentColour, setMomentColour] = useState(DEFAULT_SPEC.momentColour);
+  const momentLength = Number(momentLengthText) > 0 && Number(momentLengthText) <= 20 ? Number(momentLengthText) : DEFAULT_SPEC.momentLength;
   const [showAxes, setShowAxes] = useState(true);
   const setLook = (key: string, change: { colour?: string; radiusText?: string; name?: string }) =>
     setLooks((all) => ({ ...all, [key]: { ...all[key], ...change } }));
@@ -113,11 +117,11 @@ export function App() {
     try {
       // A rule whose distance box holds no usable number is left out until it does.
       const bonds = bondRules.filter((r) => r.max > 0.1 && r.max <= 10);
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, showMoments, momentLength, momentColour, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, showMoments, momentLength, momentColour, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -235,7 +239,7 @@ export function App() {
             value=""
             onChange={(e) => {
               const example = EXAMPLES.find((x) => x.name === e.target.value);
-              if (example) load(example.text, `${example.name}.cif`);
+              if (example) load(example.text, example.file);
             }}
           >
             <option value="">Load an example…</option>
@@ -255,11 +259,14 @@ export function App() {
             <table data-testid="info">
               <tbody>
                 <tr><td>Name</td><td>{structure.name}</td></tr>
-                <tr><td>Space group</td><td>{structure.spaceGroupName ?? "not named"}</td></tr>
+                <tr><td>{structure.magnetic ? "Magnetic space group" : "Space group"}</td><td>{structure.spaceGroupName ?? "not named"}</td></tr>
                 <tr><td>a, b, c (Å)</td><td>{cell.a}, {cell.b}, {cell.c}</td></tr>
                 <tr><td>α, β, γ (°)</td><td>{cell.alpha}, {cell.beta}, {cell.gamma}</td></tr>
                 <tr><td>Symmetry operations</td><td>{structure.operations.length}</td></tr>
                 <tr><td>Sites in the file</td><td>{structure.sites.length}</td></tr>
+                {largestMoment(structure) > 0 && (
+                  <tr><td>Largest moment</td><td data-testid="largest-moment">{largestMoment(structure).toFixed(2)} μB</td></tr>
+                )}
                 <tr><td>Atoms drawn</td><td data-testid="counts">{scene.spheres.length}{counts && ` (${counts})`}</td></tr>
               </tbody>
             </table>
@@ -418,6 +425,23 @@ export function App() {
               <input type="checkbox" data-testid="show-cell" checked={showCell} onChange={(e) => setShowCell(e.target.checked)} />
               Unit cell outline
             </label>
+
+            {largestMoment(structure) > 0 && (
+              <>
+                <h2>Magnetic moments</h2>
+                <label className="row">
+                  <input type="checkbox" data-testid="show-moments" checked={showMoments} onChange={(e) => setShowMoments(e.target.checked)} />
+                  Arrows through the atoms
+                </label>
+                <div className="row">
+                  <input type="color" title="Colour of the arrows" value={momentColour} onChange={(e) => setMomentColour(e.target.value)} />
+                  length
+                  <input type="number" step={0.25} min={0.25} max={20} data-testid="moment-length" value={momentLengthText} onChange={(e) => setMomentLengthText(e.target.value)} />
+                  Å
+                </div>
+                <p className="sub">Length of the arrow of the largest moment; the others are in proportion.</p>
+              </>
+            )}
 
             <h2>Legend and axes</h2>
             <label className="row">

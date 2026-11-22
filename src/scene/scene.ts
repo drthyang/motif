@@ -39,6 +39,16 @@ export interface Sphere {
   readonly centre: Vec3;
   /** True for an atom outside the chosen range, shown to complete a bond rule. */
   readonly added?: boolean;
+  /** Magnetic moment in Bohr magnetons, as a vector in the same cartesian axes as `centre`. */
+  readonly moment?: Vec3;
+}
+
+/** An arrow drawn through an atom, centred on it (a magnetic moment). */
+export interface Arrow {
+  /** Index into Scene.spheres. */
+  readonly sphere: number;
+  /** From tail to tip, in angstrom: the direction is the moment's, the length is its size times the chosen scale. */
+  readonly vector: Vec3;
 }
 
 /** A stick between two spheres. */
@@ -62,6 +72,9 @@ export interface Scene {
   readonly centre: Vec3;
   /** Radius of a ball around `centre` that holds everything drawn: the drawing scale comes from it, so rotating never rescales. */
   readonly extent: number;
+  /** Moment arrows. Empty when the structure has no moments or they are switched off. */
+  readonly arrows: readonly Arrow[];
+  readonly arrowColour: string;
   /** Legend entries, in file order: one per name. Empty when the legend is off. */
   readonly legend: readonly LegendEntry[];
   /** The directions of the cell axes a, b, c as unit vectors in angstrom space. Empty when the axes are off. */
@@ -104,6 +117,11 @@ export interface SceneSpec {
   readonly looks: Readonly<Record<string, Look>>;
   /** Draw the unoccupied share of a partly occupied place as a pale wedge. */
   readonly showVacancy: boolean;
+  /** Draw the magnetic moments as arrows. */
+  readonly showMoments: boolean;
+  /** Length in angstrom of the arrow of the largest moment in the structure; the others are in proportion. */
+  readonly momentLength: number;
+  readonly momentColour: string;
   /** Draw a row of spheres with their names under the structure. */
   readonly showLegend: boolean;
   /** Draw the a, b, c arrows under the structure. */
@@ -118,7 +136,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, showLegend: true, showAxes: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, showMoments: true, momentLength: 3, momentColour: "#c2343c", showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
@@ -177,6 +195,23 @@ export function cellEdgesInRange(structure: Structure, range: Range): [Vec3, Vec
   return [...edges.values()];
 }
 
+/** A moment given along the unit vectors of a, b, c, as a vector in cartesian axes (same units, Bohr magnetons). */
+export function momentToCartesian(structure: Structure, moment: Vec3): Vec3 {
+  const [a, b, c] = cellAxes(structure).map((x) => x.direction) as [Vec3, Vec3, Vec3];
+  return [0, 1, 2].map((i) => moment[0] * a[i]! + moment[1] * b[i]! + moment[2] * c[i]!) as unknown as Vec3;
+}
+
+/** Size of the largest moment in the file, in Bohr magnetons (0 when there is none). */
+export function largestMoment(structure: Structure): number {
+  let largest = 0;
+  for (const s of structure.sites) {
+    if (!s.moment) continue;
+    const m = momentToCartesian(structure, s.moment);
+    largest = Math.max(largest, Math.hypot(m[0], m[1], m[2]));
+  }
+  return largest;
+}
+
 /** One sphere per atom in the chosen range (plus neighbours added by bond rules), sticks for the bonds, and the cell outline. */
 export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC): Scene {
   const { atoms, bonds, warnings } = atomsAndBonds(structure, spec.range, spec.bonds);
@@ -184,8 +219,24 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
   const spheres: Sphere[] = atoms.map((atom) => {
     const { key, style } = styleOf(atom, spec);
     styles[key] ??= style;
-    return { style: key, species: atom.species, label: atom.label, frac: atom.frac, centre: atom.cart, ...(atom.added ? { added: true } : {}) };
+    const moment = atom.moment ? momentToCartesian(structure, atom.moment) : undefined;
+    return { style: key, species: atom.species, label: atom.label, frac: atom.frac, centre: atom.cart, ...(atom.added ? { added: true } : {}), ...(moment ? { moment } : {}) };
   });
+  // Arrow length in proportion to the moment; the largest moment of the whole structure (not only of the
+  // atoms shown) sets the scale, so changing the range never changes an arrow's length.
+  const arrows: Arrow[] = [];
+  const largest = largestMoment(structure);
+  let hidden = 0;
+  if (spec.showMoments && largest > 0) {
+    spheres.forEach((s, index) => {
+      if (!s.moment) return;
+      const k = spec.momentLength / largest;
+      const vector: Vec3 = [s.moment[0] * k, s.moment[1] * k, s.moment[2] * k];
+      if (Math.hypot(vector[0], vector[1], vector[2]) / 2 <= styles[s.style]!.radius) hidden++;
+      arrows.push({ sphere: index, vector });
+    });
+  }
+  const arrowNote = hidden > 0 ? [`${hidden} moment arrow${hidden > 1 ? "s are" : " is"} shorter than the atom and cannot be seen. Increase the arrow length or reduce the atom's radius.`] : [];
   const cellEdges = spec.showCell ? cellEdgesInRange(structure, spec.range) : [];
   // Middle of the bounding box of everything drawn.
   const points = [...spheres.map((s) => s.centre), ...cellEdges.flat()];
@@ -197,6 +248,7 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
   const reach = (p: Vec3): number => Math.hypot(p[0] - centre[0], p[1] - centre[1], p[2] - centre[2]);
   let extent = 1;
   for (const s of spheres) extent = Math.max(extent, reach(s.centre) + styles[s.style]!.radius);
+  for (const a of arrows) extent = Math.max(extent, reach(spheres[a.sphere]!.centre) + Math.hypot(a.vector[0], a.vector[1], a.vector[2]) / 2);
   for (const p of cellEdges.flat()) extent = Math.max(extent, reach(p));
   // One legend entry per name, in the order the species first appear in the file.
   const legend: LegendEntry[] = [];
@@ -211,5 +263,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     for (const [name, { style }] of [...first].sort((p, q) => p[1].site - q[1].site)) legend.push({ style, name });
   }
   const axes = spec.showAxes ? cellAxes(structure) : [];
-  return { spheres, sticks: bonds, cellEdges, styles, centre, extent, legend, axes, warnings };
+  return { spheres, sticks: bonds, cellEdges, styles, centre, extent, arrows, arrowColour: spec.momentColour, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

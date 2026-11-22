@@ -137,6 +137,8 @@ describe("drawing bonds and the cell", () => {
       styles: { X: { colour: "#808080", radius: 0.5 } },
       centre: [1.5, 0, 0],
       extent: 3,
+      arrows: [],
+      arrowColour: "#000000",
       legend: [],
       axes: [],
       warnings: [],

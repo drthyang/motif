@@ -31,6 +31,8 @@ export interface Site {
   readonly occupancy: number;
   /** The multiplicity the file states for this site, when it states one. */
   readonly statedMultiplicity?: number;
+  /** Magnetic moment in Bohr magnetons, as components along the unit vectors of the cell edges a, b, c (the mCIF "crystalaxis" form). */
+  readonly moment?: Vec3;
 }
 
 /** What a CIF says: cell, symmetry operations, sites. Nothing about drawing. */
@@ -42,6 +44,8 @@ export interface Structure {
   /** Every operation of the space group, as listed in the file. */
   readonly operations: readonly SymmetryOperation[];
   readonly sites: readonly Site[];
+  /** True when the file is a magnetic CIF: the operations then carry time reversal and are the magnetic group. */
+  readonly magnetic: boolean;
 }
 
 export interface Component {
@@ -65,4 +69,6 @@ export interface CellAtom {
   readonly occupancy: number;
   /** Fractional coordinates wrapped into [0, 1). */
   readonly frac: Vec3;
+  /** Magnetic moment of this atom in Bohr magnetons, as components along the unit vectors of a, b, c. */
+  readonly moment?: Vec3;
 }
