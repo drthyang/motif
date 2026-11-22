@@ -1,0 +1,70 @@
+[
+ {
+  "example": "quartz_COD-9009666.cif",
+  "centre": "Si",
+  "end": "O",
+  "max": 1.8,
+  "sizes": [
+   108.7,
+   109.2,
+   109.5,
+   110.4
+  ],
+  "anglesPerCentre": [
+   6
+  ]
+ },
+ {
+  "example": "quartz_COD-9009666.cif",
+  "centre": "O",
+  "end": "Si",
+  "max": 1.8,
+  "sizes": [
+   143.8
+  ],
+  "anglesPerCentre": [
+   1
+  ]
+ },
+ {
+  "example": "olivine-FeMg_COD-1541262.cif",
+  "centre": "Si",
+  "end": "O",
+  "max": 1.8,
+  "sizes": [
+   102.9,
+   105.3,
+   112.4,
+   115.9
+  ],
+  "anglesPerCentre": [
+   6
+  ]
+ },
+ {
+  "example": "silicon_COD-9008565.cif",
+  "centre": "Si",
+  "end": "Si",
+  "max": 2.5,
+  "sizes": [
+   109.5
+  ],
+  "anglesPerCentre": [
+   6
+  ]
+ },
+ {
+  "example": "CoSn-type-kagome_handwritten.cif",
+  "centre": "Co",
+  "end": "Co",
+  "max": 2.7,
+  "sizes": [
+   60.0,
+   120.0,
+   180.0
+  ],
+  "anglesPerCentre": [
+   6
+  ]
+ }
+]

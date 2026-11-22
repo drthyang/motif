@@ -46,7 +46,7 @@ writes the reference atom lists in `tests/reference/`.
   the drag began is kept, and the figure is refitted on release.
 - Legend and axes share a band under the structure. The axis arrows are the directions of the cell
   edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
-  no letter. Lettering: Avenir Next / Avenir (macOS), else Helvetica Neue, Arial. Text stays live
+  no letter. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen. Text stays live
   text in the SVG; on a system without Avenir the letters look different, the drawing does not.
 - Magnetic CIF: the magnetic group is every product of an operation and a centring translation,
   each with its time reversal; the list is checked to be a group with consistent signs. Moments are
@@ -61,6 +61,16 @@ writes the reference atom lists in `tests/reference/`.
   the view. A band is a wide translucent stroke behind one group or all of them; with one group
   chosen, the rule's other atoms and bonds are drawn pale. "Fill triangles" fills every three
   mutually bonded atoms (a kagome net). Each rule has its own bond colour and thickness.
+- A bond angle is the angle between two drawn bonds that meet at an atom. An angle rule names
+  the atom at the apex and the two at the ends, and a range in degrees; every such angle in the
+  range is marked with a translucent sector lying in the plane of the two bonds, between the
+  surface of the apex atom and a chosen radius, and (optionally) its size to 0.1°. A straight
+  angle (180°) has no plane and is not drawn.
+- A bond rule can leave out neighbours it bonds to nothing, and (for bonds within one species)
+  everything that is not part of a complete triangle. The wedge order of a shared site can be set.
+- Moment directions are checked against pymatgen (`scripts/pymatgen_moments.py`), including the
+  arrow's size and its projection on each cell edge, on hexagonal test structures with
+  time-reversed operations (`tests/fixtures`).
 - A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
 - The view can be set by the cell axis that points up, a turn about it and a tilt.
 - Arrows (the user's rule, for step 6 and later): a magnetic moment is drawn as an arrow passing
@@ -80,6 +90,7 @@ writes the reference atom lists in `tests/reference/`.
 | 6 | mCIF: magnetic moments as arrows | built, awaiting the user's check |
 | 7 | Highlights: a band along a chain, filled polygons | built, awaiting the user's check |
 | 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | first pass built, awaiting the user's check |
+| 9 | Bond angles: a translucent sector between two bonds, with the angle written beside it | built, awaiting the user's check |
 
 Each step is checked against an independent reference before the next one starts.
 

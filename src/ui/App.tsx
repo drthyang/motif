@@ -4,6 +4,7 @@ import { DEFAULT_CANVAS, fitView, renderSvg, type Fit } from "../render/svg";
 import { DEFAULT_VIEW, dragView, viewWithAxisUp, type View } from "../render/view";
 import { buildScene, cellAxes, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
+import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { pairDistances, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readCif } from "../structure/readCif";
@@ -61,6 +62,28 @@ export function App() {
   };
   const [showVacancy, setShowVacancy] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
+  const [letterWeight, setLetterWeight] = useState(DEFAULT_SPEC.letterWeight);
+  // Angle rules; the limits and the look are kept as typed.
+  const [angleRules, setAngleRules] = useState<(AngleRule & { minText: string; maxText: string; radiusText: string; opacityText: string })[]>([]);
+  const [newAngle, setNewAngle] = useState("");
+  const changeAngle = (index: number, change: Partial<(typeof angleRules)[number]>) => setAngleRules((all) => all.map((x, i) => (i === index ? { ...x, ...change } : x)));
+  const sceneAngles = useMemo(
+    () =>
+      angleRules.map((r): AngleRule => {
+        const num = (text: string, lo: number, hi: number, fallback: number): number => (text.trim() !== "" && Number(text) >= lo && Number(text) <= hi ? Number(text) : fallback);
+        return {
+          centre: r.centre,
+          ends: r.ends,
+          min: num(r.minText, 0, 180, 0),
+          max: num(r.maxText, 0, 180, 180),
+          colour: r.colour ?? DEFAULT_ANGLE_LOOK.colour,
+          opacity: num(r.opacityText, 0.05, 1, DEFAULT_ANGLE_LOOK.opacity),
+          radius: num(r.radiusText, 0.1, 5, DEFAULT_ANGLE_LOOK.radius),
+          label: r.label ?? DEFAULT_ANGLE_LOOK.label,
+        };
+      }),
+    [angleRules],
+  );
   const [showMoments, setShowMoments] = useState(true);
   const [momentLengthText, setMomentLengthText] = useState(String(DEFAULT_SPEC.momentLength));
   const [momentColour, setMomentColour] = useState(DEFAULT_SPEC.momentColour);
@@ -85,6 +108,8 @@ export function App() {
       setBondRules([]);
       setNewPair("");
       setLooks({});
+      setAngleRules([]);
+      setNewAngle("");
       setUpAxis(2);
       setAzText("18");
       setElText("12");
@@ -135,11 +160,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, showMoments, momentLength, momentColour, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, letterWeight, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, showMoments, momentLength, momentColour, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, letterWeight, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -558,6 +583,73 @@ export function App() {
                 Unit cell outline
               </label>
             </Section>
+            <Section title="Angles" hint="Marks the angle between two drawn bonds that meet at an atom, so add the bonds first. The list shows the kinds of angle found and their sizes. Every angle of the chosen kind whose size lies in the range is marked.">
+              {angleRules.map((r, index) => (
+                <div key={index} className="rule" data-testid={`angle-${index}`}>
+                  <div className="row">
+                    <b>{nameOf(r.ends[0])}–{nameOf(r.centre)}–{nameOf(r.ends[1])}</b>
+                    <button title="Remove this angle" onClick={() => setAngleRules((all) => all.filter((_, i) => i !== index))}>×</button>
+                  </div>
+                  <div className="row">
+                    from
+                    <input type="number" step={0.5} min={0} max={180} data-testid={`angle-min-${index}`} value={r.minText} onChange={(e) => changeAngle(index, { minText: e.target.value })} />
+                    to
+                    <input type="number" step={0.5} min={0} max={180} data-testid={`angle-max-${index}`} value={r.maxText} onChange={(e) => changeAngle(index, { maxText: e.target.value })} />
+                    °
+                  </div>
+                  <div className="row">
+                    <input type="color" title="Colour of the mark" value={r.colour ?? DEFAULT_ANGLE_LOOK.colour} onChange={(e) => changeAngle(index, { colour: e.target.value })} />
+                    opacity
+                    <input type="number" step={0.05} min={0.05} max={1} value={r.opacityText} onChange={(e) => changeAngle(index, { opacityText: e.target.value })} />
+                    size
+                    <input type="number" step={0.1} min={0.1} max={5} value={r.radiusText} onChange={(e) => changeAngle(index, { radiusText: e.target.value })} />
+                    Å
+                  </div>
+                  <label className="row">
+                    <input type="checkbox" data-testid={`angle-label-${index}`} checked={r.label ?? DEFAULT_ANGLE_LOOK.label} onChange={(e) => changeAngle(index, { label: e.target.checked })} />
+                    Write the angle beside it
+                  </label>
+                  <p className="sub" data-testid={`angle-count-${index}`}>{scene.sectors.filter((x) => x.rule === index).length} angles marked</p>
+                </div>
+              ))}
+              {scene.angleKinds.length === 0 ? (
+                <p className="sub">No two drawn bonds meet at an atom yet. Add bonds first.</p>
+              ) : (
+                <div className="row">
+                  <select data-testid="new-angle" value={newAngle} onChange={(e) => setNewAngle(e.target.value)}>
+                    <option value="">Mark an angle…</option>
+                    {scene.angleKinds.map((k) => {
+                      const key = `${k.ends[0]}|${k.centre}|${k.ends[1]}`;
+                      const sizes = k.sizes.length <= 4 ? k.sizes.map((x) => x.toFixed(1)).join(", ") : `${k.sizes[0]!.toFixed(1)} to ${k.sizes[k.sizes.length - 1]!.toFixed(1)}`;
+                      return (
+                        <option key={key} value={key}>
+                          {nameOf(k.ends[0])}–{nameOf(k.centre)}–{nameOf(k.ends[1])} ({sizes}°)
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <button
+                    data-testid="add-angle"
+                    disabled={!newAngle}
+                    onClick={() => {
+                      const kind = scene.angleKinds.find((k) => `${k.ends[0]}|${k.centre}|${k.ends[1]}` === newAngle);
+                      if (!kind) return;
+                      // The range starts wide enough to hold every size of this kind, except straight angles.
+                      const sizes = kind.sizes.filter((x) => x < 179.5);
+                      const lo = Math.max(0, Math.floor((sizes[0] ?? 0) - 0.5));
+                      const hi = Math.min(180, Math.ceil((sizes[sizes.length - 1] ?? 180) + 0.5));
+                      setAngleRules((all) => [
+                        ...all,
+                        { centre: kind.centre, ends: kind.ends, min: lo, max: hi, minText: String(lo), maxText: String(hi), radiusText: String(DEFAULT_ANGLE_LOOK.radius), opacityText: String(DEFAULT_ANGLE_LOOK.opacity) },
+                      ]);
+                      setNewAngle("");
+                    }}
+                  >
+                    Add
+                  </button>
+                </div>
+              )}
+            </Section>
             {largestMoment(structure) > 0 && (
               <Section title="Magnetic moments" hint="A moment is drawn as an arrow through its atom, centred on it. The arrow of the largest moment in the file has the length given here; the others are in proportion.">
                 <label className="row">
@@ -581,6 +673,14 @@ export function App() {
                 <input type="checkbox" data-testid="show-axes" checked={showAxes} onChange={(e) => setShowAxes(e.target.checked)} />
                 Axes a, b, c
               </label>
+              <div className="row">
+                lettering
+                <select data-testid="letter-weight" value={letterWeight} onChange={(e) => setLetterWeight(Number(e.target.value))}>
+                  <option value={400}>regular</option>
+                  <option value={500}>medium</option>
+                  <option value={800}>heavy</option>
+                </select>
+              </div>
             </Section>
             <Section title="View" hint="Turn and tilt are measured with the chosen cell axis pointing up. Dragging the figure turns it freely.">
               <div className="row">

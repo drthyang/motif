@@ -84,7 +84,25 @@ interface Shape<K extends string> {
 export type DrawnPolygon = Shape<"polygon">;
 export type DrawnBand = Shape<"band">;
 
-export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand;
+/** A marked bond angle: the outline of its sector "x,y x,y ...", and where its label goes. */
+export interface DrawnSector {
+  readonly kind: "sector";
+  readonly points: string;
+  /** The outer arc only, for the edge line. */
+  readonly arc: string;
+  readonly colour: string;
+  readonly opacity: number;
+  readonly depth: number;
+  /** The angle to write, and where (px); absent when the label is off. */
+  readonly label?: { readonly text: string; readonly x: number; readonly y: number };
+}
+
+export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand | DrawnSector;
+
+/** Number of straight pieces the arc of a sector is drawn with, per 180 degrees. */
+const ARC_PIECES = 48;
+/** Size of the angle labels, px. */
+export const ANGLE_LABEL_SIZE = 40;
 
 /** Moment arrows, in angstrom: shaft thickness, head length and head width. */
 export const ARROW_SHAFT = 0.16;
@@ -92,7 +110,7 @@ export const ARROW_HEAD_LENGTH = 0.55;
 export const ARROW_HEAD_WIDTH = 0.46;
 
 /** Lettering of the legend and the axes. Avenir exists on macOS; elsewhere the next font in the list is used. */
-export const FONT = "'Avenir Next', Avenir, 'Helvetica Neue', Arial, sans-serif";
+export const FONT = "Avenir, 'Avenir Next', 'Helvetica Neue', Arial, sans-serif";
 export const LEGEND_COLOUR = "#4c5a62";
 export const AXIS_COLOUR = "#5c6b74";
 /** Height in px of the band under the structure that holds the legend and the axes. */
@@ -179,6 +197,44 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const corners = polygon.corners.map((c) => project(scene.spheres[c]!.centre));
     const depth = corners.reduce((sum, c) => sum + c[2], 0) / corners.length - 0.4;
     drawn.push({ kind: "polygon", parts: [corners.map((c) => `${n1(c[0])},${n1(c[1])}`).join(" ")], colour: polygon.colour, opacity: polygon.opacity, width: 0, depth });
+  }
+  for (const sector of scene.sectors) {
+    // The sector lies in the plane of the two bonds, between the surface of the apex atom and `radius`.
+    // A straight angle (180 degrees) has no plane of its own and is not drawn.
+    if (sector.degrees > 179.5 || sector.degrees < 0.5) continue;
+    const apex = scene.spheres[sector.apex]!;
+    const unit = (to: Vec3): Vec3 => {
+      const v: Vec3 = [to[0] - apex.centre[0], to[1] - apex.centre[1], to[2] - apex.centre[2]];
+      const n = Math.hypot(v[0], v[1], v[2]);
+      return [v[0] / n, v[1] / n, v[2] / n];
+    };
+    const [u, v] = [unit(scene.spheres[sector.a]!.centre), unit(scene.spheres[sector.b]!.centre)];
+    const theta = (sector.degrees * Math.PI) / 180;
+    // The direction a fraction t of the way round from one bond to the other (turning in their plane).
+    const towards = (t: number): Vec3 => {
+      const [p, q] = [Math.sin((1 - t) * theta) / Math.sin(theta), Math.sin(t * theta) / Math.sin(theta)];
+      return [p * u[0] + q * v[0], p * u[1] + q * v[1], p * u[2] + q * v[2]];
+    };
+    const inner = Math.min(scene.styles[apex.style]!.radius, sector.radius * 0.8);
+    const at = (t: number, r: number): Vec3 => {
+      const d = towards(t);
+      return project([apex.centre[0] + d[0] * r, apex.centre[1] + d[1] * r, apex.centre[2] + d[2] * r]);
+    };
+    const pieces = Math.max(4, Math.ceil((ARC_PIECES * sector.degrees) / 180));
+    const outer = Array.from({ length: pieces + 1 }, (_, k) => at(k / pieces, sector.radius));
+    const back = Array.from({ length: pieces + 1 }, (_, k) => at(1 - k / pieces, inner));
+    const text = (pts: Vec3[]): string => pts.map((p) => `${n1(p[0])},${n1(p[1])}`).join(" ");
+    const middle = at(0.5, (inner + sector.radius) / 2);
+    const labelAt = at(0.5, sector.radius + (0.62 * ANGLE_LABEL_SIZE) / scale);
+    drawn.push({
+      kind: "sector",
+      points: text([...outer, ...back]),
+      arc: text(outer),
+      colour: sector.colour,
+      opacity: sector.opacity,
+      depth: middle[2] - 0.05,
+      ...(sector.label ? { label: { text: `${sector.degrees.toFixed(1)}°`, x: labelAt[0], y: labelAt[1] } } : {}),
+    });
   }
   for (const band of scene.bands) {
     // One translucent shape behind the whole chain: behind its farthest atom, in front of everything further back.
@@ -385,7 +441,7 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; left:
       // The baseline is set 0.3 em below the wanted centre, so no reader needs to support "dominant-baseline".
       svg +=
         `<text x="${n1(ox + letter.x)}" y="${n1(oy + letter.y + 0.3 * fontSize)}" text-anchor="middle" font-family="${FONT}" ` +
-        `font-weight="800" font-style="italic" font-size="${fontSize}" fill="${AXIS_COLOUR}">${a.name}</text>`;
+        `font-weight="${scene.letterWeight}" font-style="italic" font-size="${fontSize}" fill="${AXIS_COLOUR}">${a.name}</text>`;
     }
     svg += "\n";
   }
@@ -424,6 +480,10 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
   for (const d of drawn) {
     if (d.kind === "sphere") {
       out += sphereSvg(scene, d.style, d.x, d.y, d.r);
+    } else if (d.kind === "sector") {
+      out +=
+        `<polygon class="angle" points="${d.points}" fill="${d.colour}" fill-opacity="${d.opacity}"/>` +
+        `<polyline class="angle-arc" points="${d.arc}" fill="none" stroke="${d.colour}" stroke-width="3" stroke-linecap="round"/>\n`;
     } else if (d.kind === "polygon") {
       out += `<polygon class="fill" points="${d.parts[0]}" fill="${d.colour}" fill-opacity="${d.opacity}"/>\n`;
     } else if (d.kind === "band") {
@@ -446,13 +506,20 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       out += `<line class="${d.kind}" x1="${n1(d.x1)}" y1="${n1(d.y1)}" x2="${n1(d.x2)}" y2="${n1(d.y2)}" ${look}/>\n`;
     }
   }
+  // Angle labels go on top of the structure, so that no atom hides a number.
+  for (const d of drawn) {
+    if (d.kind !== "sector" || !d.label) continue;
+    out +=
+      `<text class="angle-label" x="${n1(d.label.x)}" y="${n1(d.label.y + 0.35 * ANGLE_LABEL_SIZE)}" text-anchor="middle" font-family="${FONT}" font-weight="${Math.min(scene.letterWeight, 600)}" ` +
+      `font-size="${ANGLE_LABEL_SIZE}" fill="${mixHex(d.colour, "#000000", 0.35)}" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${d.label.text}</text>\n`;
+  }
   // The band under the structure: axes on the right, legend on the left in the space that remains.
   const axes = axesSvg(scene, view, canvas);
   for (const item of legendLayout(scene, canvas, axes.left - 40)) {
     out += sphereSvg(scene, item.style, item.x, item.y, item.r);
     // Baseline 0.35 em below the sphere's centre: capitals are then centred on it.
     out +=
-      `<text class="legend" x="${n1(item.textX)}" y="${n1(item.y + 0.35 * item.fontSize)}" font-family="${FONT}" font-weight="800" ` +
+      `<text class="legend" x="${n1(item.textX)}" y="${n1(item.y + 0.35 * item.fontSize)}" font-family="${FONT}" font-weight="${scene.letterWeight}" ` +
       `font-size="${n1(item.fontSize)}" fill="${LEGEND_COLOUR}">${escapeXml(item.name)}</text>\n`;
   }
   out += axes.svg;

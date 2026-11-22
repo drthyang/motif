@@ -5,6 +5,7 @@
 import { fractionalToCartesian } from "../structure/cell";
 import type { CellAtom, Component, Structure, Vec3 } from "../structure/types";
 import { defaultColour, defaultRadius } from "./elementStyle";
+import { angleKinds, anglesOfRule, bondAngles, DEFAULT_ANGLE_LOOK, type AngleKind, type AngleRule } from "./angles";
 import { atomsAndBonds, type BondRule } from "./bonds";
 import { mixHex } from "./elementStyle";
 import { connectedGroups, prune, triangles } from "./highlight";
@@ -91,6 +92,23 @@ export interface Polygon {
   readonly opacity: number;
 }
 
+/** A marked bond angle: a translucent sector between two bonds at their common atom. */
+export interface Sector {
+  /** Indices into Scene.spheres: the apex and the two ends. */
+  readonly apex: number;
+  readonly a: number;
+  readonly b: number;
+  /** The angle in degrees. */
+  readonly degrees: number;
+  readonly colour: string;
+  readonly opacity: number;
+  /** Radius of the sector in angstrom, measured from the centre of the apex atom. */
+  readonly radius: number;
+  readonly label: boolean;
+  /** Index of the angle rule that made it. */
+  readonly rule: number;
+}
+
 /** What a bond rule found: shown to the user beside the rule. */
 export interface RuleInfo {
   /** Number of connected groups (chains, nets) its bonds form. */
@@ -113,6 +131,10 @@ export interface Scene {
   readonly ruleInfo: readonly RuleInfo[];
   readonly bands: readonly Band[];
   readonly polygons: readonly Polygon[];
+  /** Marked bond angles. */
+  readonly sectors: readonly Sector[];
+  /** The kinds of angle present among the drawn bonds, for the user to choose from. */
+  readonly angleKinds: readonly AngleKind[];
   readonly styles: Readonly<Record<string, SphereStyle>>;
   /** The point kept at the middle of the drawing. */
   readonly centre: Vec3;
@@ -121,6 +143,8 @@ export interface Scene {
   /** Moment arrows. Empty when the structure has no moments or they are switched off. */
   readonly arrows: readonly Arrow[];
   readonly arrowColour: string;
+  /** Weight of the lettering. */
+  readonly letterWeight: number;
   /** Legend entries, in file order: one per name. Empty when the legend is off. */
   readonly legend: readonly LegendEntry[];
   /** The directions of the cell axes a, b, c as unit vectors in angstrom space. Empty when the axes are off. */
@@ -163,11 +187,15 @@ export interface SceneSpec {
   readonly looks: Readonly<Record<string, Look>>;
   /** Draw the unoccupied share of a partly occupied place as a pale wedge. */
   readonly showVacancy: boolean;
+  /** Bond angles to mark. They are angles between drawn bonds, so the bonds come first. */
+  readonly angles: readonly AngleRule[];
   /** Draw the magnetic moments as arrows. */
   readonly showMoments: boolean;
   /** Length in angstrom of the arrow of the largest moment in the structure; the others are in proportion. */
   readonly momentLength: number;
   readonly momentColour: string;
+  /** Weight of the lettering (legend, axes, angle labels): 400 regular, 500 medium, 800 heavy. */
+  readonly letterWeight: number;
   /** Draw a row of spheres with their names under the structure. */
   readonly showLegend: boolean;
   /** Draw the a, b, c arrows under the structure. */
@@ -186,7 +214,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, showMoments: true, momentLength: 3, momentColour: "#c2343c", showLegend: true, showAxes: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", letterWeight: 800, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
@@ -357,6 +385,20 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     for (const [name, { style }] of [...first].sort((p, q) => p[1].site - q[1].site)) legend.push({ style, name });
   }
   const axes = spec.showAxes ? cellAxes(structure) : [];
+  const allAngles = bondAngles(atoms, bonds);
+  const sectors: Sector[] = spec.angles.flatMap((rule, ruleIndex) =>
+    anglesOfRule(atoms, allAngles, rule).map((t) => ({
+      apex: t.apex,
+      a: t.a,
+      b: t.b,
+      degrees: t.degrees,
+      colour: rule.colour ?? DEFAULT_ANGLE_LOOK.colour,
+      opacity: rule.opacity ?? DEFAULT_ANGLE_LOOK.opacity,
+      radius: rule.radius ?? DEFAULT_ANGLE_LOOK.radius,
+      label: rule.label ?? DEFAULT_ANGLE_LOOK.label,
+      rule: ruleIndex,
+    })),
+  );
   const sticks: Stick[] = bonds.map((b, index) => (paleBonds.has(index) ? { ...b, pale: true } : b));
   const radiusOf = (index: number): number => styles[spheres[index]!.style]!.radius;
   const bands: Band[] = bandSpecs
@@ -367,5 +409,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     colour: mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
     opacity: 0.55,
   }));
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, styles, centre, extent, arrows, arrowColour: spec.momentColour, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, letterWeight: spec.letterWeight, legend, axes, warnings: [...warnings, ...arrowNote] };
 }
