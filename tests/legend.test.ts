@@ -237,7 +237,7 @@ describe("legend", () => {
     const headOf = (svg: string): number => Number(/class="axis-base"[^>]*ry="([\d.]+)"/.exec(svg)![1]);
     const cones = buildScene(olivine, { ...DEFAULT_SPEC, axesHeadSize: 2 });
     expect(headOf(renderSvg(cones, DEFAULT_VIEW)) / headOf(renderSvg(usual, DEFAULT_VIEW))).toBeCloseTo(2, 9);
-    expect(width(renderSvg(cones, DEFAULT_VIEW))).toBeCloseTo(width(renderSvg(usual, DEFAULT_VIEW)), 9);
+    expect(width(renderSvg(cones, DEFAULT_VIEW))).toBeCloseTo(width(renderSvg(usual, DEFAULT_VIEW)), 0); // coordinates are written to 0.1 px
     // The structure itself is untouched.
     expect(big.spheres).toEqual(usual.spheres);
   });
