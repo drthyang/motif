@@ -35,7 +35,6 @@ export function zoomedFit(base: Fit, zoom: Zoom, centre: Point): Fit {
     scale: base.scale * zoom.factor,
     x: centre[0] + (base.x - centre[0]) * zoom.factor + zoom.x,
     y: centre[1] + (base.y - centre[1]) * zoom.factor + zoom.y,
-    clip: true,
   };
 }
 

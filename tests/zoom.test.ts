@@ -70,17 +70,16 @@ describe("zoom and pan", () => {
     expect(zoomAbout(NO_ZOOM, 1e-6, centre, centre).factor).toBe(MIN_ZOOM);
   });
 
-  it("a zoomed structure is cut off at the legend band; the legend and axes do not move", () => {
+  it("a zoomed structure uses the whole canvas (nothing is cut off inside it), and the legend and axes do not move", () => {
     const zoom = zoomAbout(NO_ZOOM, 3, centre, centre);
     const svg = renderSvg(scene, DEFAULT_VIEW, DEFAULT_CANVAS, zoomedFit(base, zoom, centre));
-    expect(svg).toContain(`<clipPath id="structure-space"><rect width="1440" height="${structureHeight(scene, DEFAULT_CANVAS)}"/></clipPath>`);
+    expect(svg).not.toContain("clipPath");
     const plain = renderSvg(scene, DEFAULT_VIEW);
-    expect(plain).not.toContain("clipPath");
-    // Everything from the first legend letter on (legend, axes) is identical with and without the zoom.
+    // Everything from the first legend letter on (legend, axes) is identical with and without the zoom,
+    // and comes after the structure, so it is drawn over it.
     const band = (text: string): string => text.slice(text.indexOf('<text class="legend"'));
     expect(band(svg)).toBe(band(plain));
+    expect(svg.indexOf('class="legend"')).toBeGreaterThan(svg.lastIndexOf('class="bond"'));
     expect(legendLayout(scene, DEFAULT_CANVAS, 1000).length).toBe(2);
-    // The clipped group closes before the legend.
-    expect(svg.indexOf("</g>", svg.indexOf('clip-path="url(#structure-space)"'))).toBeLessThan(svg.indexOf('class="legend"'));
   });
 });

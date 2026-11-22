@@ -170,3 +170,7 @@ input.indices { width: 86px; }
 }
 .deg { margin-left: -4px; color: var(--secondary); }
 .view-line .copy { font-size: 15px; }
+/* The legend and axes stay in front of the structure, also while the GPU preview is showing. */
+[data-testid="layer-band"] { z-index: 2; }
+.preview { z-index: 1; }
+.zoom-bar, .preview-note, .zoom-box { z-index: 3; }

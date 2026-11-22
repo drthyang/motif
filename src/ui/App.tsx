@@ -6,7 +6,7 @@ import { svgToPng } from "../render/png";
 import { previewFrame } from "../preview/data";
 import { PREVIEW_FROM, usePreview } from "../preview/usePreview";
 import { AnglePlot } from "./AnglePlot";
-import { DEFAULT_CANVAS, fitView, renderSvg, steadyFit, structureCentre, structureHeight, type Fit } from "../render/svg";
+import { DEFAULT_CANVAS, fitView, renderSvg, steadyFit, structureCentre, structureHeight, type Canvas, type Fit } from "../render/svg";
 import { NO_ZOOM, isZoomed, panBy, zoomAbout, zoomToBox, zoomedFit, type Zoom } from "../render/zoom";
 import {
   between, directAxes, directionVector, fromBehind, lowIndexDirections, nearestDirection, numbersFromView, readView, rolled, snapTo, viewAlong, viewFromNumbers,
@@ -53,6 +53,8 @@ export function App() {
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
   const [view, setView] = useState<View>(DEFAULT_VIEW);
+  // The figure's canvas: 1440 px wide, as high as the shape of its frame on the page makes it.
+  const [canvas, setCanvas] = useState<Canvas>(DEFAULT_CANVAS);
   const [transparent, setTransparent] = useState(true);
   const [pngWidth, setPngWidth] = useState(2880);
   const [over, setOver] = useState(false);
@@ -355,8 +357,8 @@ export function App() {
     preview.load(scene);
     // Draw one frame at once, unseen: the graphics card then has the structure and the programs ready
     // before the first movement, instead of preparing them during it.
-    const f = fitView(scene, view, DEFAULT_CANVAS);
-    preview.draw(previewFrame(scene, view, DEFAULT_CANVAS, f), 720, 550);
+    const f = fitView(scene, view, canvas);
+    preview.draw(previewFrame(scene, view, canvas, f), 720, 550);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene, usePreviewNow, preview.loaded]);
   // The view and zoom last drawn in full. While the current ones differ, the structure is moving.
@@ -369,13 +371,13 @@ export function App() {
     return () => clearTimeout(timer);
   }, [moving, view, zoom, heldFit]);
   const previewing = usePreviewNow && moving && preview.loaded === scene;
-  const canvasOptions = useMemo(() => ({ ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }), [transparent]);
+  const canvasOptions = useMemo(() => ({ ...canvas, background: transparent ? null : "#ffffff" }), [canvas, transparent]);
   const fixedScale = Number(fixedScaleText) >= 2 && Number(fixedScaleText) <= 1000 ? Number(fixedScaleText) : 60;
   const fit = useMemo(() => {
     if (!scene) return null;
     // Fitted to the outline of each view (held still during a drag), or a scale that does not depend on the view.
-    const base = scaleMode === "outline" ? (heldFit ?? fitView(scene, view, DEFAULT_CANVAS)) : steadyFit(scene, DEFAULT_CANVAS, scaleMode === "fixed" ? fixedScale : undefined);
-    return zoomedFit(base, zoom, structureCentre(scene, DEFAULT_CANVAS));
+    const base = scaleMode === "outline" ? (heldFit ?? fitView(scene, view, canvas)) : steadyFit(scene, canvas, scaleMode === "fixed" ? fixedScale : undefined);
+    return zoomedFit(base, zoom, structureCentre(scene, canvas));
   }, [scene, view, heldFit, zoom, scaleMode, fixedScale]);
   // Ask the worker for each frame of the movement; `firstFrame` is the first of this movement.
   const [firstFrame, setFirstFrame] = useState(0);
@@ -387,8 +389,8 @@ export function App() {
       return;
     }
     const r = figureRef.current.getBoundingClientRect();
-    const k = Math.min(r.width / DEFAULT_CANVAS.width, r.height / DEFAULT_CANVAS.height) * Math.min(window.devicePixelRatio || 1, 2);
-    const id = preview.draw(previewFrame(scene, view, DEFAULT_CANVAS, fit), Math.round(DEFAULT_CANVAS.width * k), Math.round(DEFAULT_CANVAS.height * k));
+    const k = Math.min(r.width / canvas.width, r.height / canvas.height) * Math.min(window.devicePixelRatio || 1, 2);
+    const id = preview.draw(previewFrame(scene, view, canvas, fit), Math.round(canvas.width * k), Math.round(canvas.height * k));
     if (!wasPreviewing.current) setFirstFrame(id);
     wasPreviewing.current = true;
   }, [previewing, scene, view, fit, preview.draw]);
@@ -398,9 +400,14 @@ export function App() {
     const el = figureRef.current;
     if (!el) return;
     const measure = () => {
-      const k = Math.min(el.clientWidth / DEFAULT_CANVAS.width, el.clientHeight / DEFAULT_CANVAS.height);
-      const [width, height] = [DEFAULT_CANVAS.width * k, DEFAULT_CANVAS.height * k];
-      setDrawingBox({ left: (el.clientWidth - width) / 2 + el.clientLeft, top: (el.clientHeight - height) / 2 + el.clientTop, width, height });
+      if (el.clientWidth < 10 || el.clientHeight < 10) return;
+      // The canvas takes the shape of its frame, so the figure uses all of it and has no unseen edge inside
+      // the frame. Its width in px of the figure stays the same; its height follows the frame.
+      const height = Math.max(CANVAS_MIN_HEIGHT, Math.min(CANVAS_MAX_HEIGHT, Math.round((DEFAULT_CANVAS.width * el.clientHeight) / el.clientWidth)));
+      setCanvas((c) => (c.height === height ? c : { ...c, height }));
+      const k = Math.min(el.clientWidth / DEFAULT_CANVAS.width, el.clientHeight / height);
+      const [w, h] = [DEFAULT_CANVAS.width * k, height * k];
+      setDrawingBox({ left: (el.clientWidth - w) / 2 + el.clientLeft, top: (el.clientHeight - h) / 2 + el.clientTop, width: w, height: h });
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -440,17 +447,17 @@ export function App() {
   const gesture = useRef<"turn" | "move" | "box" | "pinch" | null>(null);
   const [boxMode, setBoxMode] = useState(false);
   const [box, setBox] = useState<{ from: [number, number]; to: [number, number] } | null>(null);
-  const centre = scene ? structureCentre(scene, DEFAULT_CANVAS) : ([0, 0] as [number, number]);
+  const centre = scene ? structureCentre(scene, canvas) : ([0, 0] as [number, number]);
   /** Px of the canvas per px of the screen, and the canvas point under a screen point. */
   const canvasScale = (): number => {
     const r = figureRef.current!.getBoundingClientRect();
-    return 1 / Math.min(r.width / DEFAULT_CANVAS.width, r.height / DEFAULT_CANVAS.height);
+    return 1 / Math.min(r.width / canvas.width, r.height / canvas.height);
   };
   const toCanvas = (clientX: number, clientY: number): [number, number] => {
     const r = figureRef.current!.getBoundingClientRect();
     const k = canvasScale();
     // The SVG is centred in the frame, with empty strips on two sides when the shapes differ.
-    return [(clientX - r.left - (r.width - DEFAULT_CANVAS.width / k) / 2) * k, (clientY - r.top - (r.height - DEFAULT_CANVAS.height / k) / 2) * k];
+    return [(clientX - r.left - (r.width - canvas.width / k) / 2) * k, (clientY - r.top - (r.height - canvas.height / k) / 2) * k];
   };
   const resetZoom = () => setZoom(NO_ZOOM);
   const zoomAtCentre = (by: number) => setZoom((z) => zoomAbout(z, by, centre, centre));
@@ -474,7 +481,7 @@ export function App() {
       e.preventDefault();
     } else {
       gesture.current = "turn";
-      setHeldFit(fitView(scene, view, DEFAULT_CANVAS));
+      setHeldFit(fitView(scene, view, canvas));
     }
   };
   const onPointerMove = (e: PointerEvent) => {
@@ -516,7 +523,7 @@ export function App() {
   const onPointerUp = (e: PointerEvent) => {
     pointers.current.delete(e.pointerId);
     if (gesture.current === "box" && box && scene) {
-      setZoom((z) => zoomToBox(z, box.from, box.to, centre, DEFAULT_CANVAS.width, structureHeight(scene, DEFAULT_CANVAS)));
+      setZoom((z) => zoomToBox(z, box.from, box.to, centre, canvas.width, structureHeight(scene, canvas)));
       setBoxMode(false);
     }
     setBox(null);
@@ -539,12 +546,12 @@ export function App() {
       if (!e.ctrlKey && !e.metaKey) return;
       e.preventDefault();
       const about = toCanvas(e.clientX, e.clientY);
-      setZoom((z) => zoomAbout(z, Math.exp(-e.deltaY * 0.01), about, structureCentre(scene!, DEFAULT_CANVAS)));
+      setZoom((z) => zoomAbout(z, Math.exp(-e.deltaY * 0.01), about, structureCentre(scene!, canvas)));
     };
     el.addEventListener("wheel", onWheel, { passive: false });
     return () => el.removeEventListener("wheel", onWheel);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scene]);
+  }, [scene, canvas]);
   const onKeyDown = (e: KeyboardEvent) => {
     const step = 60;
     if (e.key === "+" || e.key === "=") zoomAtCentre(1.25);
@@ -624,7 +631,7 @@ export function App() {
                   Save PNG
                 </button>
                 <input type="number" min={100} step={10} title="Width of the PNG in pixels" value={pngWidth} onChange={(e) => setPngWidth(Number(e.target.value))} />
-                <span className="unit">px ({(pngWidth / DEFAULT_CANVAS.width).toFixed(2)}×)</span>
+                <span className="unit">px ({(pngWidth / canvas.width).toFixed(2)}×)</span>
               </span>
             </>
           )}
@@ -713,8 +720,8 @@ Reset
                   // The dragged rectangle, in screen px of the frame.
                   const r = figureRef.current!.getBoundingClientRect();
                   const k = canvasScale();
-                  const sx = (x: number): number => x / k + (r.width - DEFAULT_CANVAS.width / k) / 2;
-                  const sy = (y: number): number => y / k + (r.height - DEFAULT_CANVAS.height / k) / 2;
+                  const sx = (x: number): number => x / k + (r.width - canvas.width / k) / 2;
+                  const sy = (y: number): number => y / k + (r.height - canvas.height / k) / 2;
                   return (
                     <div
                       className="zoom-box"
@@ -739,12 +746,11 @@ Reset
                   Drag to turn · Alt + drag to roll · Shift + drag to move · Ctrl/⌘ + wheel or pinch to zoom · double-click to fit.
                   {transparent && " The checker marks where the figure is transparent."}
                 </p>
-                {isZoomed(zoom) && (
-                  <label className="check" data-testid="save-zoomed-label">
-                    <input type="checkbox" data-testid="save-zoomed" checked={saveZoomed} onChange={(e) => setSaveZoomed(e.target.checked)} />
-                    {saveZoomed ? "Save writes this zoomed view" : "Save writes the whole structure, not this zoomed view"}
-                  </label>
-                )}
+                {/* Always there, hidden when not zoomed: the frame must not change height when it appears, or the figure would jump. */}
+                <label className="check" data-testid="save-zoomed-label" style={{ visibility: isZoomed(zoom) ? "visible" : "hidden" }}>
+                  <input type="checkbox" data-testid="save-zoomed" checked={saveZoomed} disabled={!isZoomed(zoom)} onChange={(e) => setSaveZoomed(e.target.checked)} />
+                  {saveZoomed ? "Save writes this zoomed view" : "Save writes the whole structure, not this zoomed view"}
+                </label>
               </div>
             </>
           ) : (
@@ -1359,6 +1365,9 @@ Reset
 }
 
 const VERSION = "0.1";
+/** Limits of the canvas height (its width is 1440): a very flat or very tall window still gives a usable figure. */
+const CANVAS_MIN_HEIGHT = 620;
+const CANVAS_MAX_HEIGHT = 2600;
 /** A drag released within this many degrees of a low-index direction snaps onto it. */
 const SNAP_DEGREES = 4;
 /** Length of the turn shown when the view changes by a click, ms. */

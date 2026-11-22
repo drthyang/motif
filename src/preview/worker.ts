@@ -209,10 +209,6 @@ function draw(frame: PreviewFrame, pixelWidth: number, pixelHeight: number): voi
   gl.clearColor(0, 0, 0, 0);
   gl.clearDepth(1);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-  // The structure is cut off at the legend band, as in the SVG.
-  gl.enable(gl.SCISSOR_TEST);
-  const bandPx = Math.round(((frame.height - frame.spaceHeight) / frame.height) * pixelHeight);
-  gl.scissor(0, bandPx, pixelWidth, pixelHeight - bandPx);
   const v = frame.view;
   for (const [p, vao, count] of [[lineProgram, lineVao, lineCount], [sphereProgram, sphereVao, sphereCount]] as const) {
     if (count === 0) continue;

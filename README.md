@@ -38,14 +38,20 @@ writes the reference atom lists in `tests/reference/`.
   a *shared site*, named by its elements ("Fe/Mg") until the user renames it. It is drawn as a pie
   sphere: wedges clockwise from the top in file order, each spanning 360° × its occupancy. A partly
   vacant place gets a pale wedge for the vacant share (this can be switched off).
+- Bonds are drawn as round rods (surface: soft, flat, glossy, metal or glass; a thin outline by
+  default), in two halves that meet in the middle. A half that points at the viewer comes out of
+  its atom's face with a rounded foot; a half that points away is cut by the atom's outline.
+  Above 1,500 bonds they are plain strokes, which draw much faster.
 - Bonds: a rule names two elements and a longest distance. A rule may also add the neighbours just
   outside the range, so that every centre atom shown has all its neighbours. A bond is drawn from
   surface to surface.
 - The unit-cell outline is drawn for every whole cell inside the range (none for a slab).
 - The structure is fitted to the canvas in each view. While dragging, the placement of the moment
   the drag began is kept, and the figure is refitted on release.
-- Zoom and move act on the structure inside its space; the legend and axes stay put, and a zoomed
-  structure is cut off at the legend band. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the
+- The figure's canvas is 1440 px wide and takes the shape of its frame on the page, so the figure
+  uses the whole frame and nothing is cut off at an unseen edge inside it (the user's choice,
+  2026-11-22). Zoom and move act on the structure; the legend and axes stay put and are drawn
+  over a structure that reaches them. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the
   buttons; move: Shift + drag, middle-button drag, arrow keys; fit again: double-click, 0, or
   "Fit"; "Box" then a drag zooms to a rectangle (Esc cancels). A plain wheel scrolls the page.
   A switch says whether Save writes the zoomed view (the default; the user's answer of 2026-11-22,
