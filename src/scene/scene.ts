@@ -3,21 +3,36 @@
  * Positions are cartesian, in angstrom. The scene knows nothing about the view.
  */
 import { fractionalToCartesian } from "../structure/cell";
-import type { Structure, Vec3 } from "../structure/types";
+import type { CellAtom, Component, Structure, Vec3 } from "../structure/types";
 import { defaultColour, defaultRadius } from "./elementStyle";
 import { atomsAndBonds, type BondRule } from "./bonds";
 import { BOUNDARY_TOLERANCE, ONE_CELL, type Range } from "./select";
 
+/** One sector of a pie sphere. */
+export interface Wedge {
+  readonly colour: string;
+  /** Share of the full circle, 0 to 1. The wedges of a sphere add up to 1. */
+  readonly fraction: number;
+  /** The element, or "vacancy" for the empty share of a partly occupied place. */
+  readonly element: string;
+}
+
 export interface SphereStyle {
-  /** Base colour "#rrggbb"; the shading is derived from it. */
+  /** Base colour "#rrggbb"; the shading is derived from it. For a pie sphere, the colour of its first wedge. */
   readonly colour: string;
   /** Radius in angstrom. */
   readonly radius: number;
+  /** Name shown to the user: the element symbol, or the name given to a shared site. */
+  readonly name?: string;
+  /** Present for a pie sphere: sectors drawn clockwise from the top, in file order. */
+  readonly wedges?: readonly Wedge[];
 }
 
 export interface Sphere {
   /** Key into Scene.styles. */
   readonly style: string;
+  /** What sits here ("Fe", or "Fe/Mg" for a shared site): the name bond rules use. */
+  readonly species?: string;
   readonly label: string;
   /** Fractional coordinates (for reading off; the drawing uses `centre`). */
   readonly frac?: Vec3;
@@ -56,9 +71,53 @@ export interface SceneSpec {
   readonly bonds: readonly BondRule[];
   /** Draw the outline of every whole unit cell inside the range. */
   readonly showCell: boolean;
+  /**
+   * The user's changes to the default look, keyed by element symbol or by species ("Fe/Mg").
+   * `colour` applies to an element (also inside a pie); `radius` and `name` to a species.
+   */
+  readonly looks: Readonly<Record<string, Look>>;
+  /** Draw the unoccupied share of a partly occupied place as a pale wedge. */
+  readonly showVacancy: boolean;
 }
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true };
+export interface Look {
+  readonly colour?: string;
+  readonly radius?: number;
+  readonly name?: string;
+}
+
+export const VACANCY_COLOUR = "#ffffff";
+
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true };
+
+/** Colour of an element: the user's, else the default. */
+export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
+  return looks[element]?.colour ?? defaultColour(element);
+}
+
+/** Radius of a species in angstrom: the user's, else the default (for a shared site, the occupancy-weighted mean of its elements). */
+export function speciesRadius(species: string, components: readonly Component[], looks: Readonly<Record<string, Look>>): number {
+  const chosen = looks[species]?.radius;
+  if (chosen !== undefined) return chosen;
+  const total = components.reduce((sum, c) => sum + c.occupancy, 0);
+  if (!(total > 0)) return defaultRadius(components[0]?.element ?? species);
+  return components.reduce((sum, c) => sum + (c.occupancy / total) * defaultRadius(c.element), 0);
+}
+
+/** The style of one atom, and a key that is the same for atoms that look the same. */
+function styleOf(atom: CellAtom, spec: SceneSpec): { key: string; style: SphereStyle } {
+  const radius = speciesRadius(atom.species, atom.components, spec.looks);
+  const name = spec.looks[atom.species]?.name ?? atom.species;
+  const colour = elementColour(atom.components[0]!.element, spec.looks);
+  const vacant = spec.showVacancy ? Math.max(0, 1 - atom.occupancy) : 0;
+  if (atom.components.length === 1 && vacant < 0.005) return { key: atom.species, style: { colour, radius, name } };
+  // A pie: each element's share of the circle is its occupancy; without the vacancy wedge the shares are scaled to fill the circle.
+  const total = vacant >= 0.005 ? 1 : atom.occupancy;
+  const wedges: Wedge[] = atom.components.map((c) => ({ colour: elementColour(c.element, spec.looks), fraction: c.occupancy / total, element: c.element }));
+  if (vacant >= 0.005) wedges.push({ colour: VACANCY_COLOUR, fraction: vacant, element: "vacancy" });
+  const key = `${atom.species}@${wedges.map((w) => w.fraction.toFixed(3)).join(",")}`;
+  return { key, style: { colour, radius, name, wedges } };
+}
 
 /**
  * The edges of every whole unit cell that lies inside the range (cells n..n+1 with integer n),
@@ -93,8 +152,9 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
   const { atoms, bonds, warnings } = atomsAndBonds(structure, spec.range, spec.bonds);
   const styles: Record<string, SphereStyle> = {};
   const spheres: Sphere[] = atoms.map((atom) => {
-    styles[atom.element] ??= { colour: defaultColour(atom.element), radius: defaultRadius(atom.element) };
-    return { style: atom.element, label: atom.label, frac: atom.frac, centre: atom.cart, ...(atom.added ? { added: true } : {}) };
+    const { key, style } = styleOf(atom, spec);
+    styles[key] ??= style;
+    return { style: key, species: atom.species, label: atom.label, frac: atom.frac, centre: atom.cart, ...(atom.added ? { added: true } : {}) };
   });
   const cellEdges = spec.showCell ? cellEdgesInRange(structure, spec.range) : [];
   // Middle of the bounding box of everything drawn.

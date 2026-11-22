@@ -13,7 +13,7 @@ for path in sorted(glob.glob("examples/*.cif")):
     for s in st.get_all_unit_cell_sites():
         f = s.fract.wrap_to_unit()
         p = cell.orthogonalize(f)
-        atoms.append({"element": s.element.name, "label": s.label, "frac": [f.x, f.y, f.z], "cart": [p.x, p.y, p.z]})
+        atoms.append({"element": s.element.name, "label": s.label, "occ": s.occ, "frac": [f.x, f.y, f.z], "cart": [p.x, p.y, p.z]})
     out = {
         "gemmi": gemmi.__version__,
         "cell": [cell.a, cell.b, cell.c, cell.alpha, cell.beta, cell.gamma],

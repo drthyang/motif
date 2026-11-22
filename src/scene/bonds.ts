@@ -4,9 +4,9 @@ import type { CellAtom, Structure, Vec3 } from "../structure/types";
 import { atomsInRange, type Range } from "./select";
 
 export interface BondRule {
-  /** Element at the centre, e.g. the metal of an octahedron. */
+  /** Species at the centre, e.g. the metal of an octahedron: an element symbol, or "Fe/Mg" for a shared site. */
   readonly centre: string;
-  /** Element bonded to it. May be the same element. */
+  /** Species bonded to it. May be the same one. */
   readonly neighbour: string;
   /** Longest centre-to-centre distance that counts as a bond, in angstrom. */
   readonly max: number;
@@ -109,9 +109,9 @@ export function atomsAndBonds(structure: Structure, range: Range, rules: readonl
     const around = place(structure, atomsInRange(structure, widened(structure, range, reach), Infinity).atoms);
     const shown = new Set(atoms.map(sameAtomKey));
     for (const rule of completing) {
-      const boxes = new Boxes(around, rule.max, (a) => a.element === rule.neighbour);
+      const boxes = new Boxes(around, rule.max, (a) => a.species === rule.neighbour);
       for (let c = 0; c < inRange; c++) {
-        if (atoms[c]!.element !== rule.centre) continue;
+        if (atoms[c]!.species !== rule.centre) continue;
         for (const { index } of boxes.near(atoms[c]!.cart, rule.max)) {
           const key = sameAtomKey(around[index]!);
           if (shown.has(key)) continue;
@@ -127,9 +127,9 @@ export function atomsAndBonds(structure: Structure, range: Range, rules: readonl
   const bonds: Bond[] = [];
   const joined = new Set<string>();
   rules.forEach((rule, ruleIndex) => {
-    const boxes = new Boxes(atoms, rule.max, (a) => a.element === rule.neighbour);
+    const boxes = new Boxes(atoms, rule.max, (a) => a.species === rule.neighbour);
     atoms.forEach((centre, c) => {
-      if (centre.element !== rule.centre) return;
+      if (centre.species !== rule.centre) return;
       for (const { index, d } of boxes.near(centre.cart, rule.max)) {
         if (centre.added && atoms[index]!.added) continue;
         const [i, j] = c < index ? [c, index] : [index, c];
@@ -149,9 +149,9 @@ export function atomsAndBonds(structure: Structure, range: Range, rules: readonl
  */
 export function pairDistances(structure: Structure, a: string, b: string, reach = 6): number[] {
   const once: Range = { from: [0, 0, 0], to: [1, 1, 1], boundary: "once" };
-  const cell = place(structure, atomsInRange(structure, once).atoms).filter((x) => x.element === a);
+  const cell = place(structure, atomsInRange(structure, once).atoms).filter((x) => x.species === a);
   const around = place(structure, atomsInRange(structure, widened(structure, once, reach), Infinity).atoms);
-  const boxes = new Boxes(around, reach, (x) => x.element === b);
+  const boxes = new Boxes(around, reach, (x) => x.species === b);
   const found = new Set<number>();
   for (const atom of cell) for (const { d } of boxes.near(atom.cart, reach)) found.add(Math.round(d * 100) / 100);
   return [...found].sort((p, q) => p - q);

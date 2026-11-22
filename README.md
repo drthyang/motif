@@ -33,6 +33,10 @@ writes the reference atom lists in `tests/reference/`.
 - What is shown is a range of fractional coordinates along *a*, *b*, *c*. By default an atom on the
   boundary of the range is drawn at both ends (a cell looks complete); the other setting draws each
   atom once per cell. An atom within 0.001 of a limit counts as on it.
+- Sites of the file that put different elements at the same place (within 0.05 Å) are one atom,
+  a *shared site*, named by its elements ("Fe/Mg") until the user renames it. It is drawn as a pie
+  sphere: wedges clockwise from the top in file order, each spanning 360° × its occupancy. A partly
+  vacant place gets a pale wedge for the vacant share (this can be switched off).
 - Bonds: a rule names two elements and a longest distance. A rule may also add the neighbours just
   outside the range, so that every centre atom shown has all its neighbours. A bond is drawn from
   surface to surface.
@@ -48,8 +52,8 @@ writes the reference atom lists in `tests/reference/`.
 |---|------|--------|
 | 1 | Read a CIF and draw the atoms; rotate; export SVG and PNG | done |
 | 2 | Choose what is shown: how many cells, or a slab | done |
-| 3 | Bonds by distance for chosen element pairs; the unit cell | built, awaiting the user's check |
-| 4 | Colour and size per element; pie spheres for mixed sites | not started |
+| 3 | Bonds by distance for chosen element pairs; the unit cell | done |
+| 4 | Colour and size per element; pie spheres for mixed sites | built, awaiting the user's check |
 | 5 | Legend and axis triad | not started |
 | 6 | mCIF: magnetic moments as arrows | not started |
 | 7 | Highlights: a band along a chain, filled polygons | not started |

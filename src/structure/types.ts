@@ -44,11 +44,24 @@ export interface Structure {
   readonly sites: readonly Site[];
 }
 
+export interface Component {
+  readonly element: string;
+  readonly occupancy: number;
+}
+
 /** One atom of the unit cell, produced from a site by one symmetry operation. */
 export interface CellAtom {
+  /** Index of the (first) site of the file that this atom comes from. */
   readonly siteIndex: number;
   readonly label: string;
-  readonly element: string;
+  /**
+   * What sits here: an element symbol ("Fe"), or for a place shared by several elements their
+   * symbols joined in file order ("Fe/Mg"). Bond rules and styles refer to atoms by this.
+   */
+  readonly species: string;
+  /** The elements at this place with their occupancies (one entry for an ordinary site). */
+  readonly components: readonly Component[];
+  /** Total occupancy of the place (below 1 when it is partly vacant). */
   readonly occupancy: number;
   /** Fractional coordinates wrapped into [0, 1). */
   readonly frac: Vec3;

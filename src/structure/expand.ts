@@ -18,7 +18,11 @@ export interface Expansion {
   readonly warnings: readonly string[];
 }
 
-/** Apply every symmetry operation to every site and keep the distinct atoms of one unit cell. */
+/**
+ * Apply every symmetry operation to every site and keep the distinct atoms of one unit cell.
+ * Sites of the file that put different elements at the same place (a shared, or mixed, site)
+ * become one atom with several components.
+ */
 export function expandToUnitCell(structure: Structure): Expansion {
   const m = orthogonalizationMatrix(structure.cell);
   // Distance between two fractional points, taking the nearest lattice image.
@@ -30,7 +34,13 @@ export function expandToUnitCell(structure: Structure): Expansion {
     const c = mulVec(m, d);
     return Math.hypot(c[0], c[1], c[2]);
   };
-  const atoms: CellAtom[] = [];
+  interface Place {
+    siteIndex: number;
+    labels: string[];
+    components: { element: string; occupancy: number }[];
+    frac: Vec3;
+  }
+  const places: Place[] = [];
   const warnings: string[] = [];
   structure.sites.forEach((site, siteIndex) => {
     const images: Vec3[] = [];
@@ -51,8 +61,24 @@ export function expandToUnitCell(structure: Structure): Expansion {
       warnings.push(`${site.label}: the file states multiplicity ${site.statedMultiplicity}, but the symmetry operations give ${images.length} atoms per cell.`);
     }
     for (const frac of images) {
-      atoms.push({ siteIndex, label: site.label, element: site.element, occupancy: site.occupancy, frac });
+      // An earlier site already at this place: the two share it.
+      const shared = places.find((q) => q.siteIndex !== siteIndex && separation(q.frac, frac) < SAME_ATOM_DISTANCE);
+      if (!shared) {
+        places.push({ siteIndex, labels: [site.label], components: [{ element: site.element, occupancy: site.occupancy }], frac });
+        continue;
+      }
+      if (!shared.labels.includes(site.label)) shared.labels.push(site.label);
+      const same = shared.components.find((c) => c.element === site.element);
+      if (same) same.occupancy += site.occupancy;
+      else shared.components.push({ element: site.element, occupancy: site.occupancy });
     }
   });
-  return { atoms, warnings };
+  const overfull = new Set<string>();
+  const atoms: CellAtom[] = places.map((p) => {
+    const occupancy = p.components.reduce((sum, c) => sum + c.occupancy, 0);
+    const label = p.labels.join("/");
+    if (occupancy > 1.005) overfull.add(`${label}: the occupancies at this place add up to ${occupancy.toFixed(3)}, more than 1.`);
+    return { siteIndex: p.siteIndex, label, species: p.components.map((c) => c.element).join("/"), components: p.components, occupancy, frac: p.frac };
+  });
+  return { atoms, warnings: [...warnings, ...overfull] };
 }

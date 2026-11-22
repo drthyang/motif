@@ -4,7 +4,7 @@
  */
 import { mulVec } from "../structure/cell";
 import { mixHex } from "../scene/elementStyle";
-import type { Scene } from "../scene/scene";
+import type { Scene, Wedge } from "../scene/scene";
 import type { Vec3 } from "../structure/types";
 import type { View } from "./view";
 
@@ -106,25 +106,71 @@ export function layout(scene: Scene, view: View, canvas: Canvas): DrawnSphere[] 
 }
 
 const n1 = (v: number): string => (Math.round(v * 10) / 10).toString();
-const gradientId = (style: string): string => `g-${style.replace(/[^A-Za-z0-9]/g, "_")}`;
+const gradientId = (colour: string): string => `g-${colour.replace(/[^A-Za-z0-9]/g, "")}`;
+/** Outline of a pie sphere, and the id of the shading laid over its flat wedges. */
+export const PIE_OUTLINE = "#4a4f55";
+const PIE_SHADE = "pie-shade";
+
+/**
+ * The wedges of a pie sphere as SVG paths: sectors clockwise from the top, each spanning
+ * 360 degrees x its fraction. Exported for the tests.
+ */
+export function wedgePaths(x: number, y: number, r: number, wedges: readonly Wedge[]): string {
+  let out = "";
+  let turn = 0; // fraction of the circle already drawn
+  for (const w of wedges) {
+    if (w.fraction <= 0) continue;
+    if (w.fraction >= 0.9995) {
+      out += `<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="${w.colour}"/>`;
+      continue;
+    }
+    const angle = (t: number): number => -Math.PI / 2 + 2 * Math.PI * t; // 0 = top; SVG y runs down, so increasing angle is clockwise
+    const [a0, a1] = [angle(turn), angle(turn + w.fraction)];
+    const large = w.fraction > 0.5 ? 1 : 0;
+    out +=
+      `<path class="wedge" d="M${n1(x)} ${n1(y)} L${n1(x + r * Math.cos(a0))} ${n1(y + r * Math.sin(a0))} ` +
+      `A${n1(r)} ${n1(r)} 0 ${large} 1 ${n1(x + r * Math.cos(a1))} ${n1(y + r * Math.sin(a1))} Z" fill="${w.colour}"/>`;
+    turn += w.fraction;
+  }
+  return out;
+}
 
 export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CANVAS): string {
   const { width, height } = canvas;
   let out = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n<defs>\n`;
-  for (const [style, { colour }] of Object.entries(scene.styles)) {
-    // One radial gradient per element, highlight up and to the left.
+  const used = new Set(layoutAll(scene, view, canvas).flatMap((d) => (d.kind === "sphere" ? [d.style] : [])));
+  const plain = new Set<string>();
+  let pies = false;
+  for (const key of used) {
+    const style = scene.styles[key]!;
+    if (style.wedges) pies = true;
+    else plain.add(style.colour);
+  }
+  for (const colour of plain) {
+    // One radial gradient per colour, highlight up and to the left.
     out +=
-      `<radialGradient id="${gradientId(style)}" cx="36%" cy="30%" r="72%">` +
+      `<radialGradient id="${gradientId(colour)}" cx="36%" cy="30%" r="72%">` +
       `<stop offset="0" stop-color="${mixHex(colour, "#ffffff", 0.65)}"/>` +
       `<stop offset="0.55" stop-color="${colour}"/>` +
       `<stop offset="1" stop-color="${mixHex(colour, "#000000", 0.35)}"/></radialGradient>\n`;
+  }
+  if (pies) {
+    // Laid over the flat wedges of a pie sphere: a highlight up and to the left, a shadow at the rim.
+    out +=
+      `<radialGradient id="${PIE_SHADE}" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="#fff" stop-opacity="0.55"/>` +
+      `<stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.28"/></radialGradient>\n`;
   }
   out += "</defs>\n";
   if (canvas.background !== null) out += `<rect width="${width}" height="${height}" fill="${canvas.background}"/>\n`;
   for (const d of layoutAll(scene, view, canvas)) {
     if (d.kind === "sphere") {
-      const outline = mixHex(scene.styles[d.style]!.colour, "#000000", 0.35);
-      out += `<circle cx="${n1(d.x)}" cy="${n1(d.y)}" r="${n1(d.r)}" fill="url(#${gradientId(d.style)})" stroke="${outline}" stroke-width="2"/>\n`;
+      const style = scene.styles[d.style]!;
+      if (style.wedges) {
+        out += `${wedgePaths(d.x, d.y, d.r, style.wedges)}<circle cx="${n1(d.x)}" cy="${n1(d.y)}" r="${n1(d.r)}" fill="url(#${PIE_SHADE})" stroke="${PIE_OUTLINE}" stroke-width="2"/>\n`;
+      } else {
+        const outline = mixHex(style.colour, "#000000", 0.35);
+        out += `<circle cx="${n1(d.x)}" cy="${n1(d.y)}" r="${n1(d.r)}" fill="url(#${gradientId(style.colour)})" stroke="${outline}" stroke-width="2"/>\n`;
+      }
     } else {
       const look =
         d.kind === "bond"

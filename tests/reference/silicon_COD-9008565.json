@@ -12,6 +12,7 @@
   {
    "element": "Si",
    "label": "Si",
+   "occ": 1.0,
    "frac": [
     0.0,
     0.0,
@@ -26,6 +27,7 @@
   {
    "element": "Si",
    "label": "Si",
+   "occ": 1.0,
    "frac": [
     0.25,
     0.25,
@@ -40,6 +42,7 @@
   {
    "element": "Si",
    "label": "Si",
+   "occ": 1.0,
    "frac": [
     0.0,
     0.5,
@@ -54,6 +57,7 @@
   {
    "element": "Si",
    "label": "Si",
+   "occ": 1.0,
    "frac": [
     0.75,
     0.25,
@@ -68,6 +72,7 @@
   {
    "element": "Si",
    "label": "Si",
+   "occ": 1.0,
    "frac": [
     0.25,
     0.75,
@@ -82,6 +87,7 @@
   {
    "element": "Si",
    "label": "Si",
+   "occ": 1.0,
    "frac": [
     0.75,
     0.75,
@@ -96,6 +102,7 @@
   {
    "element": "Si",
    "label": "Si",
+   "occ": 1.0,
    "frac": [
     0.5,
     0.0,
@@ -110,6 +117,7 @@
   {
    "element": "Si",
    "label": "Si",
+   "occ": 1.0,
    "frac": [
     0.5,
     0.5,

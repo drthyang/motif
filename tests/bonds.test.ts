@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { BOND_START, DEFAULT_CANVAS, layoutAll, pxPerAngstrom, renderSvg } from "../src/render/svg";
 import { DEFAULT_VIEW, viewFromAngles } from "../src/render/view";
 import { atomsAndBonds, pairDistances, type BondRule } from "../src/scene/bonds";
-import { buildScene, cellEdgesInRange, type Scene } from "../src/scene/scene";
+import { buildScene, cellEdgesInRange, DEFAULT_SPEC, type Scene } from "../src/scene/scene";
 import { ONE_CELL, type Range } from "../src/scene/select";
 import { readCif } from "../src/structure/readCif";
 
@@ -70,7 +70,7 @@ describe("bonds, by hand", () => {
       const range: Range = { from: [0.1, -0.4, 0], to: [1.3, 1, 0.8], boundary: "both" };
       const { atoms, bonds } = atomsAndBonds(structure(name), range, [rule(centre, neighbour, max, true)]);
       atoms.forEach((a, index) => {
-        if (a.element !== centre || a.added) return;
+        if (a.species !== centre || a.added) return;
         expect(bonds.filter((b) => b.i === index || b.j === index).length, `${name} ${a.label}`).toBe(coordination);
       });
       // Nothing is added twice, and nothing added is inside the range.
@@ -119,7 +119,7 @@ describe("unit cell outline", () => {
 
 describe("drawing bonds and the cell", () => {
   it("draws each bond and cell edge once", () => {
-    const scene = buildScene(structure("halite-NaCl_COD-9008678"), { range: ONE_CELL, bonds: [rule("Na", "Cl", 3)], showCell: true });
+    const scene = buildScene(structure("halite-NaCl_COD-9008678"), { ...DEFAULT_SPEC, bonds: [rule("Na", "Cl", 3)] });
     const svg = renderSvg(scene, DEFAULT_VIEW);
     expect(svg.match(/class="bond"/g)?.length).toBe(54);
     expect(scene.cellEdges.length).toBe(12);

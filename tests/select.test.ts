@@ -8,7 +8,7 @@ import { readCif } from "../src/structure/readCif";
 const structure = (name: string) => readCif(readFileSync(`examples/${name}.cif`, "utf8"));
 const count = (name: string, range: Range): Record<string, number> => {
   const n: Record<string, number> = {};
-  for (const a of atomsInRange(structure(name), range).atoms) n[a.element] = (n[a.element] ?? 0) + 1;
+  for (const a of atomsInRange(structure(name), range).atoms) n[a.species] = (n[a.species] ?? 0) + 1;
   return n;
 };
 
@@ -62,7 +62,7 @@ describe("range, against gemmi (scripts/gemmi_ranges.py)", () => {
     const s = structure(name);
     for (const c of cases) {
       it(`${name}: ${c.from.join(",")} to ${c.to.join(",")} (${c.boundary}): same ${c.atoms.length} atoms at the same places`, () => {
-        const scene = buildScene(s, { range: { from: c.from, to: c.to, boundary: c.boundary }, bonds: [], showCell: false });
+        const scene = buildScene(s, { range: { from: c.from, to: c.to, boundary: c.boundary }, bonds: [], showCell: false, looks: {}, showVacancy: true });
         expect(scene.spheres.length).toBe(c.atoms.length);
         const unmatched = [...c.atoms];
         for (const sphere of scene.spheres) {

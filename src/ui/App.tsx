@@ -2,7 +2,8 @@ import { useCallback, useMemo, useRef, useState, type DragEvent, type PointerEve
 import { svgToPng } from "../render/png";
 import { DEFAULT_CANVAS, renderSvg } from "../render/svg";
 import { DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { buildScene, type Scene } from "../scene/scene";
+import { buildScene, elementColour, speciesRadius, type Look, type Scene } from "../scene/scene";
+import { expandToUnitCell } from "../structure/expand";
 import { pairDistances, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readCif } from "../structure/readCif";
@@ -48,6 +49,11 @@ export function App() {
   const [bondRules, setBondRules] = useState<(BondRule & { maxText: string })[]>([]);
   const [showCell, setShowCell] = useState(true);
   const [newPair, setNewPair] = useState("");
+  // The user's changes to colours, sizes and names. Radii are kept as typed, so a box can be emptied while editing.
+  const [looks, setLooks] = useState<Record<string, { colour?: string; radiusText?: string; name?: string }>>({});
+  const [showVacancy, setShowVacancy] = useState(true);
+  const setLook = (key: string, change: { colour?: string; radiusText?: string; name?: string }) =>
+    setLooks((all) => ({ ...all, [key]: { ...all[key], ...change } }));
   const last = useRef<{ x: number; y: number } | null>(null);
 
   const load = useCallback((text: string, name: string) => {
@@ -62,10 +68,37 @@ export function App() {
       setRangeText(ONE_CELL_TEXT);
       setBondRules([]);
       setNewPair("");
+      setLooks({});
     } catch (e) {
       setError(`${name}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, []);
+
+  // What the file holds: its elements, and its species (an element, or several sharing a site).
+  const contents = useMemo(() => {
+    if (!structure) return { elements: [] as string[], species: [] as { key: string; components: { element: string; occupancy: number }[]; varied: boolean }[] };
+    const species = new Map<string, { key: string; components: { element: string; occupancy: number }[]; varied: boolean }>();
+    for (const atom of expandToUnitCell(structure).atoms) {
+      const seen = species.get(atom.species);
+      const text = JSON.stringify(atom.components);
+      if (!seen) species.set(atom.species, { key: atom.species, components: [...atom.components], varied: false });
+      else if (JSON.stringify(seen.components) !== text) seen.varied = true;
+    }
+    return { elements: [...new Set(structure.sites.map((x) => x.element))], species: [...species.values()] };
+  }, [structure]);
+  const sceneLooks = useMemo(() => {
+    const out: Record<string, Look> = {};
+    for (const [key, look] of Object.entries(looks)) {
+      const radius = Number(look.radiusText);
+      out[key] = {
+        ...(look.colour !== undefined ? { colour: look.colour } : {}),
+        ...(look.radiusText !== undefined && look.radiusText.trim() !== "" && radius >= 0.05 && radius <= 5 ? { radius } : {}),
+        ...(look.name !== undefined && look.name.trim() !== "" ? { name: look.name.trim() } : {}),
+      };
+    }
+    return out;
+  }, [looks]);
+  const nameOf = (species: string): string => sceneLooks[species]?.name ?? species;
 
   // The scene for the chosen range; while the range is unusable the last good scene stays on screen.
   const lastScene = useRef<Scene | null>(null);
@@ -76,15 +109,15 @@ export function App() {
     try {
       // A rule whose distance box holds no usable number is left out until it does.
       const bonds = bondRules.filter((r) => r.max > 0.1 && r.max <= 10);
-      return { scene: buildScene(structure, { range, bonds, showCell }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
-    const elements = [...new Set(structure.sites.map((s) => s.element))];
+    const elements = contents.species.map((x) => x.key);
     const out: { key: string; centre: string; neighbour: string; distances: number[] }[] = [];
     elements.forEach((centre, i) => {
       for (const neighbour of elements.slice(i)) {
@@ -93,7 +126,7 @@ export function App() {
       }
     });
     return out.sort((p, q) => p.distances[0]! - q.distances[0]!);
-  }, [structure]);
+  }, [structure, contents]);
   const addBond = () => {
     const pair = pairs.find((p) => p.key === newPair);
     if (!pair) return;
@@ -109,8 +142,11 @@ export function App() {
   lastScene.current = scene;
   const counts = useMemo(() => {
     const n = new Map<string, number>();
-    for (const s of scene?.spheres ?? []) n.set(s.style, (n.get(s.style) ?? 0) + 1);
-    return [...n].map(([element, k]) => `${element} ${k}`).join(", ");
+    for (const s of scene?.spheres ?? []) {
+      const name = scene?.styles[s.style]?.name ?? s.style;
+      n.set(name, (n.get(name) ?? 0) + 1);
+    }
+    return [...n].map(([name, k]) => `${name} ${k}`).join(", ");
   }, [scene]);
   const svg = useMemo(
     () => (scene ? renderSvg(scene, view, { ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }) : ""),
@@ -262,11 +298,72 @@ export function App() {
             </p>
             {rangeError && <p className="error" data-testid="range-error">{rangeError}</p>}
 
+            <h2>Atoms</h2>
+            {contents.elements.map((element) => {
+              const pure = contents.species.find((x) => x.key === element);
+              return (
+                <div className="row" key={element} data-testid={`look-${element}`}>
+                  <input
+                    type="color"
+                    title={`Colour of ${element}`}
+                    value={elementColour(element, sceneLooks)}
+                    onChange={(e) => setLook(element, { colour: e.target.value })}
+                  />
+                  <b className="symbol">{element}</b>
+                  {pure && (
+                    <>
+                      radius
+                      <input
+                        type="number"
+                        step={0.05}
+                        min={0.05}
+                        max={5}
+                        value={looks[element]?.radiusText ?? speciesRadius(element, pure.components, {}).toFixed(2)}
+                        onChange={(e) => setLook(element, { radiusText: e.target.value })}
+                      />
+                      Å
+                    </>
+                  )}
+                </div>
+              );
+            })}
+            {contents.species.filter((x) => x.components.length > 1).map((x) => (
+              <div className="rule" key={x.key} data-testid={`look-${x.key}`}>
+                <p className="sub">
+                  Shared site: {x.components.map((c) => `${c.element} ${c.occupancy}`).join(", ")}
+                  {x.varied && " (and other proportions)"}
+                </p>
+                <div className="row">
+                  name
+                  <input type="text" className="name" value={looks[x.key]?.name ?? x.key} onChange={(e) => setLook(x.key, { name: e.target.value })} />
+                </div>
+                <div className="row">
+                  radius
+                  <input
+                    type="number"
+                    step={0.05}
+                    min={0.05}
+                    max={5}
+                    value={looks[x.key]?.radiusText ?? speciesRadius(x.key, x.components, {}).toFixed(2)}
+                    onChange={(e) => setLook(x.key, { radiusText: e.target.value })}
+                  />
+                  Å
+                </div>
+              </div>
+            ))}
+            <label className="row">
+              <input type="checkbox" data-testid="show-vacancy" checked={showVacancy} onChange={(e) => setShowVacancy(e.target.checked)} />
+              Show a vacant share as an empty wedge
+            </label>
+            <div className="row">
+              <button data-testid="reset-looks" onClick={() => setLooks({})}>Reset colours and sizes</button>
+            </div>
+
             <h2>Bonds</h2>
             {bondRules.map((r, index) => (
               <div key={index} className="rule" data-testid={`bond-${index}`}>
                 <div className="row">
-                  <b>{r.centre}–{r.neighbour}</b> up to
+                  <b>{nameOf(r.centre)}–{nameOf(r.neighbour)}</b> up to
                   <input
                     type="number"
                     step={0.05}
@@ -276,6 +373,15 @@ export function App() {
                     onChange={(e) => setBondRules((all) => all.map((x, i) => (i === index ? { ...x, maxText: e.target.value, max: Number(e.target.value) } : x)))}
                   />
                   Å
+                  {r.centre !== r.neighbour && (
+                    <button
+                      title="Swap which of the two is the centre"
+                      data-testid={`bond-swap-${index}`}
+                      onClick={() => setBondRules((all) => all.map((x, i) => (i === index ? { ...x, centre: x.neighbour, neighbour: x.centre } : x)))}
+                    >
+                      ⇄
+                    </button>
+                  )}
                   <button title="Remove this bond" onClick={() => setBondRules((all) => all.filter((_, i) => i !== index))}>×</button>
                 </div>
                 <label className="row">
@@ -284,7 +390,7 @@ export function App() {
                     checked={r.complete}
                     onChange={(e) => setBondRules((all) => all.map((x, i) => (i === index ? { ...x, complete: e.target.checked } : x)))}
                   />
-                  Add {r.neighbour} outside the range bonded to {r.centre} inside
+                  Add {nameOf(r.neighbour)} outside the range bonded to {nameOf(r.centre)} inside
                 </label>
                 <p className="sub" data-testid={`bond-count-${index}`}>
                   {r.max > 0.1 && r.max <= 10 ? `${bondCount(index)} bonds drawn` : "Give a distance between 0.1 and 10 Å."}
@@ -296,7 +402,7 @@ export function App() {
                 <option value="">Add a bond between…</option>
                 {pairs.map((p) => (
                   <option key={p.key} value={p.key}>
-                    {p.centre}–{p.neighbour} (distances {p.distances.slice(0, 3).map((d) => d.toFixed(2)).join(", ")} Å…)
+                    {nameOf(p.centre)}–{nameOf(p.neighbour)} (distances {p.distances.slice(0, 3).map((d) => d.toFixed(2)).join(", ")} Å…)
                   </option>
                 ))}
               </select>
