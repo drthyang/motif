@@ -562,8 +562,8 @@ export function axisArrows(scene: Scene, view: View): AxisArrow[] {
 
 /** Sizes of the axis arrows, px: shaft thickness, head length and head width. */
 const AXIS_SHAFT = 13;
-const AXIS_HEAD = 42;
-const AXIS_HEAD_WIDTH = 36;
+const AXIS_HEAD = 48;
+const AXIS_HEAD_WIDTH = 29;
 
 /**
  * The axis triad as SVG, placed so that it sits in the bottom right corner whatever the orientation.
@@ -590,18 +590,20 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
   const ys = [-half, half, ...arrows.flatMap((a) => [a.dy - half, a.dy + half]), ...letters.flatMap((l) => (l ? [l.y - fontSize * 0.45, l.y + fontSize * 0.45] : []))];
   const ox = canvas.width - 45 - Math.max(...xs);
   const oy = canvas.height - 25 - Math.max(...ys);
-  const [light, dark, darker] = [mixHex(AXIS_COLOUR, "#ffffff", 0.55), mixHex(AXIS_COLOUR, "#000000", 0.3), mixHex(AXIS_COLOUR, "#000000", 0.45)];
+  const [light, dark] = [mixHex(AXIS_COLOUR, "#ffffff", 0.55), mixHex(AXIS_COLOUR, "#000000", 0.3)];
   let defs =
     `<radialGradient id="axis-ball" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="${light}"/>` +
     `<stop offset="0.55" stop-color="${AXIS_COLOUR}"/><stop offset="1" stop-color="${dark}"/></radialGradient>\n`;
   let svg = "";
-  // Back to front: the arrow pointing most away from the viewer first; the ball at the origin between
-  // the arrows that point away and those that point towards the viewer.
+  // Back to front: the arrow pointing most away from the viewer first, then the ball at the origin.
   const order = arrows.map((a, i) => ({ a, letter: letters[i]! })).sort((p, q) => p.a.depth - q.a.depth);
-  const ball = (): string => `<circle class="axis-origin" cx="${n1(ox)}" cy="${n1(oy)}" r="${n1(shaftPx * 0.85)}" fill="url(#axis-ball)"/>\n`;
+  const baseShade = mixHex(AXIS_COLOUR, "#000000", 0.18);
+  const ball = (): string => `<circle class="axis-origin" cx="${n1(ox)}" cy="${n1(oy)}" r="${n1(shaftPx * 0.95)}" fill="url(#axis-ball)"/>\n`;
   let ballDrawn = false;
   for (const { a, letter } of order) {
-    if (!ballDrawn && a.depth >= 0) {
+    // The ball at the origin covers the square starts of the shafts, except of an arrow that points well
+    // towards the viewer, which comes out of the ball's face and is drawn over it.
+    if (!ballDrawn && a.depth >= 0.5) {
       svg += ball();
       ballDrawn = true;
     }
@@ -639,8 +641,11 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
         base(`url(#${id}-base)`, ' stroke="none"') +
         `<polygon class="axis-head" points="${coneOutline(tx, ty, bx, by, ux, uy, px, py, headWidthPx / 2, tilt)}" fill="url(#${id}-head)"/>`;
     } else {
-      // Pointing away: the flat base of the cone faces the viewer and covers the cone behind it; the shaft comes last.
-      svg += cone + base(darker) + shaft;
+      // Pointing away: the flat base of the cone faces the viewer and covers the cone behind it. It is drawn in a
+      // quiet shade (a dark disc would be the loudest thing in the triad), and the shaft, which comes last, ends
+      // on it in the small ellipse of its own cross-section, so it reads as a rod set into the disc.
+      const plug = `<ellipse class="axis-plug" cx="${n1(bx)}" cy="${n1(by)}" rx="${n1((shaftPx / 2) * tilt)}" ry="${n1(shaftPx / 2)}" transform="rotate(${n1(angle)} ${n1(bx)} ${n1(by)})" fill="${AXIS_COLOUR}"/>`;
+      svg += cone + base(baseShade) + shaft + plug;
     }
     if (letter) {
       // The baseline is set 0.3 em below the wanted centre, so no reader needs to support "dominant-baseline".
