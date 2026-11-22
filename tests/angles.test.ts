@@ -67,6 +67,11 @@ describe("choosing which angles are marked", () => {
     expect(buildScene(perovskite, { ...spec, angles: [mark("O", ["Ti", "Ti"], 89, 91)] }).sectors.length).toBe(0); // Ti-O-Ti is straight
     expect(buildScene(perovskite, { ...spec, angles: [mark("Sr", ["O", "O"])] }).sectors.length).toBe(0); // no Sr-O bonds drawn
     expect(all.angleKinds.map((k) => `${k.ends[0]}-${k.centre}-${k.ends[1]}`).sort()).toEqual(["O-Ti-O", "Ti-O-Ti"]);
+    // The distribution the user picks from: how many angles of each size.
+    const octahedron = all.angleKinds.find((k) => k.centre === "Ti")!;
+    expect(octahedron.sizes).toEqual([90, 180]);
+    expect(octahedron.counts).toEqual([8 * 12, 8 * 3]);
+    expect(octahedron.count).toBe(8 * 15);
   });
 
   it("no bonds, no angles; marking an angle moves and removes nothing", () => {

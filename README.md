@@ -66,6 +66,8 @@ writes the reference atom lists in `tests/reference/`.
   range is marked with a translucent sector lying in the plane of the two bonds, between the
   surface of the apex atom and a chosen radius, and (optionally) its size to 0.1°. A straight
   angle (180°) has no plane and is not drawn.
+- Each angle rule shows the distribution of its angle among the drawn bonds; pointing at a bar
+  previews those angles in the figure, a click or a drag across bars keeps them marked.
 - A bond rule can leave out neighbours it bonds to nothing, and (for bonds within one species)
   everything that is not part of a complete triangle. The wedge order of a shared site can be set.
 - Moment directions are checked against pymatgen (`scripts/pymatgen_moments.py`), including the

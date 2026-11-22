@@ -77,18 +77,24 @@ export interface AngleKind {
   readonly count: number;
   /** The distinct sizes, to 0.1 degree, smallest first. */
   readonly sizes: readonly number[];
+  /** How many angles have each of those sizes (same order): the distribution the user picks from. */
+  readonly counts: readonly number[];
 }
 
 export function angleKinds(atoms: readonly PlacedAtom[], all: readonly BondAngle[]): AngleKind[] {
-  const kinds = new Map<string, { centre: string; ends: [string, string]; count: number; sizes: Set<number> }>();
+  const kinds = new Map<string, { centre: string; ends: [string, string]; count: number; sizes: Map<number, number> }>();
   for (const t of all) {
     const ends = [atoms[t.a]!.species, atoms[t.b]!.species].sort() as [string, string];
     const centre = atoms[t.apex]!.species;
     const key = `${ends[0]}|${centre}|${ends[1]}`;
-    const kind = kinds.get(key) ?? { centre, ends, count: 0, sizes: new Set<number>() };
+    const kind = kinds.get(key) ?? { centre, ends, count: 0, sizes: new Map<number, number>() };
     kind.count++;
-    kind.sizes.add(Math.round(t.degrees * 10) / 10);
+    const size = Math.round(t.degrees * 10) / 10;
+    kind.sizes.set(size, (kind.sizes.get(size) ?? 0) + 1);
     kinds.set(key, kind);
   }
-  return [...kinds.values()].map((k) => ({ centre: k.centre, ends: k.ends, count: k.count, sizes: [...k.sizes].sort((p, q) => p - q) }));
+  return [...kinds.values()].map((k) => {
+    const sorted = [...k.sizes].sort((p, q) => p[0] - q[0]);
+    return { centre: k.centre, ends: k.ends, count: k.count, sizes: sorted.map(([size]) => size), counts: sorted.map(([, n]) => n) };
+  });
 }

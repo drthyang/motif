@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState, type DragEvent, type PointerEvent, type ReactNode } from "react";
 import { svgToPng } from "../render/png";
+import { AnglePlot } from "./AnglePlot";
 import { DEFAULT_CANVAS, fitView, renderSvg, type Fit } from "../render/svg";
 import { DEFAULT_VIEW, dragView, viewWithAxisUp, type View } from "../render/view";
 import { buildScene, cellAxes, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
@@ -66,23 +67,25 @@ export function App() {
   // Angle rules; the limits and the look are kept as typed.
   const [angleRules, setAngleRules] = useState<(AngleRule & { minText: string; maxText: string; radiusText: string; opacityText: string })[]>([]);
   const [newAngle, setNewAngle] = useState("");
+  // While the pointer rests on a bar of an angle plot: that rule shows only the bar's angles.
+  const [angleHover, setAngleHover] = useState<{ rule: number; range: [number, number] } | null>(null);
   const changeAngle = (index: number, change: Partial<(typeof angleRules)[number]>) => setAngleRules((all) => all.map((x, i) => (i === index ? { ...x, ...change } : x)));
   const sceneAngles = useMemo(
     () =>
-      angleRules.map((r): AngleRule => {
+      angleRules.map((r, index): AngleRule => {
         const num = (text: string, lo: number, hi: number, fallback: number): number => (text.trim() !== "" && Number(text) >= lo && Number(text) <= hi ? Number(text) : fallback);
         return {
           centre: r.centre,
           ends: r.ends,
-          min: num(r.minText, 0, 180, 0),
-          max: num(r.maxText, 0, 180, 180),
+          min: angleHover?.rule === index ? angleHover.range[0] : num(r.minText, 0, 180, 0),
+          max: angleHover?.rule === index ? angleHover.range[1] : num(r.maxText, 0, 180, 180),
           colour: r.colour ?? DEFAULT_ANGLE_LOOK.colour,
           opacity: num(r.opacityText, 0.05, 1, DEFAULT_ANGLE_LOOK.opacity),
           radius: num(r.radiusText, 0.1, 5, DEFAULT_ANGLE_LOOK.radius),
           label: r.label ?? DEFAULT_ANGLE_LOOK.label,
         };
       }),
-    [angleRules],
+    [angleRules, angleHover],
   );
   const [showMoments, setShowMoments] = useState(true);
   const [momentLengthText, setMomentLengthText] = useState(String(DEFAULT_SPEC.momentLength));
@@ -109,6 +112,7 @@ export function App() {
       setNewPair("");
       setLooks({});
       setAngleRules([]);
+      setAngleHover(null);
       setNewAngle("");
       setUpAxis(2);
       setAzText("18");
@@ -597,6 +601,28 @@ export function App() {
                     <input type="number" step={0.5} min={0} max={180} data-testid={`angle-max-${index}`} value={r.maxText} onChange={(e) => changeAngle(index, { maxText: e.target.value })} />
                     °
                   </div>
+                  {(() => {
+                    const kind = scene.angleKinds.find((x) => x.centre === r.centre && x.ends[0] === r.ends[0] && x.ends[1] === r.ends[1]);
+                    if (!kind) return <p className="sub">No such angle among the bonds drawn now.</p>;
+                    const [lo, hi] = [Number(r.minText), Number(r.maxText)];
+                    return (
+                      <>
+                        <AnglePlot
+                          sizes={kind.sizes}
+                          counts={kind.counts}
+                          min={r.minText.trim() === "" || !(lo >= 0) ? 0 : lo}
+                          max={r.maxText.trim() === "" || !(hi <= 180) ? 180 : hi}
+                          colour={r.colour ?? DEFAULT_ANGLE_LOOK.colour}
+                          onRange={(a, b) => changeAngle(index, { minText: String(a), maxText: String(b) })}
+                          onHover={(range) => setAngleHover(range ? { rule: index, range } : null)}
+                        />
+                        <div className="row">
+                          <span className="sub">Click a bar, or drag across several.</span>
+                          <button data-testid={`angle-all-${index}`} onClick={() => changeAngle(index, { minText: "0", maxText: "180" })}>All</button>
+                        </div>
+                      </>
+                    );
+                  })()}
                   <div className="row">
                     <input type="color" title="Colour of the mark" value={r.colour ?? DEFAULT_ANGLE_LOOK.colour} onChange={(e) => changeAngle(index, { colour: e.target.value })} />
                     opacity

@@ -122,3 +122,4 @@ input[type="color"] { width: 32px; height: 27px; padding: 1px; border: 1px solid
   .side { overflow: visible; }
   .tagline { display: none; }
 }
+.angle-plot { width: 100%; height: auto; display: block; margin: 6px 0 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; cursor: crosshair; touch-action: none; user-select: none; }
