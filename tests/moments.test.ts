@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CANVAS, layoutAll, renderSvg } from "../src/render/svg";
 import { viewFromAngles } from "../src/render/view";
-import { buildScene, DEFAULT_SPEC, largestMoment, momentToCartesian } from "../src/scene/scene";
+import { buildScene, cellAxes, DEFAULT_SPEC, largestMoment, momentToCartesian } from "../src/scene/scene";
 import { expandToUnitCell, transformMoment } from "../src/structure/expand";
 import { readCif } from "../src/structure/readCif";
 import { parseMagneticSymmetryOperation } from "../src/structure/symmetry";
@@ -209,4 +209,34 @@ describe("moment arrows", () => {
     expect(renderSvg(buildScene(mnf2, { ...DEFAULT_SPEC, showMoments: false }), viewFromAngles(0, 0))).not.toContain('class="arrow"');
     expect(buildScene(mnf2, { ...DEFAULT_SPEC, momentLength: 0.5 }).warnings.join(" ")).toMatch(/shorter than the atom/);
   });
+});
+
+describe("against pymatgen, an independent program (scripts/pymatgen_moments.py)", () => {
+  interface Ref {
+    frac: number[];
+    moment: number[];
+    size: number;
+    along: number[];
+  }
+  const reference = JSON.parse(readFileSync("tests/reference/moments_pymatgen.json", "utf8")) as Record<string, Ref[]>;
+  for (const [file, expected] of Object.entries(reference)) {
+    it(`${file.split("/").pop()}: every moment in the cell, ${expected.length} atoms`, () => {
+      const s = readCif(readFileSync(file, "utf8"));
+      const { atoms, warnings } = expandToUnitCell(s);
+      expect(warnings).toEqual([]);
+      const magnetic = atoms.filter((a) => a.moment);
+      expect(magnetic.length).toBe(expected.length);
+      const axes = cellAxes(s).map((x) => x.direction);
+      for (const atom of magnetic) {
+        const ref = expected.find((r) => r.frac.every((x, i) => Math.abs(x - atom.frac[i]! - Math.round(x - atom.frac[i]!)) < 1e-6));
+        expect(ref, `no atom at ${atom.frac.join(", ")} in the reference`).toBeDefined();
+        // The three numbers (components along a, b, c) ...
+        for (let i = 0; i < 3; i++) expect(atom.moment![i]).toBeCloseTo(ref!.moment[i]!, 6);
+        // ... and the arrow in real space: its size and its projection on each cell edge.
+        const m = momentToCartesian(s, atom.moment!);
+        expect(Math.hypot(...m)).toBeCloseTo(ref!.size, 6);
+        axes.forEach((axis, i) => expect(m[0] * axis[0] + m[1] * axis[1] + m[2] * axis[2]).toBeCloseTo(ref!.along[i]!, 6));
+      }
+    });
+  }
 });
