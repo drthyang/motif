@@ -70,6 +70,8 @@ export interface DrawnArrow {
   /** The head as three corners "x,y x,y x,y" (tip first); absent for a part of the tail half. */
   readonly head?: string;
   readonly depth: number;
+  /** True for the part drawn over the sphere: the half of the rod that comes out of the sphere's face. */
+  readonly front?: boolean;
   /** The part's shapes, ready to write. */
   readonly svg: string;
 }
@@ -278,7 +280,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     // the centre outwards, and the sphere's own round outline cuts it. A half that points towards the viewer
     // comes out of the sphere's face: it is drawn after the sphere, starting at the small circle where a rod of
     // this thickness pierces the surface. Seen at an angle that circle is an ellipse, so the rod's foot is
-    // rounded, and a soft shadow lies on the sphere around it.
+    // rounded.
     const sphere = scene.spheres[arrow.sphere]!;
     const radius = scene.styles[sphere.style]!.radius;
     const half = Math.hypot(arrow.vector[0], arrow.vector[1], arrow.vector[2]) / 2;
@@ -349,7 +351,6 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     if (Math.abs(towards) > 0.02) {
       const sign = towards > 0 ? 1 : -1; // which half points at the viewer
       const foot = at(sign * pierce);
-      const shadow = ellipse("arrow-shadow", foot, w * 1.9, Math.max(Math.abs(towards), 0.25), "#000000", ' fill-opacity="0.2"');
       const end = sign > 0 ? tip : tail;
       const piece = sign > 0 ? headHalf(pierce, true) : tailHalf(-pierce, true);
       drawn.push({
@@ -361,7 +362,8 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
         width: 2 * w,
         depth: Math.max((foot[2] + end[2]) / 2, centre[2] + 0.01),
         ...(sign > 0 ? { head } : {}),
-        svg: shadow + piece,
+        front: true,
+        svg: piece,
       });
     }
   });

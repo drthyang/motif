@@ -81,7 +81,7 @@ writes the reference atom lists in `tests/reference/`.
 - A moment arrow is a thin round rod through the atom with a cone at its tip, shaded like the
   spheres. The half that points away from the viewer is drawn before the sphere, which cuts it
   with its own outline; the half that points towards the viewer is drawn after, from the small
-  circle where it pierces the surface (an ellipse when seen at an angle), with a soft shadow.
+  circle where it pierces the surface (an ellipse when seen at an angle).
 - Arrow length is proportional to the moment; the largest moment in the file gets the chosen length.
 - Highlights belong to a bond rule. Its bonds form connected groups (chains, nets), numbered by
   the position of their middle along *a*, then *b*, then *c*, so the numbering does not depend on

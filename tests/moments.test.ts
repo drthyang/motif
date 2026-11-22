@@ -220,12 +220,12 @@ describe("moment arrows", () => {
     for (const d of flat.arrows) {
       const sphere = flat.mn.find((x) => Math.abs(x.x - d.x1) < 1e-6)!;
       expect(flat.order.indexOf(d)).toBeLessThan(flat.order.indexOf(sphere));
-      expect(d.svg).not.toContain("arrow-shadow");
+      expect(d.front).toBeUndefined();
     }
-    // Tilted: a third part per atom, after the sphere, with the shadow and a foot whose depth along the rod is
+    // Tilted: a third part per atom, after the sphere, with a foot whose depth along the rod is
     // sin(tilt) times its half-width (an ellipse: the circle where the rod pierces the surface, seen at an angle).
     const tilted = draw(viewFromAngles(0, 40));
-    const over = tilted.arrows.filter((d) => d.svg.includes("arrow-shadow"));
+    const over = tilted.arrows.filter((d) => d.front);
     expect(over.length).toBe(2); // one per Mn
     for (const d of over) {
       const sphere = tilted.mn.find((x) => Math.hypot(d.x1 - x.x, d.y1 - x.y) < x.r)!;
