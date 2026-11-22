@@ -59,9 +59,18 @@ body { margin: 0; background: var(--page); }
 .stage.over { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-tint); }
 .stage-head { display: flex; justify-content: space-between; gap: 12px; font-size: var(--fz-small); color: var(--secondary); flex-wrap: wrap; }
 .stage-head b { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
-.figure { flex: 1; min-height: 0; cursor: grab; touch-action: none; user-select: none; border-radius: 6px; border: 1px solid var(--border);
+.figure-wrap { flex: 1; min-height: 0; position: relative; }
+.figure { position: absolute; inset: 0; cursor: grab; touch-action: none; user-select: none; border-radius: 6px; border: 1px solid var(--border);
   /* The checker shows where the figure is transparent; it is not part of the figure. */
   background: repeating-conic-gradient(#fff 0% 25%, #f6f3ee 0% 50%) 0 0 / 22px 22px; }
+.figure.boxing { cursor: crosshair; }
+.zoom-box { position: absolute; border: 1.5px solid var(--primary); background: rgba(31, 79, 216, 0.1); pointer-events: none; }
+.zoom-bar { position: absolute; right: 10px; top: 10px; display: flex; align-items: center; gap: 4px; padding: 4px; background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border); border-radius: 8px; }
+.zoom-bar button { padding: 3px 9px; min-width: 30px; justify-content: center; }
+.zoom-bar button.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+.zoom-value { min-width: 46px; text-align: center; font-size: var(--fz-small); color: var(--secondary); font-variant-numeric: tabular-nums; }
+.stage-foot { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .figure.white { background: #fff; }
 .figure:active { cursor: grabbing; }
 .figure svg { width: 100%; height: 100%; display: block; pointer-events: none; }
@@ -118,7 +127,7 @@ input[type="color"] { width: 32px; height: 27px; padding: 1px; border: 1px solid
 @media (max-width: 860px) {
   .shell { height: auto; min-height: 100dvh; }
   .work { grid-template-columns: minmax(0, 1fr); }
-  .figure { flex: none; aspect-ratio: 1440 / 1100; }
+  .figure-wrap { flex: none; aspect-ratio: 1440 / 1100; }
   .side { overflow: visible; }
   .tagline { display: none; }
 }

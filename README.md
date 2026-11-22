@@ -44,6 +44,11 @@ writes the reference atom lists in `tests/reference/`.
 - The unit-cell outline is drawn for every whole cell inside the range (none for a slab).
 - The structure is fitted to the canvas in each view. While dragging, the placement of the moment
   the drag began is kept, and the figure is refitted on release.
+- Zoom and move act on the structure inside its space; the legend and axes stay put, and a zoomed
+  structure is cut off at the legend band. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the
+  buttons; move: Shift + drag, middle-button drag, arrow keys; fit again: double-click, 0, or
+  "Fit"; "Box" then a drag zooms to a rectangle (Esc cancels). A plain wheel scrolls the page.
+  A switch says whether Save writes the zoomed view (the default for now) or the whole structure.
 - Legend and axes share a band under the structure. The axis arrows are the directions of the cell
   edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
   no letter. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). Text stays live

@@ -126,6 +126,13 @@ export interface Fit {
   readonly scale: number;
   readonly x: number;
   readonly y: number;
+  /** Cut the structure off at the edge of its space (above the legend band): set when zoomed or moved. */
+  readonly clip?: boolean;
+}
+
+/** The middle of the space the structure is fitted into, px. */
+export function structureCentre(scene: Scene, canvas: Canvas): [number, number] {
+  return [canvas.width / 2, structureHeight(scene, canvas) / 2];
 }
 
 /**
@@ -518,6 +525,10 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
   const axes = axesSvg(scene, view, canvas);
   out += `${axes.defs}</defs>\n`;
   if (canvas.background !== null) out += `<rect width="${width}" height="${height}" fill="${canvas.background}"/>\n`;
+  // Zoomed or moved: the structure may reach past its space; it is cut off there, so it never runs under the legend.
+  if (fit?.clip) {
+    out += `<clipPath id="structure-space"><rect width="${width}" height="${structureHeight(scene, canvas)}"/></clipPath>\n<g clip-path="url(#structure-space)">\n`;
+  }
   for (const d of drawn) {
     if (d.kind === "sphere") {
       out += sphereSvg(scene, d.style, d.x, d.y, d.r);
@@ -554,6 +565,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       `<text class="angle-label" x="${n1(d.label.x)}" y="${n1(d.label.y + 0.35 * ANGLE_LABEL_SIZE)}" text-anchor="middle" font-family="${FONT}" font-weight="${Math.min(scene.letterWeight, 600)}" ` +
       `font-size="${ANGLE_LABEL_SIZE}" fill="${mixHex(d.colour, "#000000", 0.35)}" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${d.label.text}</text>\n`;
   }
+  if (fit?.clip) out += "</g>\n";
   // The band under the structure: axes on the right, legend on the left in the space that remains.
   for (const item of legendLayout(scene, canvas, axes.left - 40)) {
     out += sphereSvg(scene, item.style, item.x, item.y, item.r);

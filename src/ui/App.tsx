@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useRef, useState, type DragEvent, type PointerEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { svgToPng } from "../render/png";
 import { AnglePlot } from "./AnglePlot";
-import { DEFAULT_CANVAS, fitView, renderSvg, type Fit } from "../render/svg";
+import { DEFAULT_CANVAS, fitView, renderSvg, structureCentre, structureHeight, type Fit } from "../render/svg";
+import { NO_ZOOM, isZoomed, panBy, zoomAbout, zoomToBox, zoomedFit, type Zoom } from "../render/zoom";
 import { DEFAULT_VIEW, dragView, viewWithAxisUp, type View } from "../render/view";
 import { buildScene, cellAxes, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
@@ -97,6 +98,9 @@ export function App() {
   const last = useRef<{ x: number; y: number } | null>(null);
   // While dragging, the placement of the moment the drag began is kept, so the figure turns without jumping.
   const [heldFit, setHeldFit] = useState<Fit | null>(null);
+  // Zoom and pan of the structure within its space; and whether the saved figure follows them.
+  const [zoom, setZoom] = useState<Zoom>(NO_ZOOM);
+  const [saveZoomed, setSaveZoomed] = useState(true);
 
   const load = useCallback((text: string, name: string) => {
     try {
@@ -108,6 +112,7 @@ export function App() {
       setError("");
       setView(DEFAULT_VIEW);
       setRangeText(ONE_CELL_TEXT);
+      setZoom(NO_ZOOM);
       setBondRules([]);
       setNewPair("");
       setLooks({});
@@ -205,8 +210,17 @@ export function App() {
     return [...n].map(([name, k]) => `${name} ${k}`).join(", ");
   }, [scene]);
   const svg = useMemo(
-    () => (scene ? renderSvg(scene, view, { ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }, heldFit ?? undefined) : ""),
-    [scene, view, transparent, heldFit],
+    () => {
+      if (!scene) return "";
+      const fit = zoomedFit(heldFit ?? fitView(scene, view, DEFAULT_CANVAS), zoom, structureCentre(scene, DEFAULT_CANVAS));
+      return renderSvg(scene, view, { ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }, fit);
+    },
+    [scene, view, transparent, heldFit, zoom],
+  );
+  // What "Save" writes: the figure as shown, or (if the user prefers) the whole structure fitted, whatever the zoom.
+  const savedSvg = useMemo(
+    () => (scene && isZoomed(zoom) && !saveZoomed ? renderSvg(scene, view, { ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }) : svg),
+    [scene, view, transparent, zoom, saveZoomed, svg],
   );
   const baseName = fileName.replace(/\.[^.]+$/, "") || "motif";
 
@@ -217,22 +231,117 @@ export function App() {
     // The file is read here, in the page. Nothing is uploaded.
     if (file) void file.text().then((text) => load(text, file.name));
   };
+  // ---- Gestures on the figure. Plain drag turns; Shift + drag or the middle button moves; Ctrl/Cmd + wheel,
+  // a pinch, or the + and - keys zoom; double-click or 0 resets the zoom; "Box" then a drag zooms to a rectangle.
+  const figureRef = useRef<HTMLDivElement>(null);
+  const pointers = useRef(new Map<number, { x: number; y: number }>());
+  const gesture = useRef<"turn" | "move" | "box" | "pinch" | null>(null);
+  const [boxMode, setBoxMode] = useState(false);
+  const [box, setBox] = useState<{ from: [number, number]; to: [number, number] } | null>(null);
+  const centre = scene ? structureCentre(scene, DEFAULT_CANVAS) : ([0, 0] as [number, number]);
+  /** Px of the canvas per px of the screen, and the canvas point under a screen point. */
+  const canvasScale = (): number => {
+    const r = figureRef.current!.getBoundingClientRect();
+    return 1 / Math.min(r.width / DEFAULT_CANVAS.width, r.height / DEFAULT_CANVAS.height);
+  };
+  const toCanvas = (clientX: number, clientY: number): [number, number] => {
+    const r = figureRef.current!.getBoundingClientRect();
+    const k = canvasScale();
+    // The SVG is centred in the frame, with empty strips on two sides when the shapes differ.
+    return [(clientX - r.left - (r.width - DEFAULT_CANVAS.width / k) / 2) * k, (clientY - r.top - (r.height - DEFAULT_CANVAS.height / k) / 2) * k];
+  };
+  const resetZoom = () => setZoom(NO_ZOOM);
+  const zoomAtCentre = (by: number) => setZoom((z) => zoomAbout(z, by, centre, centre));
+
   const onPointerDown = (e: PointerEvent) => {
+    if (!scene) return;
     e.currentTarget.setPointerCapture(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     last.current = { x: e.clientX, y: e.clientY };
-    if (scene) setHeldFit(fitView(scene, view, DEFAULT_CANVAS));
+    if (pointers.current.size === 2) {
+      gesture.current = "pinch";
+      setHeldFit(null);
+      return;
+    }
+    if (boxMode) {
+      gesture.current = "box";
+      const p = toCanvas(e.clientX, e.clientY);
+      setBox({ from: p, to: p });
+    } else if (e.shiftKey || e.button === 1) {
+      gesture.current = "move";
+      e.preventDefault();
+    } else {
+      gesture.current = "turn";
+      setHeldFit(fitView(scene, view, DEFAULT_CANVAS));
+    }
   };
   const onPointerMove = (e: PointerEvent) => {
-    if (!last.current) return;
-    const k = (2 * Math.PI) / DRAG_PX_PER_TURN;
-    const dx = (e.clientX - last.current.x) * k;
-    const dy = (e.clientY - last.current.y) * k;
+    if (!last.current || !gesture.current) return;
+    const before = pointers.current.get(e.pointerId);
+    pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (gesture.current === "pinch") {
+      const other = [...pointers.current.entries()].find(([id]) => id !== e.pointerId)?.[1];
+      if (!before || !other) return;
+      const [was, now] = [Math.hypot(before.x - other.x, before.y - other.y), Math.hypot(e.clientX - other.x, e.clientY - other.y)];
+      const middle = toCanvas((e.clientX + other.x) / 2, (e.clientY + other.y) / 2);
+      if (was > 0) setZoom((z) => zoomAbout(z, now / was, middle, centre));
+      return;
+    }
+    const [dx, dy] = [e.clientX - last.current.x, e.clientY - last.current.y];
     last.current = { x: e.clientX, y: e.clientY };
-    setView((v) => dragView(v, dx, dy));
+    if (gesture.current === "box") {
+      setBox((b) => (b ? { from: b.from, to: toCanvas(e.clientX, e.clientY) } : b));
+    } else if (gesture.current === "move") {
+      const k = canvasScale();
+      setZoom((z) => panBy(z, dx * k, dy * k));
+    } else {
+      const k = (2 * Math.PI) / DRAG_PX_PER_TURN;
+      setView((v) => dragView(v, dx * k, dy * k));
+    }
   };
-  const onPointerUp = () => {
-    last.current = null;
-    setHeldFit(null); // refit to the new orientation
+  const onPointerUp = (e: PointerEvent) => {
+    pointers.current.delete(e.pointerId);
+    if (gesture.current === "box" && box && scene) {
+      setZoom((z) => zoomToBox(z, box.from, box.to, centre, DEFAULT_CANVAS.width, structureHeight(scene, DEFAULT_CANVAS)));
+      setBoxMode(false);
+    }
+    setBox(null);
+    if (pointers.current.size === 0) {
+      last.current = null;
+      gesture.current = null;
+      setHeldFit(null); // refit to the new orientation
+    }
+  };
+  // Ctrl/Cmd + wheel (which is also what a trackpad pinch sends) zooms about the pointer. A plain wheel is
+  // left alone, so the page still scrolls. The listener must be able to stop the browser's own page zoom.
+  useEffect(() => {
+    const el = figureRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const about = toCanvas(e.clientX, e.clientY);
+      setZoom((z) => zoomAbout(z, Math.exp(-e.deltaY * 0.01), about, structureCentre(scene!, DEFAULT_CANVAS)));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene]);
+  const onKeyDown = (e: KeyboardEvent) => {
+    const step = 60;
+    if (e.key === "+" || e.key === "=") zoomAtCentre(1.25);
+    else if (e.key === "-" || e.key === "_") zoomAtCentre(1 / 1.25);
+    else if (e.key === "0") resetZoom();
+    else if (e.key === "ArrowLeft") setZoom((z) => panBy(z, step, 0));
+    else if (e.key === "ArrowRight") setZoom((z) => panBy(z, -step, 0));
+    else if (e.key === "ArrowUp") setZoom((z) => panBy(z, 0, step));
+    else if (e.key === "ArrowDown") setZoom((z) => panBy(z, 0, -step));
+    else if (e.key === "Escape") {
+      setBoxMode(false);
+      setBox(null);
+      gesture.current = null;
+    } else return;
+    e.preventDefault();
   };
 
   const cell = structure?.cell;
@@ -280,7 +389,7 @@ export function App() {
                 <input type="checkbox" checked={transparent} onChange={(e) => setTransparent(e.target.checked)} />
                 Transparent
               </label>
-              <button data-testid="export-svg" title="Vector figure, editable in Keynote or Illustrator" onClick={() => download(new Blob([svg], { type: "image/svg+xml" }), `${baseName}.svg`)}>
+              <button data-testid="export-svg" title="Vector figure, editable in Keynote or Illustrator" onClick={() => download(new Blob([savedSvg], { type: "image/svg+xml" }), `${baseName}.svg`)}>
                 Save SVG
               </button>
               <span className="joined">
@@ -288,7 +397,7 @@ export function App() {
                   data-testid="export-png"
                   title="Image made from the same SVG, at the width given"
                   onClick={() => {
-                    svgToPng(svg, pngWidth).then(
+                    svgToPng(savedSvg, pngWidth).then(
                       (blob) => download(blob, `${baseName}.png`),
                       (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
                     );
@@ -328,16 +437,55 @@ export function App() {
                 <b>{fileName}</b>
                 <span data-testid="counts">{scene.spheres.length} atoms{counts && `: ${counts}`}</span>
               </div>
-              <div
-                className={`figure${transparent ? "" : " white"}`}
-                data-testid="figure"
-                onPointerDown={onPointerDown}
-                onPointerMove={onPointerMove}
-                onPointerUp={onPointerUp}
-                onPointerCancel={onPointerUp}
-                dangerouslySetInnerHTML={{ __html: svg }}
-              />
-              <p className="hint">Drag to turn. The saved figure is exactly what is shown{transparent ? "; the checker marks where it is transparent" : ""}.</p>
+              <div className="figure-wrap">
+                <div
+                  ref={figureRef}
+                  className={`figure${transparent ? "" : " white"}${boxMode ? " boxing" : ""}`}
+                  data-testid="figure"
+                  tabIndex={0}
+                  aria-label="The figure. Drag to turn; Shift and drag to move; Control or Command and the wheel to zoom; 0 resets the zoom."
+                  onPointerDown={onPointerDown}
+                  onPointerMove={onPointerMove}
+                  onPointerUp={onPointerUp}
+                  onPointerCancel={onPointerUp}
+                  onDoubleClick={resetZoom}
+                  onKeyDown={onKeyDown}
+                  onAuxClick={(e) => e.preventDefault()}
+                  dangerouslySetInnerHTML={{ __html: svg }}
+                />
+                {box && (() => {
+                  // The dragged rectangle, in screen px of the frame.
+                  const r = figureRef.current!.getBoundingClientRect();
+                  const k = canvasScale();
+                  const sx = (x: number): number => x / k + (r.width - DEFAULT_CANVAS.width / k) / 2;
+                  const sy = (y: number): number => y / k + (r.height - DEFAULT_CANVAS.height / k) / 2;
+                  return (
+                    <div
+                      className="zoom-box"
+                      style={{ left: sx(Math.min(box.from[0], box.to[0])), top: sy(Math.min(box.from[1], box.to[1])), width: Math.abs(box.to[0] - box.from[0]) / k, height: Math.abs(box.to[1] - box.from[1]) / k }}
+                    />
+                  );
+                })()}
+                <div className="zoom-bar" role="group" aria-label="Zoom">
+                  <button data-testid="zoom-out" title="Zoom out (−)" onClick={() => zoomAtCentre(1 / 1.25)}>−</button>
+                  <span className="zoom-value" data-testid="zoom-value" title="Magnification relative to the fitted figure">{Math.round(zoom.factor * 100)}%</span>
+                  <button data-testid="zoom-in" title="Zoom in (+)" onClick={() => zoomAtCentre(1.25)}>+</button>
+                  <button data-testid="zoom-box" className={boxMode ? "on" : ""} title="Then drag a rectangle on the figure to zoom to it (Esc cancels)" onClick={() => setBoxMode((b) => !b)}>Box</button>
+                  <button data-testid="zoom-reset" title="Back to the fitted figure (0, or double-click)" disabled={!isZoomed(zoom)} onClick={resetZoom}>Fit</button>
+                </div>
+              </div>
+              <div className="stage-foot">
+                <p className="hint">
+                  Drag to turn · Shift + drag to move · Ctrl/⌘ + wheel or pinch to zoom · double-click to fit.
+                  {transparent && " The checker marks where the figure is transparent."}
+                </p>
+                {isZoomed(zoom) && (
+                  <label className="check" data-testid="save-zoomed-label">
+                    <input type="checkbox" data-testid="save-zoomed" checked={saveZoomed} onChange={(e) => setSaveZoomed(e.target.checked)} />
+                    {saveZoomed ? "Save writes this zoomed view" : "Save writes the whole structure, not this zoomed view"}
+                  </label>
+                )}
+              </div>
             </>
           ) : (
             <div className="empty">
