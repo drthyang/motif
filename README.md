@@ -46,9 +46,9 @@ writes the reference atom lists in `tests/reference/`.
   the drag began is kept, and the figure is refitted on release.
 - Legend and axes share a band under the structure. The axis arrows are the directions of the cell
   edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
-  no letter. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen. Text stays live
+  no letter. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). Text stays live
   text in the SVG; on a system without Avenir the letters look different, the drawing does not.
-- Magnetic CIF: the magnetic group is every product of an operation and a centring translation,
+- Magnetic CIF (reading approved by the user, 2026-11-22): the magnetic group is every product of an operation and a centring translation,
   each with its time reversal; the list is checked to be a group with consistent signs. Moments are
   read as components along the unit vectors of *a*, *b*, *c* in Bohr magnetons (the `crystalaxis`
   form, the only one read). A moment is carried to a symmetry-equivalent atom as an axial vector,

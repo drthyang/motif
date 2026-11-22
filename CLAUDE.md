@@ -28,6 +28,15 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
   (scene + view -> SVG).
 - Few dependencies. Tests run in seconds; every automated run has a per-case timeout.
 
+## Decided by the user
+
+- Moments in an mCIF are read as components along the unit vectors of a, b, c in Bohr magnetons
+  and carried between atoms as m' = (time reversal) x det(R) x R m. Other forms and modulated
+  structures are refused (2026-11-22).
+- Default lettering weight: regular (2026-11-22).
+- Code from MATERIA may be adapted under MIT. Nothing is copied from RMCProfile Workbench or
+  NEBULA3D (AGPL) unless the user says so: write MOTIF's own code for the same behaviour.
+
 ## Data rule (strict)
 
 - Only published structures in this repo: examples, tests, docs, screenshots, commit messages.

@@ -214,7 +214,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", letterWeight: 800, showLegend: true, showAxes: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", letterWeight: 400, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
