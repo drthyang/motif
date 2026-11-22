@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { BOND_START, DEFAULT_CANVAS, layoutAll, pxPerAngstrom, renderSvg } from "../src/render/svg";
+import { BOND_START, CELL_FAR, CELL_FRONT, DEFAULT_CANVAS, layoutAll, pxPerAngstrom, renderSvg } from "../src/render/svg";
 import { DEFAULT_VIEW, viewFromAngles } from "../src/render/view";
 import { atomsAndBonds, pairDistances, type BondRule } from "../src/scene/bonds";
 import { buildScene, cellEdgesInRange, DEFAULT_SPEC, type Scene } from "../src/scene/scene";
@@ -184,6 +184,38 @@ describe("bonds as rods", () => {
     const order = layoutAll(pair(), viewFromAngles(0, 0), DEFAULT_CANVAS);
     expect(order.filter((d) => d.kind === "bond").length).toBe(1);
     expect(renderSvg(pair(), viewFromAngles(0, 0))).toContain('<line class="bond"');
+  });
+});
+
+describe("how the cell is drawn", () => {
+  const halite = structure("halite-NaCl_COD-9008678");
+  const lines = (style: "depth" | "dashed" | "solid"): string[] =>
+    renderSvg(buildScene(halite, { ...DEFAULT_SPEC, cellStyle: style, showLegend: false, showAxes: false }), DEFAULT_VIEW).split("\n").filter((l) => l.includes('class="cell"'));
+
+  it("near and far (the default): pieces in front of the middle are solid, pieces behind it paler and dashed", () => {
+    const pieces = lines("depth");
+    expect(DEFAULT_SPEC.cellStyle).toBe("depth");
+    const [solid, dashed] = [pieces.filter((l) => !l.includes("stroke-dasharray")), pieces.filter((l) => l.includes("stroke-dasharray"))];
+    expect(solid.length).toBeGreaterThan(0);
+    expect(dashed.length).toBeGreaterThan(0);
+    expect(solid.length + dashed.length).toBe(12 * 12);
+    for (const l of solid) expect(l).toContain(`stroke="${CELL_FRONT}"`);
+    for (const l of dashed) expect(l).toContain(`stroke="${CELL_FAR}"`);
+    // Which is which: the scene's own depths. A piece is solid exactly when its middle is not behind the centre.
+    const scene = buildScene(halite, { ...DEFAULT_SPEC, showLegend: false, showAxes: false });
+    const depths = layoutAll(scene, DEFAULT_VIEW, DEFAULT_CANVAS).filter((d) => d.kind === "cell").map((d) => d.depth + 0.3);
+    expect(depths.filter((z) => z >= 0).length).toBe(solid.length);
+    // The far pieces are drawn before the near ones.
+    const svg = lines("depth").join("\n");
+    expect(svg.lastIndexOf(CELL_FAR)).toBeLessThan(svg.lastIndexOf(CELL_FRONT));
+  });
+
+  it("all dashed and all solid are still there, and the choice moves nothing", () => {
+    expect(lines("dashed").every((l) => l.includes("stroke-dasharray"))).toBe(true);
+    expect(lines("solid").some((l) => l.includes("stroke-dasharray"))).toBe(false);
+    const ends = (ls: string[]): string[] => ls.map((l) => /x1="[^"]+" y1="[^"]+" x2="[^"]+" y2="[^"]+"/.exec(l)![0]);
+    expect(ends(lines("dashed"))).toEqual(ends(lines("depth")));
+    expect(ends(lines("solid"))).toEqual(ends(lines("depth")));
   });
 });
 

@@ -13,9 +13,10 @@ import {
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { buildScene, MATERIALS, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
+import { buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
+import { suggestBonds } from "../scene/autoBonds";
 import { pairDistances, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readCif } from "../structure/readCif";
@@ -185,6 +186,22 @@ export function App() {
   const [arrowMaterial, setArrowMaterial] = useState<Material>(DEFAULT_SPEC.arrowMaterial);
   const [bondMaterial, setBondMaterial] = useState<Material>(DEFAULT_SPEC.bondMaterial);
   const [bondOutline, setBondOutline] = useState(DEFAULT_SPEC.bondOutline);
+  const [cellStyle, setCellStyle] = useState<CellStyle>(DEFAULT_SPEC.cellStyle);
+  const [cellWidthText, setCellWidthText] = useState(String(DEFAULT_SPEC.cellWidth));
+  const cellWidth = Number(cellWidthText) >= 0.5 && Number(cellWidthText) <= 12 ? Number(cellWidthText) : DEFAULT_SPEC.cellWidth;
+  const applyPreset = (name: string) => {
+    const preset = PRESETS[name];
+    if (!preset) return;
+    setAtomMaterial(preset.atoms);
+    setBondMaterial(preset.bonds);
+    setArrowMaterial(preset.arrows);
+    setBondOutline(preset.outlines);
+    setMomentOutline(preset.outlines);
+    setAxesOutline(preset.outlines);
+    setLetterWeight(preset.weight);
+    setLegendSizeText(String(preset.legendSize));
+    setAxesSizeText(String(preset.axesSize));
+  };
   const materialChoice = (testId: string, value: Material, set: (m: Material) => void) => (
     <select data-testid={testId} value={value} onChange={(e) => set(e.target.value as Material)} title="Soft: a gentle highlight. Flat: one colour. Glossy: a bright highlight spot. Metal: strong light and dark with a lit rim. Glass: see-through.">
       {MATERIALS.map((m) => (
@@ -235,6 +252,10 @@ export function App() {
   const [zoom, setZoom] = useState<Zoom>(NO_ZOOM);
   const [saveZoomed, setSaveZoomed] = useState(true);
 
+  const [autoBonds, setAutoBonds] = useState(true);
+  const [autoNote, setAutoNote] = useState("");
+  const autoBondsRef = useRef(true);
+  autoBondsRef.current = autoBonds;
   const keepViewRef = useRef(false);
   keepViewRef.current = keepView;
   const load = useCallback((text: string, name: string) => {
@@ -250,7 +271,10 @@ export function App() {
       setView(keepViewRef.current ? viewFromNumbers(directAxes(read.cell), lastNumbers.current) : DEFAULT_VIEW);
       setRangeText(ONE_CELL_TEXT);
       setZoom(NO_ZOOM);
-      setBondRules([]);
+      // Bonds to start from, unless that is switched off: nearest neighbours by simple rules (see autoBonds.ts).
+      const suggested = autoBondsRef.current ? suggestBonds(read) : [];
+      setBondRules(suggested.map((r) => ({ ...r, maxText: String(r.max) })));
+      setAutoNote(suggested.length > 0 ? suggested.map((r) => `${r.centre}–${r.neighbour} up to ${r.max} Å`).join(", ") : "");
       setNewPair("");
       setLooks({});
       setAngleRules([]);
@@ -304,11 +328,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -609,6 +633,14 @@ export function App() {
           </select>
           {scene && (
             <>
+              <select data-testid="style-preset" value="" title="Sets the surfaces, outlines, lettering weight and legend sizes together. Every one of them can still be changed afterwards." onChange={(e) => applyPreset(e.target.value)}>
+                <option value="">Style…</option>
+                {Object.keys(PRESETS).map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
               <span className="divider" />
               <label className="check" title="Leave the background of the saved figure transparent">
                 <input type="checkbox" checked={transparent} onChange={(e) => setTransparent(e.target.checked)} />
@@ -904,19 +936,35 @@ Reset
                   </div>
                 </div>
               ))}
-              <label className="row">
-                <input type="checkbox" data-testid="show-vacancy" checked={showVacancy} onChange={(e) => setShowVacancy(e.target.checked)} />
-                Show a vacant share as an empty wedge
-              </label>
-              <div className="row">
-                surface
-                {materialChoice("atom-material", atomMaterial, setAtomMaterial)}
-              </div>
-              <div className="row">
-                <button data-testid="reset-looks" onClick={() => setLooks({})}>Reset colours and sizes</button>
-              </div>
+              <More label="More options">
+                <label className="row">
+                  <input type="checkbox" data-testid="show-vacancy" checked={showVacancy} onChange={(e) => setShowVacancy(e.target.checked)} />
+                  Show a vacant share as an empty wedge
+                </label>
+                <div className="row">
+                  surface
+                  {materialChoice("atom-material", atomMaterial, setAtomMaterial)}
+                </div>
+                <div className="row">
+                  <button data-testid="reset-looks" onClick={() => setLooks({})}>Reset colours and sizes</button>
+                </div>
+              </More>
             </Section>
             <Section tab="atoms" title="Bonds" hint="A bond joins every pair of the two chosen atoms that are no further apart than the distance given. The list shows the distances found in the structure, shortest first.">
+              {autoNote && bondRules.length > 0 && (
+                <p className="sub" data-testid="auto-note">
+                  Added when the file was opened: {autoNote}. Change or remove them as you like.
+                </p>
+              )}
+              {bondRules.length > 0 && (
+                <div className="row">
+                  <button data-testid="remove-bonds" onClick={() => { setBondRules([]); setAutoNote(""); }}>Remove all bonds</button>
+                </div>
+              )}
+              <label className="row" title="Each kind of cation is joined to its nearest anions (or a single element to itself), first shell only, and the neighbours just outside the range are added. A pair that would give an atom more than eight bonds is left out.">
+                <input type="checkbox" data-testid="auto-bonds" checked={autoBonds} onChange={(e) => setAutoBonds(e.target.checked)} />
+                Add bonds when a file is opened
+              </label>
               {bondRules.map((r, index) => (
                 <div key={index} className="rule" data-testid={`bond-${index}`}>
                   <div className="row">
@@ -949,55 +997,57 @@ Reset
                     />
                     Add {nameOf(r.neighbour)} outside the range bonded to {nameOf(r.centre)} inside
                   </label>
-                  <div className="row">
-                    <input type="color" title="Colour of these bonds" value={r.colour ?? DEFAULT_STICK.colour} onChange={(e) => changeRule(index, { colour: e.target.value })} />
-                    thickness
-                    <input
-                      type="number"
-                      step={0.02}
-                      min={0.02}
-                      max={2}
-                      data-testid={`bond-width-${index}`}
-                      value={r.widthText ?? String(DEFAULT_STICK.width)}
-                      onChange={(e) => changeRule(index, { widthText: e.target.value })}
-                    />
-                    Å
-                  </div>
-                  <label className="row">
-                    <input type="checkbox" data-testid={`bond-band-${index}`} checked={r.band ?? false} onChange={(e) => changeRule(index, { band: e.target.checked })} />
-                    Highlight band behind these bonds
-                  </label>
-                  {r.band && (scene?.ruleInfo[sceneRule(index)]?.groups ?? 0) > 1 && (
+                  <More label="More options">
                     <div className="row">
-                      highlight
-                      <select
-                        data-testid={`bond-chain-${index}`}
-                        value={r.chain ?? "all"}
-                        onChange={(e) => changeRule(index, { chain: e.target.value === "all" ? null : Number(e.target.value) })}
-                      >
-                        <option value="all">all chains</option>
-                        {Array.from({ length: Math.min(scene?.ruleInfo[sceneRule(index)]?.groups ?? 0, 60) }, (_, g) => (
-                          <option key={g} value={g}>
-                            chain {g + 1} only
-                          </option>
-                        ))}
-                      </select>
+                      <input type="color" title="Colour of these bonds" value={r.colour ?? DEFAULT_STICK.colour} onChange={(e) => changeRule(index, { colour: e.target.value })} />
+                      thickness
+                      <input
+                        type="number"
+                        step={0.02}
+                        min={0.02}
+                        max={2}
+                        data-testid={`bond-width-${index}`}
+                        value={r.widthText ?? String(DEFAULT_STICK.width)}
+                        onChange={(e) => changeRule(index, { widthText: e.target.value })}
+                      />
+                      Å
                     </div>
-                  )}
-                  <label className="row">
-                    <input type="checkbox" data-testid={`bond-fill-${index}`} checked={r.fill ?? false} onChange={(e) => changeRule(index, { fill: e.target.checked })} />
-                    Fill triangles
-                  </label>
-                  <label className="row">
-                    <input type="checkbox" data-testid={`bond-unbonded-${index}`} checked={r.hideUnbonded ?? false} onChange={(e) => changeRule(index, { hideUnbonded: e.target.checked })} />
-                    Hide {nameOf(r.neighbour)} with no such bond
-                  </label>
-                  {r.centre === r.neighbour && (
                     <label className="row">
-                      <input type="checkbox" data-testid={`bond-triangles-${index}`} checked={r.onlyTriangles ?? false} onChange={(e) => changeRule(index, { onlyTriangles: e.target.checked })} />
-                      Keep only atoms and bonds of complete triangles
+                      <input type="checkbox" data-testid={`bond-band-${index}`} checked={r.band ?? false} onChange={(e) => changeRule(index, { band: e.target.checked })} />
+                      Highlight band behind these bonds
                     </label>
-                  )}
+                    {r.band && (scene?.ruleInfo[sceneRule(index)]?.groups ?? 0) > 1 && (
+                      <div className="row">
+                        highlight
+                        <select
+                          data-testid={`bond-chain-${index}`}
+                          value={r.chain ?? "all"}
+                          onChange={(e) => changeRule(index, { chain: e.target.value === "all" ? null : Number(e.target.value) })}
+                        >
+                          <option value="all">all chains</option>
+                          {Array.from({ length: Math.min(scene?.ruleInfo[sceneRule(index)]?.groups ?? 0, 60) }, (_, g) => (
+                            <option key={g} value={g}>
+                              chain {g + 1} only
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <label className="row">
+                      <input type="checkbox" data-testid={`bond-fill-${index}`} checked={r.fill ?? false} onChange={(e) => changeRule(index, { fill: e.target.checked })} />
+                      Fill triangles
+                    </label>
+                    <label className="row">
+                      <input type="checkbox" data-testid={`bond-unbonded-${index}`} checked={r.hideUnbonded ?? false} onChange={(e) => changeRule(index, { hideUnbonded: e.target.checked })} />
+                      Hide {nameOf(r.neighbour)} with no such bond
+                    </label>
+                    {r.centre === r.neighbour && (
+                      <label className="row">
+                        <input type="checkbox" data-testid={`bond-triangles-${index}`} checked={r.onlyTriangles ?? false} onChange={(e) => changeRule(index, { onlyTriangles: e.target.checked })} />
+                        Keep only atoms and bonds of complete triangles
+                      </label>
+                    )}
+                  </More>
                   <p className="sub" data-testid={`bond-count-${index}`}>
                     {r.max > 0.1 && r.max <= 10
                       ? `${bondCount(index)} bonds drawn, in ${scene?.ruleInfo[sceneRule(index)]?.groups ?? 0} connected group(s); ${scene?.ruleInfo[sceneRule(index)]?.triangles ?? 0} triangles`
@@ -1020,14 +1070,28 @@ Reset
                 <input type="checkbox" data-testid="show-cell" checked={showCell} onChange={(e) => setShowCell(e.target.checked)} />
                 Unit cell outline
               </label>
-              <div className="row" title="Bonds are drawn as round rods that meet the atoms as a real rod would. Above 1,500 bonds they are drawn as plain strokes, which is much faster.">
-                bond surface
-                {materialChoice("bond-material", bondMaterial, setBondMaterial)}
-              </div>
-              <label className="row">
-                <input type="checkbox" data-testid="bond-outline" checked={bondOutline} onChange={(e) => setBondOutline(e.target.checked)} />
-                Outline the bonds
-              </label>
+              {showCell && (
+                <div className="row" title="Near and far: the edges in front of the middle of the structure are solid, those behind it paler and dashed, so the box reads as a solid. Or all dashed, or all solid.">
+                  cell lines
+                  <select data-testid="cell-style" value={cellStyle} onChange={(e) => setCellStyle(e.target.value as CellStyle)}>
+                    <option value="depth">near solid, far dashed</option>
+                    <option value="dashed">all dashed</option>
+                    <option value="solid">all solid</option>
+                  </select>
+                  <input type="number" step={0.5} min={0.5} max={12} data-testid="cell-width" title="Line width in px of the figure" value={cellWidthText} onChange={(e) => setCellWidthText(e.target.value)} />
+                  px
+                </div>
+              )}
+              <More label="More options">
+                <div className="row" title="Bonds are drawn as round rods that meet the atoms as a real rod would. Above 1,500 bonds they are drawn as plain strokes, which is much faster.">
+                  bond surface
+                  {materialChoice("bond-material", bondMaterial, setBondMaterial)}
+                </div>
+                <label className="row">
+                  <input type="checkbox" data-testid="bond-outline" checked={bondOutline} onChange={(e) => setBondOutline(e.target.checked)} />
+                  Outline the bonds
+                </label>
+              </More>
             </Section>
             <Section tab="atoms" title="Angles" hint="Marks the angle between two drawn bonds that meet at an atom, so add the bonds first. The list shows the kinds of angle found and their sizes. Every angle of the chosen kind whose size lies in the range is marked.">
               {angleRules.map((r, index) => (
@@ -1065,18 +1129,20 @@ Reset
                       </>
                     );
                   })()}
-                  <div className="row">
-                    <input type="color" title="Colour of the mark" value={r.colour ?? DEFAULT_ANGLE_LOOK.colour} onChange={(e) => changeAngle(index, { colour: e.target.value })} />
-                    opacity
-                    <input type="number" step={0.05} min={0.05} max={1} value={r.opacityText} onChange={(e) => changeAngle(index, { opacityText: e.target.value })} />
-                    size
-                    <input type="number" step={0.1} min={0.1} max={5} value={r.radiusText} onChange={(e) => changeAngle(index, { radiusText: e.target.value })} />
-                    Å
-                  </div>
-                  <label className="row">
-                    <input type="checkbox" data-testid={`angle-label-${index}`} checked={r.label ?? DEFAULT_ANGLE_LOOK.label} onChange={(e) => changeAngle(index, { label: e.target.checked })} />
-                    Write the angle beside it
-                  </label>
+                  <More label="Look">
+                    <div className="row">
+                      <input type="color" title="Colour of the mark" value={r.colour ?? DEFAULT_ANGLE_LOOK.colour} onChange={(e) => changeAngle(index, { colour: e.target.value })} />
+                      opacity
+                      <input type="number" step={0.05} min={0.05} max={1} value={r.opacityText} onChange={(e) => changeAngle(index, { opacityText: e.target.value })} />
+                      size
+                      <input type="number" step={0.1} min={0.1} max={5} value={r.radiusText} onChange={(e) => changeAngle(index, { radiusText: e.target.value })} />
+                      Å
+                    </div>
+                    <label className="row">
+                      <input type="checkbox" data-testid={`angle-label-${index}`} checked={r.label ?? DEFAULT_ANGLE_LOOK.label} onChange={(e) => changeAngle(index, { label: e.target.checked })} />
+                      Write the angle beside it
+                    </label>
+                  </More>
                   <p className="sub" data-testid={`angle-count-${index}`}>{scene.sectors.filter((x) => x.rule === index).length} angles marked</p>
                 </div>
               ))}
@@ -1130,22 +1196,24 @@ Reset
                   <input type="number" step={0.25} min={0.25} max={20} data-testid="moment-length" value={momentLengthText} onChange={(e) => setMomentLengthText(e.target.value)} />
                   Å
                 </div>
-                <div className="row">
-                  thickness
-                  <input type="number" step={0.02} min={0.02} max={2} data-testid="moment-thickness" title="Thickness of the rod. The cone at the tip keeps its proportion to it." value={momentThicknessText} onChange={(e) => setMomentThicknessText(e.target.value)} />
-                  Å
-                  head
-                  <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
-                </div>
-                <label className="row">
-                  <input type="checkbox" data-testid="moment-outline" checked={momentOutline} onChange={(e) => setMomentOutline(e.target.checked)} />
-                  Outline the arrows
-                </label>
-                <div className="row">
-                  surface
-                  {materialChoice("arrow-material", arrowMaterial, setArrowMaterial)}
-                  <span className="sub">also the axis arrows</span>
-                </div>
+                <More label="More options">
+                  <div className="row">
+                    thickness
+                    <input type="number" step={0.02} min={0.02} max={2} data-testid="moment-thickness" title="Thickness of the rod. The cone at the tip keeps its proportion to it." value={momentThicknessText} onChange={(e) => setMomentThicknessText(e.target.value)} />
+                    Å
+                    head
+                    <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
+                  </div>
+                  <label className="row">
+                    <input type="checkbox" data-testid="moment-outline" checked={momentOutline} onChange={(e) => setMomentOutline(e.target.checked)} />
+                    Outline the arrows
+                  </label>
+                  <div className="row">
+                    surface
+                    {materialChoice("arrow-material", arrowMaterial, setArrowMaterial)}
+                    <span className="sub">also the axis arrows</span>
+                  </div>
+                </More>
               </Section>
             )}
             <Section tab="look" title="Legend and axes" hint="The arrows are the directions of the cell edges a, b, c. An arrow tilted out of the screen is drawn shorter.">
@@ -1161,61 +1229,63 @@ Reset
                 <input type="checkbox" data-testid="show-axes" checked={showAxes} onChange={(e) => setShowAxes(e.target.checked)} />
                 Axes a, b, c
               </label>
-              <div className="row" title="Size of the legend, and of the axis arrows with their letters, as multiples of the usual size.">
-                legend size
-                <input type="number" step={0.1} min={0.2} max={4} data-testid="legend-size" value={legendSizeText} onChange={(e) => setLegendSizeText(e.target.value)} />×
-                axes size
-                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-size" value={axesSizeText} onChange={(e) => setAxesSizeText(e.target.value)} />×
-                axes head
-                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-head" title="Size of the cones of the axis arrows, as a multiple of the usual." value={axesHeadText} onChange={(e) => setAxesHeadText(e.target.value)} />×
-              </div>
-              <label className="row">
-                <input type="checkbox" data-testid="axes-outline" checked={axesOutline} onChange={(e) => setAxesOutline(e.target.checked)} />
-                Outline the axis arrows
-              </label>
-              <label className="row" title="An axis that points mostly into or out of the page projects to a short stub. With this on it is drawn at least 0.45 of the full length, in its true direction on screen; with it off every arrow is the exact projection.">
-                <input type="checkbox" data-testid="axes-readable" checked={axesReadable} onChange={(e) => setAxesReadable(e.target.checked)} />
-                Keep short axis arrows readable
-              </label>
-              <div className="row">
-                arrow surface
-                {materialChoice("axes-material", arrowMaterial, setArrowMaterial)}
-                <span className="sub">also the moment arrows</span>
-              </div>
-              <div className="row">
-                font
-                <select
-                  data-testid="font-family"
-                  value={customFont ? "other" : fontFamily}
-                  onChange={(e) => {
-                    setCustomFont(e.target.value === "other");
-                    if (e.target.value !== "other") setFontFamily(e.target.value);
-                  }}
-                >
-                  {FONTS.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
-                  ))}
-                  <option value="other">Other…</option>
-                </select>
-                {customFont && (
-                  <input type="text" className="name" data-testid="font-custom" placeholder="Font name" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} />
+              <More label="More options">
+                <div className="row" title="Size of the legend, and of the axis arrows with their letters, as multiples of the usual size.">
+                  legend size
+                  <input type="number" step={0.1} min={0.2} max={4} data-testid="legend-size" value={legendSizeText} onChange={(e) => setLegendSizeText(e.target.value)} />×
+                  axes size
+                  <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-size" value={axesSizeText} onChange={(e) => setAxesSizeText(e.target.value)} />×
+                  axes head
+                  <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-head" title="Size of the cones of the axis arrows, as a multiple of the usual." value={axesHeadText} onChange={(e) => setAxesHeadText(e.target.value)} />×
+                </div>
+                <label className="row">
+                  <input type="checkbox" data-testid="axes-outline" checked={axesOutline} onChange={(e) => setAxesOutline(e.target.checked)} />
+                  Outline the axis arrows
+                </label>
+                <label className="row" title="An axis that points mostly into or out of the page projects to a short stub. With this on it is drawn at least 0.45 of the full length, in its true direction on screen; with it off every arrow is the exact projection.">
+                  <input type="checkbox" data-testid="axes-readable" checked={axesReadable} onChange={(e) => setAxesReadable(e.target.checked)} />
+                  Keep short axis arrows readable
+                </label>
+                <div className="row">
+                  arrow surface
+                  {materialChoice("axes-material", arrowMaterial, setArrowMaterial)}
+                  <span className="sub">also the moment arrows</span>
+                </div>
+                <div className="row">
+                  font
+                  <select
+                    data-testid="font-family"
+                    value={customFont ? "other" : fontFamily}
+                    onChange={(e) => {
+                      setCustomFont(e.target.value === "other");
+                      if (e.target.value !== "other") setFontFamily(e.target.value);
+                    }}
+                  >
+                    {FONTS.map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                    <option value="other">Other…</option>
+                  </select>
+                  {customFont && (
+                    <input type="text" className="name" data-testid="font-custom" placeholder="Font name" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} />
+                  )}
+                </div>
+                {!fontInstalled(fontFamily) && (
+                  <p className="sub" data-testid="font-missing">
+                    “{fontFamily}” is not installed on this computer, so another font is shown here and in the PNG. The SVG keeps the name.
+                  </p>
                 )}
-              </div>
-              {!fontInstalled(fontFamily) && (
-                <p className="sub" data-testid="font-missing">
-                  “{fontFamily}” is not installed on this computer, so another font is shown here and in the PNG. The SVG keeps the name.
-                </p>
-              )}
-              <div className="row">
-                weight
-                <select data-testid="letter-weight" value={letterWeight} onChange={(e) => setLetterWeight(Number(e.target.value))}>
-                  <option value={400}>regular</option>
-                  <option value={500}>medium</option>
-                  <option value={800}>heavy</option>
-                </select>
-              </div>
+                <div className="row">
+                  weight
+                  <select data-testid="letter-weight" value={letterWeight} onChange={(e) => setLetterWeight(Number(e.target.value))}>
+                    <option value={400}>regular</option>
+                    <option value={500}>medium</option>
+                    <option value={800}>heavy</option>
+                  </select>
+                </div>
+              </More>
             </Section>
             <Section tab="view" title="Direction" hint="The view is four numbers: the cell axis that is up, turn about it, tilt (from above when positive) and roll about the line of sight. The line under the figure always shows them, and the nearest low-index direction. A direction given here points at you.">
               <div className="row">
@@ -1261,7 +1331,7 @@ Reset
               </div>
               {viewNote && <p className="sub">{viewNote}</p>}
               </Section>
-            <Section tab="view" title="Dragging" hint="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the axes of the screen, any way round. Alt + drag rolls the picture in both.">
+            <Section tab="view" closed title="Dragging" hint="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the axes of the screen, any way round. Alt + drag rolls the picture in both.">
               <div className="row">
                 drag
                 <select data-testid="drag-mode" value={dragMode} onChange={(e) => setDragMode(e.target.value as "turntable" | "free")} title="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the screen's axes, any way round.">
@@ -1278,7 +1348,7 @@ Reset
                 Animate a change of view
               </label>
               </Section>
-            <Section tab="view" title="Scale" hint="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure of a series.">
+            <Section tab="view" closed title="Scale" hint="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure of a series.">
               <div className="row">
                 scale
                 <select data-testid="scale-mode" value={scaleMode} onChange={(e) => setScaleMode(e.target.value as "outline" | "steady" | "fixed")} title="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure.">
@@ -1294,7 +1364,7 @@ Reset
                 )}
               </div>
               </Section>
-            <Section tab="view" title="Saved views" hint="Kept in this browser. A view is its four numbers (axis up, turn, tilt, roll), so it means the same axes in another structure. Paste a line copied from under the figure to use a view again.">
+            <Section tab="view" closed title="Saved views" hint="Kept in this browser. A view is its four numbers (axis up, turn, tilt, roll), so it means the same axes in another structure. Paste a line copied from under the figure to use a view again.">
                 
                 {savedViews.map((v, k) => (
                   <div className="row" key={`${v.name}-${k}`}>
@@ -1336,7 +1406,7 @@ Reset
                   Keep the view when another file is loaded
                 </label>
               </Section>
-            <Section tab="view" title="Large structures" hint="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
+            <Section tab="view" closed title="Large structures" hint="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
               <label className="row" title="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
                 <input type="checkbox" data-testid="smooth" checked={smooth} onChange={(e) => setSmooth(e.target.checked)} />
                 Smooth movement for large structures
@@ -1365,6 +1435,15 @@ Reset
 }
 
 const VERSION = "0.1";
+
+/** One-click looks. Each sets the surfaces, the outlines, the lettering weight and the size of legend and axes. */
+const PRESETS: Record<string, { atoms: Material; bonds: Material; arrows: Material; outlines: boolean; weight: number; legendSize: number; axesSize: number }> = {
+  Slide: { atoms: "soft", bonds: "soft", arrows: "soft", outlines: true, weight: 400, legendSize: 1, axesSize: 1 },
+  Paper: { atoms: "flat", bonds: "flat", arrows: "flat", outlines: true, weight: 400, legendSize: 0.7, axesSize: 0.8 },
+  Glossy: { atoms: "glossy", bonds: "glossy", arrows: "glossy", outlines: true, weight: 500, legendSize: 1, axesSize: 1 },
+  Metal: { atoms: "metal", bonds: "metal", arrows: "metal", outlines: true, weight: 500, legendSize: 1, axesSize: 1 },
+  Glass: { atoms: "glass", bonds: "soft", arrows: "soft", outlines: false, weight: 400, legendSize: 1, axesSize: 1 },
+};
 /** Limits of the canvas height (its width is 1440): a very flat or very tall window still gives a usable figure. */
 const CANVAS_MIN_HEIGHT = 620;
 const CANVAS_MAX_HEIGHT = 2600;
@@ -1405,6 +1484,16 @@ function fontInstalled(family: string): boolean {
 }
 
 /** A card of the side column that can be folded away. The "?" holds the longer explanation. */
+/** Controls that are needed less often, folded away under one line. */
+function More({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <details className="more">
+      <summary>{label}</summary>
+      {children}
+    </details>
+  );
+}
+
 type TabId = "structure" | "atoms" | "view" | "look";
 const TABS: { id: TabId; label: string }[] = [
   { id: "structure", label: "Structure" },

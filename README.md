@@ -115,6 +115,17 @@ writes the reference atom lists in `tests/reference/`.
   stops, a highlight spot, opacity), so the figure stays an editable SVG; a glass sphere shows
   what is behind and inside it. The GPU preview shown while a large structure moves does not draw
   the surfaces.
+- When a file is opened MOTIF suggests bonds (`src/scene/autoBonds.ts`; can be switched off): each
+  kind of cation to its nearest anions, or a single element to itself, first shell only, with the
+  neighbours outside the range added. A pair that would give an atom more than eight bonds is
+  left out, and a structure with no anions and several elements gets none. The page says which
+  bonds it added. This is a drawing aid, not a statement about bonding.
+- The unit cell is drawn with the edges in front of the middle of the structure solid and those
+  behind it paler and dashed, so the box reads as a solid; all dashed or all solid can be chosen,
+  and the line width set.
+- The page: four tabs, a view toolbar over the figure, less-used controls folded under "More
+  options", and style presets (Slide, Paper, Glossy, Metal, Glass) that set surfaces, outlines,
+  lettering weight and legend sizes together.
 - A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
 - The view (`src/render/camera.ts`; plan from the camera research of 2026-11-22, approved by the
   user). The renderer takes a rotation matrix; for people the view is four numbers read from it,

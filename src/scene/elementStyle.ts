@@ -49,6 +49,12 @@ export function defaultColour(element: string): string {
   return hslToHex((z * 47) % 360, 0.38, 0.6);
 }
 
+/** The approximate covalent radius of an element in angstrom (1.5 when it is not in the table). */
+export function coveringRadius(element: string): number {
+  const z = ELEMENT_SYMBOLS.indexOf(element === "D" ? "H" : element);
+  return RADII[z] ?? 1.5;
+}
+
 /** Default sphere radius in angstrom: 0.4 x the approximate covalent radius. */
 export function defaultRadius(element: string): number {
   const z = ELEMENT_SYMBOLS.indexOf(element === "D" ? "H" : element);

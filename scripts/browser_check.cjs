@@ -23,9 +23,7 @@ const check = (name, ok, detail = "") => {
 async function setUp(page, query) {
   await page.goto(URL_BASE + query);
   await page.selectOption("[data-testid=example]", "olivine-FeMg_COD-1541262");
-  await page.click("[data-testid=tab-atoms]");
-  await page.selectOption("[data-testid=new-pair]", "Si-O");
-  await page.click("[data-testid=add-bond]");
+  // The bonds (Fe/Mg-O and Si-O) are added by the page when the file opens.
   await page.click("[data-testid=tab-view]");
   await page.fill("[data-testid=view-az]", "40");
   await page.fill("[data-testid=view-el]", "25");
@@ -54,6 +52,7 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
     await page.waitForFunction(() => document.querySelector("[data-testid=preview]").dataset.live === "no", null, { timeout: 15000 });
     const after = await saveSvg(page, "after.svg");
     check("saved SVG while the preview shows = saved SVG after it settles", during === after, `${during.length} bytes`);
+    await page.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true))); // unfold "Large structures"
     await page.uncheck("[data-testid=smooth]");
     const off = await saveSvg(page, "off.svg");
     check("saved SVG with the preview switched off = with it on (same zoomed view)", off === after);
@@ -98,7 +97,8 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
     }, [gpu, svg]);
     check("preview and vector figure cover the same pixels", cmp.overlap > 0.9, `overlap ${(cmp.overlap * 100).toFixed(1)} %`);
     // The difference left is at edges (the two are anti-aliased differently) and at bond ends (round in the SVG).
-    check("in nearly the same colours", cmp.colour < 15, `mean difference ${cmp.colour.toFixed(1)} of 255 over the shared pixels`);
+    // (The preview draws bonds as plain strokes, the figure as shaded, outlined rods: with many bonds that is most of the difference.)
+    check("in nearly the same colours", cmp.colour < 22, `mean difference ${cmp.colour.toFixed(1)} of 255 over the shared pixels`);
     await page.close();
   }
 

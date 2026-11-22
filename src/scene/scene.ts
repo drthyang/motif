@@ -62,6 +62,7 @@ export interface Arrow {
  * soft (the default, a gentle highlight), flat (one colour), glossy (a bright highlight spot),
  * metal (strong light and dark bands with a lit rim), glass (see-through, with a highlight).
  */
+export type CellStyle = "depth" | "dashed" | "solid";
 export type Material = "soft" | "flat" | "glossy" | "metal" | "glass";
 export const MATERIALS: readonly Material[] = ["soft", "flat", "glossy", "metal", "glass"];
 
@@ -162,6 +163,9 @@ export interface Scene {
   /** The surface of the atoms and of the arrows (absent = soft). */
   readonly atomMaterial?: Material;
   readonly arrowMaterial?: Material;
+  /** How the cell's edges are drawn, and their width in px (absent: all dashed, 4 px, as at first). */
+  readonly cellStyle?: CellStyle;
+  readonly cellWidth?: number;
   /**
    * The surface of the bonds and whether they are outlined. When `bondMaterial` is absent the bonds are drawn
    * as plain strokes (as the page does for a very large structure).
@@ -239,6 +243,12 @@ export interface SceneSpec {
   /** The surface of the atoms, and of the arrows (moment arrows and axis arrows). */
   readonly atomMaterial: Material;
   readonly arrowMaterial: Material;
+  /**
+   * How the unit cell is drawn: "depth" (edges in front of the middle of the structure solid, edges behind it
+   * paler and dashed, so the box reads as a solid), "dashed" (all dashed) or "solid"; and the line width in px.
+   */
+  readonly cellStyle: CellStyle;
+  readonly cellWidth: number;
   /** The surface of the bonds, and whether they have a thin darker outline. */
   readonly bondMaterial: Material;
   readonly bondOutline: boolean;
@@ -274,7 +284,7 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, momentOutline: true, axesOutline: true, axesKeepReadable: true, atomMaterial: "soft", arrowMaterial: "soft", bondMaterial: "soft", bondOutline: true, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, showLegend: true, showAxes: true };
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, momentOutline: true, axesOutline: true, axesKeepReadable: true, atomMaterial: "soft", arrowMaterial: "soft", bondMaterial: "soft", bondOutline: true, cellStyle: "depth", cellWidth: 3, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
@@ -469,5 +479,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     colour: mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
     opacity: 0.55,
   }));
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

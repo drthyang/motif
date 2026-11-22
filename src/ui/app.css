@@ -174,3 +174,10 @@ input.indices { width: 86px; }
 [data-testid="layer-band"] { z-index: 2; }
 .preview { z-index: 1; }
 .zoom-bar, .preview-note, .zoom-box { z-index: 3; }
+/* Less-used controls, folded under one line. */
+.more { margin: 6px 0 2px; }
+.more > summary { cursor: pointer; color: var(--primary); font-size: var(--fz-small); font-weight: 500; list-style: none; padding: 2px 0; }
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::before { content: "+ "; }
+.more[open] > summary::before { content: "− "; }
+.more[open] > summary { margin-bottom: 4px; }

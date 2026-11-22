@@ -32,6 +32,10 @@ export const BOND_START = 0.9;
 export const BOND_ROD_LIMIT = 1500;
 /** Cell edges are drawn in pieces at most this long, in angstrom. */
 export const CELL_PIECE = 0.5;
+/** Cell edges: near edges, all-dashed edges, and the paler far edges of the "depth" style. */
+export const CELL_FRONT = "#7d8a93";
+export const CELL_BACK = "#aab3ba";
+export const CELL_FAR = "#c3cace";
 export const CELL_STROKE = 'stroke="#aab3ba" stroke-width="4" stroke-dasharray="14 12"';
 
 /** A sphere as drawn: centre and radius in px, depth in angstrom (larger = nearer the viewer). */
@@ -558,6 +562,23 @@ function sphereSvg(scene: Scene, styleKey: string, x: number, y: number, r: numb
   return `<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="${fill}" stroke="${outline}" stroke-width="2"${material === "glass" ? ' stroke-opacity="0.75"' : ""}/>${gloss}\n`;
 }
 
+/**
+ * The look of one piece of a cell edge. In the "depth" style a piece in front of the middle of the structure
+ * is a solid line and one behind it is paler, thinner and dashed: the box then reads as a solid, and it is
+ * clear which face is the near one. (`depth` is measured from the middle of the structure; the pieces are
+ * drawn 0.3 A further back than they are, which is taken off again here.)
+ */
+function cellStroke(scene: Scene, depth: number, along: number): string {
+  if (scene.cellStyle === undefined) return `${CELL_STROKE} stroke-dashoffset="${n1(along)}"`;
+  const width = scene.cellWidth ?? 3;
+  const dashes = `stroke-dasharray="${n1(width * 3.2)} ${n1(width * 2.8)}" stroke-dashoffset="${n1(along)}"`;
+  if (scene.cellStyle === "solid") return `stroke="${CELL_FRONT}" stroke-width="${n1(width)}" stroke-linecap="round"`;
+  if (scene.cellStyle === "dashed") return `stroke="${CELL_BACK}" stroke-width="${n1(width)}" ${dashes}`;
+  return depth + 0.3 >= 0
+    ? `stroke="${CELL_FRONT}" stroke-width="${n1(width)}" stroke-linecap="round"`
+    : `stroke="${CELL_FAR}" stroke-width="${n1(width * 0.8)}" ${dashes}`;
+}
+
 /** The colour stops of a sphere's radial shading, from the highlight (up and to the left) to the rim. */
 function sphereStops(colour: string, material: Material): string {
   const stop = (offset: number, c: string, opacity?: number): string => `<stop offset="${offset}" stop-color="${c}"${opacity === undefined ? "" : ` stop-opacity="${opacity}"`}/>`;
@@ -861,7 +882,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       const look =
         d.kind === "bond"
           ? `stroke="${d.colour ?? BOND_COLOUR}" stroke-width="${n1(d.width)}" stroke-linecap="round"`
-          : `${CELL_STROKE} stroke-dashoffset="${n1(d.along ?? 0)}"`;
+          : cellStroke(scene, d.depth, d.along ?? 0);
       out += `<line class="${d.kind}" x1="${n1(d.x1)}" y1="${n1(d.y1)}" x2="${n1(d.x2)}" y2="${n1(d.y2)}" ${look}/>\n`;
     }
   }
