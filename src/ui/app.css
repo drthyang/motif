@@ -30,3 +30,4 @@ input[type="number"] { width: 78px; }
 select { max-width: 100%; }
 .error { color: #a3242d; }
 .warning { color: #8a5a00; }
+.rule { border-left: 3px solid #d5dade; padding-left: 10px; margin: 10px 0; }

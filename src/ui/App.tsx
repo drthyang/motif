@@ -3,6 +3,7 @@ import { svgToPng } from "../render/png";
 import { DEFAULT_CANVAS, renderSvg } from "../render/svg";
 import { DEFAULT_VIEW, dragView, type View } from "../render/view";
 import { buildScene, type Scene } from "../scene/scene";
+import { pairDistances, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readCif } from "../structure/readCif";
 import type { Structure } from "../structure/types";
@@ -44,6 +45,9 @@ export function App() {
   const [over, setOver] = useState(false);
   const [rangeText, setRangeText] = useState<string[]>(ONE_CELL_TEXT);
   const [repeatBoundary, setRepeatBoundary] = useState(true);
+  const [bondRules, setBondRules] = useState<(BondRule & { maxText: string })[]>([]);
+  const [showCell, setShowCell] = useState(true);
+  const [newPair, setNewPair] = useState("");
   const last = useRef<{ x: number; y: number } | null>(null);
 
   const load = useCallback((text: string, name: string) => {
@@ -56,6 +60,8 @@ export function App() {
       setError("");
       setView(DEFAULT_VIEW);
       setRangeText(ONE_CELL_TEXT);
+      setBondRules([]);
+      setNewPair("");
     } catch (e) {
       setError(`${name}: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -68,11 +74,38 @@ export function App() {
     const range = rangeFromText(rangeText, repeatBoundary ? "both" : "once");
     if (!range) return { scene: lastScene.current, rangeError: "Fill in all six limits." };
     try {
-      return { scene: buildScene(structure, { range }), rangeError: "" };
+      // A rule whose distance box holds no usable number is left out until it does.
+      const bonds = bondRules.filter((r) => r.max > 0.1 && r.max <= 10);
+      return { scene: buildScene(structure, { range, bonds, showCell }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell]);
+  // Every pair of elements in the file, with the distances between them (a guide for the bond length).
+  const pairs = useMemo(() => {
+    if (!structure) return [];
+    const elements = [...new Set(structure.sites.map((s) => s.element))];
+    const out: { key: string; centre: string; neighbour: string; distances: number[] }[] = [];
+    elements.forEach((centre, i) => {
+      for (const neighbour of elements.slice(i)) {
+        const distances = pairDistances(structure, centre, neighbour);
+        if (distances.length) out.push({ key: `${centre}-${neighbour}`, centre, neighbour, distances });
+      }
+    });
+    return out.sort((p, q) => p.distances[0]! - q.distances[0]!);
+  }, [structure]);
+  const addBond = () => {
+    const pair = pairs.find((p) => p.key === newPair);
+    if (!pair) return;
+    // Suggested longest distance: 10 % above the shortest distance of this pair.
+    const max = Math.ceil(pair.distances[0]! * 1.1 * 100) / 100;
+    setBondRules((r) => [...r, { centre: pair.centre, neighbour: pair.neighbour, max, maxText: String(max), complete: false }]);
+    setNewPair("");
+  };
+  const bondCount = (index: number): number => {
+    const used = bondRules.map((r, i) => (r.max > 0.1 && r.max <= 10 ? i : -1)).filter((i) => i >= 0);
+    return scene?.sticks.filter((s) => used[s.rule] === index).length ?? 0;
+  };
   lastScene.current = scene;
   const counts = useMemo(() => {
     const n = new Map<string, number>();
@@ -228,6 +261,51 @@ export function App() {
                 : "Each atom is drawn once per cell: the true content of the cell."}
             </p>
             {rangeError && <p className="error" data-testid="range-error">{rangeError}</p>}
+
+            <h2>Bonds</h2>
+            {bondRules.map((r, index) => (
+              <div key={index} className="rule" data-testid={`bond-${index}`}>
+                <div className="row">
+                  <b>{r.centre}–{r.neighbour}</b> up to
+                  <input
+                    type="number"
+                    step={0.05}
+                    min={0.2}
+                    max={10}
+                    value={r.maxText}
+                    onChange={(e) => setBondRules((all) => all.map((x, i) => (i === index ? { ...x, maxText: e.target.value, max: Number(e.target.value) } : x)))}
+                  />
+                  Å
+                  <button title="Remove this bond" onClick={() => setBondRules((all) => all.filter((_, i) => i !== index))}>×</button>
+                </div>
+                <label className="row">
+                  <input
+                    type="checkbox"
+                    checked={r.complete}
+                    onChange={(e) => setBondRules((all) => all.map((x, i) => (i === index ? { ...x, complete: e.target.checked } : x)))}
+                  />
+                  Add {r.neighbour} outside the range bonded to {r.centre} inside
+                </label>
+                <p className="sub" data-testid={`bond-count-${index}`}>
+                  {r.max > 0.1 && r.max <= 10 ? `${bondCount(index)} bonds drawn` : "Give a distance between 0.1 and 10 Å."}
+                </p>
+              </div>
+            ))}
+            <div className="row">
+              <select data-testid="new-pair" value={newPair} onChange={(e) => setNewPair(e.target.value)}>
+                <option value="">Add a bond between…</option>
+                {pairs.map((p) => (
+                  <option key={p.key} value={p.key}>
+                    {p.centre}–{p.neighbour} (distances {p.distances.slice(0, 3).map((d) => d.toFixed(2)).join(", ")} Å…)
+                  </option>
+                ))}
+              </select>
+              <button data-testid="add-bond" disabled={!newPair} onClick={addBond}>Add</button>
+            </div>
+            <label className="row">
+              <input type="checkbox" data-testid="show-cell" checked={showCell} onChange={(e) => setShowCell(e.target.checked)} />
+              Unit cell outline
+            </label>
 
             <h2>View</h2>
             <p className="sub">Drag the figure to rotate.</p>

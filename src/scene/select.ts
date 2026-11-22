@@ -39,7 +39,7 @@ export interface Selection {
   readonly warnings: readonly string[];
 }
 
-export function atomsInRange(structure: Structure, range: Range): Selection {
+export function atomsInRange(structure: Structure, range: Range, limit: number = MAX_ATOMS): Selection {
   checkRange(range);
   const { atoms: cellAtoms, warnings } = expandToUnitCell(structure);
   const tol = BOUNDARY_TOLERANCE;
@@ -59,8 +59,8 @@ export function atomsInRange(structure: Structure, range: Range): Selection {
   const atoms: CellAtom[] = [];
   for (const atom of cellAtoms) {
     const [na, nb, nc] = [shifts(atom.frac[0], 0), shifts(atom.frac[1], 1), shifts(atom.frac[2], 2)];
-    if (atoms.length + na.length * nb.length * nc.length > MAX_ATOMS) {
-      throw new Error(`This range holds more than ${MAX_ATOMS} atoms. Choose a smaller one.`);
+    if (atoms.length + na.length * nb.length * nc.length > limit) {
+      throw new Error(`This range holds more than ${limit} atoms. Choose a smaller one.`);
     }
     for (const i of na) for (const j of nb) for (const k of nc) {
       atoms.push({ ...atom, frac: [atom.frac[0] + i, atom.frac[1] + j, atom.frac[2] + k] });

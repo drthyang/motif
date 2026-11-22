@@ -62,7 +62,7 @@ describe("range, against gemmi (scripts/gemmi_ranges.py)", () => {
     const s = structure(name);
     for (const c of cases) {
       it(`${name}: ${c.from.join(",")} to ${c.to.join(",")} (${c.boundary}): same ${c.atoms.length} atoms at the same places`, () => {
-        const scene = buildScene(s, { range: { from: c.from, to: c.to, boundary: c.boundary } });
+        const scene = buildScene(s, { range: { from: c.from, to: c.to, boundary: c.boundary }, bonds: [], showCell: false });
         expect(scene.spheres.length).toBe(c.atoms.length);
         const unmatched = [...c.atoms];
         for (const sphere of scene.spheres) {

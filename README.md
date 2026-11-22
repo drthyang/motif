@@ -33,6 +33,13 @@ writes the reference atom lists in `tests/reference/`.
 - What is shown is a range of fractional coordinates along *a*, *b*, *c*. By default an atom on the
   boundary of the range is drawn at both ends (a cell looks complete); the other setting draws each
   atom once per cell. An atom within 0.001 of a limit counts as on it.
+- Bonds: a rule names two elements and a longest distance. A rule may also add the neighbours just
+  outside the range, so that every centre atom shown has all its neighbours. A bond is drawn from
+  surface to surface.
+- The unit-cell outline is drawn for every whole cell inside the range (none for a slab).
+- Arrows (the user's rule, for step 6 and later): a magnetic moment is drawn as an arrow passing
+  through its atom, centred on it. An atomic displacement (a distortion mode, not yet a planned
+  step) is drawn as an arrow starting at the centre of its atom.
 - Symmetry images of one site closer than 0.05 Å are one atom (a site on a symmetry element).
 
 ## Steps of the first version
@@ -40,8 +47,8 @@ writes the reference atom lists in `tests/reference/`.
 | # | Step | Status |
 |---|------|--------|
 | 1 | Read a CIF and draw the atoms; rotate; export SVG and PNG | done |
-| 2 | Choose what is shown: how many cells, or a slab | built, awaiting the user's check |
-| 3 | Bonds by distance for chosen element pairs; the unit cell | not started |
+| 2 | Choose what is shown: how many cells, or a slab | done |
+| 3 | Bonds by distance for chosen element pairs; the unit cell | built, awaiting the user's check |
 | 4 | Colour and size per element; pie spheres for mixed sites | not started |
 | 5 | Legend and axis triad | not started |
 | 6 | mCIF: magnetic moments as arrows | not started |

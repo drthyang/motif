@@ -80,6 +80,8 @@ describe("drawing", () => {
     // Two spheres: one at the origin, one displaced along +x and +z (cartesian).
     const s: Scene = {
       spheres: [{ style: "X", label: "o", centre: [0, 0, 0] }, { style: "X", label: "p", centre: [1, 0, 2] }],
+      sticks: [],
+      cellEdges: [],
       styles: { X: { colour: "#808080", radius: 0.3 } },
       centre: [0, 0, 0],
       extent: 4,

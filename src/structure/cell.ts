@@ -47,3 +47,12 @@ export function mulMat(a: Mat3, b: Mat3): Mat3 {
 export function fractionalToCartesian(cell: Cell, frac: Vec3): Vec3 {
   return mulVec(orthogonalizationMatrix(cell), frac);
 }
+
+/** Spacing in angstrom of the lattice planes perpendicular to a*, b*, c*: the thickness of one cell along each axis. */
+export function planeSpacings(cell: Cell): Vec3 {
+  const m = orthogonalizationMatrix(cell);
+  const col = (i: number): Vec3 => [m[0][i]!, m[1][i]!, m[2][i]!];
+  const cross = (p: Vec3, q: Vec3): number => Math.hypot(p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0]);
+  const v = cellVolume(cell);
+  return [v / cross(col(1), col(2)), v / cross(col(2), col(0)), v / cross(col(0), col(1))];
+}
