@@ -175,6 +175,8 @@ export function App() {
   const [momentHeadText, setMomentHeadText] = useState("1");
   const [axesHeadText, setAxesHeadText] = useState("1");
   const [momentHeadSize, axesHeadSize] = [sizeOf(momentHeadText), sizeOf(axesHeadText)];
+  const [momentOutline, setMomentOutline] = useState(false);
+  const [axesOutline, setAxesOutline] = useState(false);
   const [fontFamily, setFontFamily] = useState(DEFAULT_SPEC.fontFamily);
   const [customFont, setCustomFont] = useState(false);
   // Angle rules; the limits and the look are kept as typed.
@@ -285,11 +287,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -1058,6 +1060,10 @@ export function App() {
                   head
                   <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
                 </div>
+                <label className="row">
+                  <input type="checkbox" data-testid="moment-outline" checked={momentOutline} onChange={(e) => setMomentOutline(e.target.checked)} />
+                  Outline the arrows
+                </label>
               </Section>
             )}
             <Section title="Legend and axes" hint="The arrows are the directions of the cell edges a, b, c. An arrow tilted out of the screen is drawn shorter.">
@@ -1081,6 +1087,10 @@ export function App() {
                 axes head
                 <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-head" title="Size of the cones of the axis arrows, as a multiple of the usual." value={axesHeadText} onChange={(e) => setAxesHeadText(e.target.value)} />×
               </div>
+              <label className="row">
+                <input type="checkbox" data-testid="axes-outline" checked={axesOutline} onChange={(e) => setAxesOutline(e.target.checked)} />
+                Outline the axis arrows
+              </label>
               <div className="row">
                 font
                 <select

@@ -115,6 +115,8 @@ export const ANGLE_LABEL_SIZE = 40;
 export const ARROW_SHAFT = 0.16;
 export const ARROW_HEAD_LENGTH = 0.55;
 export const ARROW_HEAD_WIDTH = 0.46;
+/** Width of the optional outline of arrows, px (the spheres' outline is 2 px). */
+export const OUTLINE_WIDTH = 1.5;
 /** The arrows' rod thickness, head length and head width for a scene, in angstrom: the head keeps its proportion to the rod. */
 export function arrowSizes(scene: Scene): { shaft: number; headLength: number; headWidth: number } {
   const shaft = scene.arrowThickness ?? ARROW_SHAFT;
@@ -613,7 +615,7 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
       // The baseline is set 0.3 em below the wanted centre, so no reader needs to support "dominant-baseline".
       svg +=
         `<text x="${n1(ox + letter.x)}" y="${n1(oy + letter.y + 0.3 * fontSize)}" text-anchor="middle" font-family="${fontList(scene.fontFamily)}" ` +
-        `font-weight="${scene.letterWeight}" font-style="italic" font-size="${fontSize}" fill="${AXIS_COLOUR}">${a.name}</text>`;
+        `font-weight="${scene.letterWeight}" font-style="italic" font-size="${fontSize}" fill="${AXIS_COLOUR}" stroke="none">${a.name}</text>`;
     }
     svg += "\n";
   }
@@ -677,7 +679,9 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       }
       out += "</g>\n";
     } else if (d.kind === "arrow") {
-      out += `<g class="arrow">${d.svg}</g>\n`;
+      // The outline, when asked for: every shape of the arrow in the darker tone of its colour, as the spheres have.
+      const outline = scene.arrowOutline ? ` stroke="${mixHex(scene.arrowColour, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round"` : "";
+      out += `<g class="arrow"${outline}>${d.svg}</g>\n`;
     } else {
       const look =
         d.kind === "bond"
@@ -704,6 +708,8 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       `<text class="legend" x="${n1(item.textX)}" y="${n1(item.y + 0.35 * item.fontSize)}" font-family="${fontList(scene.fontFamily)}" font-weight="${scene.letterWeight}" ` +
       `font-size="${n1(item.fontSize)}" fill="${LEGEND_COLOUR}">${escapeXml(item.name)}</text>\n`;
   }
-  out += axes.svg;
+  out += scene.axesOutline
+    ? `<g class="axes-outline" stroke="${mixHex(AXIS_COLOUR, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round">${axes.svg}</g>\n`
+    : axes.svg;
   return `${out}</svg>\n`;
 }

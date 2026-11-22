@@ -270,6 +270,16 @@ describe("moment arrows", () => {
     });
   });
 
+  it("an outline can be drawn around the arrows; without the option nothing changes", () => {
+    const plain = renderSvg(scene, viewFromAngles(20, 30));
+    const outlined = renderSvg(buildScene(mnf2, { ...DEFAULT_SPEC, range: { from: [0, 0, 0], to: [1, 1, 1], boundary: "once" }, momentLength: 3, momentOutline: true }), viewFromAngles(20, 30));
+    expect(plain).not.toContain('<g class="arrow" stroke=');
+    const groups = outlined.match(/<g class="arrow" stroke="#[0-9a-f]{6}" stroke-width="1.5" stroke-linejoin="round">/g) ?? [];
+    expect(groups.length).toBe(plain.match(/<g class="arrow">/g)!.length);
+    // Only the outline was added: with it stripped, the two figures are the same text.
+    expect(outlined.replace(/ stroke="#[0-9a-f]{6}" stroke-width="1.5" stroke-linejoin="round">/g, ">")).toBe(plain);
+  });
+
   it("can be switched off, and says so when an arrow is too short to see", () => {
     expect(buildScene(mnf2, { ...DEFAULT_SPEC, showMoments: false }).arrows).toEqual([]);
     expect(renderSvg(buildScene(mnf2, { ...DEFAULT_SPEC, showMoments: false }), viewFromAngles(0, 0))).not.toContain('class="arrow"');
