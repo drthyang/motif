@@ -212,6 +212,31 @@ describe("legend", () => {
     expect(body("structure").some((line) => line.includes('class="legend"') || line.includes("axis-"))).toBe(false);
   });
 
+  it("the size of the legend and of the axis arrows can be set, each on its own", () => {
+    const usual = buildScene(olivine);
+    const big = buildScene(olivine, { ...DEFAULT_SPEC, legendSize: 1.5, axesSize: 0.5 });
+    const [a, b] = [legendLayout(usual, DEFAULT_CANVAS, 5000), legendLayout(big, DEFAULT_CANVAS, 5000)];
+    a.forEach((item, i) => {
+      expect(b[i]!.r / item.r).toBeCloseTo(1.5, 9);
+      expect(b[i]!.fontSize / item.fontSize).toBeCloseTo(1.5, 9);
+    });
+    // Axis arrows half as long, half as thick, letters half the size; still inside the canvas.
+    const [u, v] = [axisArrows(usual, DEFAULT_VIEW), axisArrows(big, DEFAULT_VIEW)];
+    u.forEach((arrow, i) => {
+      expect(v[i]!.dx).toBeCloseTo(arrow.dx / 2, 9);
+      expect(v[i]!.dy).toBeCloseTo(arrow.dy / 2, 9);
+    });
+    const letter = (svg: string): number => Number(/font-style="italic" font-size="([\d.]+)"/.exec(svg)![1]);
+    expect(letter(renderSvg(big, DEFAULT_VIEW)) / letter(renderSvg(usual, DEFAULT_VIEW))).toBeCloseTo(0.5, 9);
+    const width = (svg: string): number => {
+      const pts = /class="axis-shaft" points="([^"]+)"/.exec(svg)![1]!.split(" ").map((p) => p.split(",").map(Number));
+      return Math.hypot(pts[0]![0]! - pts[3]![0]!, pts[0]![1]! - pts[3]![1]!);
+    };
+    expect(width(renderSvg(big, DEFAULT_VIEW)) / width(renderSvg(usual, DEFAULT_VIEW))).toBeCloseTo(0.5, 1);
+    // The structure itself is untouched.
+    expect(big.spheres).toEqual(usual.spheres);
+  });
+
   it("the band under the structure is there only when the legend or the axes are", () => {
     const both = buildScene(quartz);
     const none = buildScene(quartz, { ...DEFAULT_SPEC, showLegend: false, showAxes: false });

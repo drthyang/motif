@@ -487,7 +487,7 @@ export function legendLayout(scene: Scene, canvas: Canvas, available: number, px
   const largest = Math.max(...scene.legend.map((e) => scene.styles[e.style]!.radius));
   // Following the structure: the largest legend sphere is as large as that atom is drawn (within what the
   // band can hold), and everything else in the legend is in proportion to it.
-  const follow = pxPerAngstrom === undefined ? 1 : Math.max(LEGEND_FOLLOW_MIN, Math.min(LEGEND_FOLLOW_MAX, (largest * pxPerAngstrom) / 44));
+  const follow = (scene.legendSize ?? 1) * (pxPerAngstrom === undefined ? 1 : Math.max(LEGEND_FOLLOW_MIN, Math.min(LEGEND_FOLLOW_MAX, (largest * pxPerAngstrom) / 44)));
   const place = (shrink: number): { items: LegendItem[]; end: number } => {
     const k = shrink * follow;
     const items: LegendItem[] = [];
@@ -526,7 +526,8 @@ export const AXIS_LENGTH = 140;
 export function axisArrows(scene: Scene, view: View): AxisArrow[] {
   return scene.axes.map((axis) => {
     const p = mulVec(view, axis.direction);
-    return { name: axis.name, dx: p[0] * AXIS_LENGTH, dy: -p[1] * AXIS_LENGTH, depth: p[2] };
+    const length = AXIS_LENGTH * (scene.axesSize ?? 1);
+    return { name: axis.name, dx: p[0] * length, dy: -p[1] * length, depth: p[2] };
   });
 }
 
@@ -545,13 +546,16 @@ const AXIS_HEAD_WIDTH = 36;
 function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs: string; left: number } {
   const arrows = axisArrows(scene, view);
   if (arrows.length === 0) return { svg: "", defs: "", left: canvas.width };
-  const [labelGap, fontSize] = [42, 76];
+  // Every size of the triad follows the chosen size: arrow length and thickness, head, letters.
+  const k = scene.axesSize ?? 1;
+  const [lengthPx, shaftPx, headPx, headWidthPx] = [AXIS_LENGTH * k, AXIS_SHAFT * k, AXIS_HEAD * k, AXIS_HEAD_WIDTH * k];
+  const [labelGap, fontSize] = [42 * k, 76 * k];
   // Where each letter goes, relative to the origin; an axis seen end on has no direction on screen and gets no letter.
   const letters = arrows.map((a) => {
     const n = Math.hypot(a.dx, a.dy);
-    return n < 0.12 * AXIS_LENGTH ? null : { x: a.dx + (a.dx / n) * labelGap, y: a.dy + (a.dy / n) * labelGap };
+    return n < 0.12 * lengthPx ? null : { x: a.dx + (a.dx / n) * labelGap, y: a.dy + (a.dy / n) * labelGap };
   });
-  const half = AXIS_HEAD_WIDTH / 2;
+  const half = headWidthPx / 2;
   const xs = [-half, half, ...arrows.flatMap((a) => [a.dx - half, a.dx + half]), ...letters.flatMap((l) => (l ? [l.x - fontSize * 0.4, l.x + fontSize * 0.4] : []))];
   const ys = [-half, half, ...arrows.flatMap((a) => [a.dy - half, a.dy + half]), ...letters.flatMap((l) => (l ? [l.y - fontSize * 0.45, l.y + fontSize * 0.45] : []))];
   const ox = canvas.width - 45 - Math.max(...xs);
@@ -564,14 +568,14 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
   // Back to front: the arrow pointing most away from the viewer first; the ball at the origin between
   // the arrows that point away and those that point towards the viewer.
   const order = arrows.map((a, i) => ({ a, letter: letters[i]! })).sort((p, q) => p.a.depth - q.a.depth);
-  const ball = (): string => `<circle class="axis-origin" cx="${n1(ox)}" cy="${n1(oy)}" r="${n1(AXIS_SHAFT * 0.85)}" fill="url(#axis-ball)"/>\n`;
+  const ball = (): string => `<circle class="axis-origin" cx="${n1(ox)}" cy="${n1(oy)}" r="${n1(shaftPx * 0.85)}" fill="url(#axis-ball)"/>\n`;
   let ballDrawn = false;
   for (const { a, letter } of order) {
     if (!ballDrawn && a.depth >= 0) {
       svg += ball();
       ballDrawn = true;
     }
-    const n = Math.hypot(a.dx, a.dy); // drawn length; AXIS_LENGTH when the axis lies in the screen
+    const n = Math.hypot(a.dx, a.dy); // drawn length; lengthPx when the axis lies in the screen
     // Direction on screen. Seen end on there is none; any direction then serves, the shapes are round.
     const [ux, uy] = n > 1e-6 ? [a.dx / n, a.dy / n] : [1, 0];
     // Across the arrow, on the side the light comes from (upper left).
@@ -579,7 +583,7 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     if (px * -0.5 + py * -0.7 < 0) [px, py] = [-px, -py];
     const tilt = Math.abs(a.depth); // 0 in the screen plane, 1 end on
     const [tx, ty] = [ox + a.dx, oy + a.dy]; // tip
-    const headOnScreen = AXIS_HEAD * Math.sqrt(Math.max(0, 1 - tilt * tilt));
+    const headOnScreen = headPx * Math.sqrt(Math.max(0, 1 - tilt * tilt));
     const [bx, by] = [tx - ux * headOnScreen, ty - uy * headOnScreen]; // centre of the cone's base
     const id = `axis-${a.name}`;
     // Shading across the arrow: lightest a third of the way in from the lit side, darkest on the far side.
@@ -589,14 +593,14 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
     // The base ellipse is turned to the arrow's direction, which would turn its shading too; turn that back.
     const turnedBack = ` gradientTransform="rotate(${n1(-angle)} ${n1(bx)} ${n1(by)})"`;
-    defs += across(`${id}-shaft`, AXIS_SHAFT, ox, oy) + across(`${id}-head`, AXIS_HEAD_WIDTH, bx, by) + across(`${id}-base`, AXIS_HEAD_WIDTH, bx, by, turnedBack);
+    defs += across(`${id}-shaft`, shaftPx, ox, oy) + across(`${id}-head`, headWidthPx, bx, by) + across(`${id}-base`, headWidthPx, bx, by, turnedBack);
     const corner = (x: number, y: number, side: number, width: number): string => `${n1(x + (side * px * width) / 2)},${n1(y + (side * py * width) / 2)}`;
-    const shaft = `<polygon class="axis-shaft" points="${corner(ox, oy, 1, AXIS_SHAFT)} ${corner(bx, by, 1, AXIS_SHAFT)} ${corner(bx, by, -1, AXIS_SHAFT)} ${corner(ox, oy, -1, AXIS_SHAFT)}" fill="url(#${id}-shaft)"/>`;
+    const shaft = `<polygon class="axis-shaft" points="${corner(ox, oy, 1, shaftPx)} ${corner(bx, by, 1, shaftPx)} ${corner(bx, by, -1, shaftPx)} ${corner(ox, oy, -1, shaftPx)}" fill="url(#${id}-shaft)"/>`;
     // The base of the cone is a circle seen at an angle: an ellipse, as wide as the head across the arrow
     // and `tilt` times that along it.
     const base = (fill: string): string =>
-      `<ellipse class="axis-base" cx="${n1(bx)}" cy="${n1(by)}" rx="${n1((AXIS_HEAD_WIDTH / 2) * tilt)}" ry="${n1(AXIS_HEAD_WIDTH / 2)}" transform="rotate(${n1(angle)} ${n1(bx)} ${n1(by)})" fill="${fill}"/>`;
-    const cone = `<polygon class="axis-head" points="${n1(tx)},${n1(ty)} ${corner(bx, by, 1, AXIS_HEAD_WIDTH)} ${corner(bx, by, -1, AXIS_HEAD_WIDTH)}" fill="url(#${id}-head)"/>`;
+      `<ellipse class="axis-base" cx="${n1(bx)}" cy="${n1(by)}" rx="${n1((headWidthPx / 2) * tilt)}" ry="${n1(headWidthPx / 2)}" transform="rotate(${n1(angle)} ${n1(bx)} ${n1(by)})" fill="${fill}"/>`;
+    const cone = `<polygon class="axis-head" points="${n1(tx)},${n1(ty)} ${corner(bx, by, 1, headWidthPx)} ${corner(bx, by, -1, headWidthPx)}" fill="url(#${id}-head)"/>`;
     if (a.depth >= 0) {
       // Pointing towards the viewer: the cone's side is seen, covering its base and the end of the shaft.
       svg += shaft + base(`url(#${id}-base)`) + cone;

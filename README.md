@@ -121,6 +121,8 @@ writes the reference atom lists in `tests/reference/`.
   - Scale: fitted to each view (default), steady at every angle, or a fixed number of px per A.
   - A change of view by a click is shown as a short turn on screen (can be switched off; skipped
     when the system asks for reduced motion). It is never part of the saved figure.
+- The size of the legend and the size of the axis arrows (length, thickness, head and letters
+  together) can each be set as a multiple of the usual size.
 - The legend can follow the size of the structure: its largest sphere as large as that atom is
   drawn, letters in proportion (within limits), so it scales with the zoom.
 - Arrows (the user's rule, for step 6 and later): a magnetic moment is drawn as an arrow passing
