@@ -15,6 +15,19 @@ export interface BondRule {
    * atom inside it, so that every centre shown has all its neighbours.
    */
   readonly complete: boolean;
+  /** Look of the sticks: colour "#rrggbb" and thickness in angstrom. Defaults: pale grey, 0.12 A. */
+  readonly colour?: string;
+  readonly width?: number;
+  /** Lay a soft highlight band behind the bonded atoms (a chain, a net). */
+  readonly band?: boolean;
+  /**
+   * With `band`: which connected group to highlight, counted from 0 in the order of
+   * connectedGroups(); null or absent highlights all of them. Atoms and bonds of the rule that
+   * are not in the highlighted group are then drawn pale.
+   */
+  readonly chain?: number | null;
+  /** Fill every triangle of three mutually bonded atoms with a translucent colour (a kagome net). */
+  readonly fill?: boolean;
 }
 
 /** An atom with its position in angstrom. */
@@ -95,10 +108,11 @@ export interface Bonded {
   readonly warnings: readonly string[];
 }
 
-export function atomsAndBonds(structure: Structure, range: Range, rules: readonly BondRule[]): Bonded {
+export function atomsAndBonds(structure: Structure, range: Range, rules: readonly BondRule[], hidden: ReadonlySet<string> = new Set()): Bonded {
   rules.forEach(checkRule);
   const selection = atomsInRange(structure, range);
-  const atoms: PlacedAtom[] = place(structure, selection.atoms);
+  // A hidden species is left out altogether: no spheres, no bonds to it, no neighbours added for it.
+  const atoms: PlacedAtom[] = place(structure, selection.atoms).filter((a) => !hidden.has(a.species));
   const inRange = atoms.length;
 
   // 1. Add the neighbours outside the range that "complete" rules ask for. Only atoms inside the range
@@ -106,7 +120,7 @@ export function atomsAndBonds(structure: Structure, range: Range, rules: readonl
   const completing = rules.filter((r) => r.complete);
   if (completing.length > 0 && inRange > 0) {
     const reach = Math.max(...completing.map((r) => r.max));
-    const around = place(structure, atomsInRange(structure, widened(structure, range, reach), Infinity).atoms);
+    const around = place(structure, atomsInRange(structure, widened(structure, range, reach), Infinity).atoms).filter((a) => !hidden.has(a.species));
     const shown = new Set(atoms.map(sameAtomKey));
     for (const rule of completing) {
       const boxes = new Boxes(around, rule.max, (a) => a.species === rule.neighbour);

@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useRef, useState, type DragEvent, type PointerEvent } from "react";
 import { svgToPng } from "../render/png";
 import { DEFAULT_CANVAS, fitView, renderSvg, type Fit } from "../render/svg";
-import { DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { buildScene, DEFAULT_SPEC, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
+import { DEFAULT_VIEW, dragView, viewWithAxisUp, type View } from "../render/view";
+import { buildScene, cellAxes, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
 import { pairDistances, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
@@ -46,11 +46,19 @@ export function App() {
   const [over, setOver] = useState(false);
   const [rangeText, setRangeText] = useState<string[]>(ONE_CELL_TEXT);
   const [repeatBoundary, setRepeatBoundary] = useState(true);
-  const [bondRules, setBondRules] = useState<(BondRule & { maxText: string })[]>([]);
+  const [bondRules, setBondRules] = useState<(BondRule & { maxText: string; widthText?: string })[]>([]);
   const [showCell, setShowCell] = useState(true);
   const [newPair, setNewPair] = useState("");
   // The user's changes to colours, sizes and names. Radii are kept as typed, so a box can be emptied while editing.
-  const [looks, setLooks] = useState<Record<string, { colour?: string; radiusText?: string; name?: string }>>({});
+  const [looks, setLooks] = useState<Record<string, { colour?: string; radiusText?: string; name?: string; hidden?: boolean }>>({});
+  const [upAxis, setUpAxis] = useState<0 | 1 | 2>(2);
+  const [azText, setAzText] = useState("18");
+  const [elText, setElText] = useState("12");
+  const applyView = (up: 0 | 1 | 2, az: string, el: string) => {
+    if (!structure || !Number.isFinite(Number(az)) || !Number.isFinite(Number(el)) || az.trim() === "" || el.trim() === "") return;
+    const [a, b, c] = cellAxes(structure).map((x) => x.direction);
+    setView(viewWithAxisUp([a!, b!, c!], up, Number(az), Number(el)));
+  };
   const [showVacancy, setShowVacancy] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
   const [showMoments, setShowMoments] = useState(true);
@@ -58,7 +66,7 @@ export function App() {
   const [momentColour, setMomentColour] = useState(DEFAULT_SPEC.momentColour);
   const momentLength = Number(momentLengthText) > 0 && Number(momentLengthText) <= 20 ? Number(momentLengthText) : DEFAULT_SPEC.momentLength;
   const [showAxes, setShowAxes] = useState(true);
-  const setLook = (key: string, change: { colour?: string; radiusText?: string; name?: string }) =>
+  const setLook = (key: string, change: { colour?: string; radiusText?: string; name?: string; hidden?: boolean }) =>
     setLooks((all) => ({ ...all, [key]: { ...all[key], ...change } }));
   const last = useRef<{ x: number; y: number } | null>(null);
   // While dragging, the placement of the moment the drag began is kept, so the figure turns without jumping.
@@ -77,6 +85,9 @@ export function App() {
       setBondRules([]);
       setNewPair("");
       setLooks({});
+      setUpAxis(2);
+      setAzText("18");
+      setElText("12");
     } catch (e) {
       setError(`${name}: ${e instanceof Error ? e.message : String(e)}`);
     }
@@ -99,6 +110,7 @@ export function App() {
     for (const [key, look] of Object.entries(looks)) {
       const radius = Number(look.radiusText);
       out[key] = {
+        ...(look.hidden ? { hidden: true } : {}),
         ...(look.colour !== undefined ? { colour: look.colour } : {}),
         ...(look.radiusText !== undefined && look.radiusText.trim() !== "" && radius >= 0.05 && radius <= 5 ? { radius } : {}),
         ...(look.name !== undefined && look.name.trim() !== "" ? { name: look.name.trim() } : {}),
@@ -116,7 +128,12 @@ export function App() {
     if (!range) return { scene: lastScene.current, rangeError: "Fill in all six limits." };
     try {
       // A rule whose distance box holds no usable number is left out until it does.
-      const bonds = bondRules.filter((r) => r.max > 0.1 && r.max <= 10);
+      const bonds = bondRules
+        .filter((r) => r.max > 0.1 && r.max <= 10)
+        .map((r) => {
+          const width = Number(r.widthText);
+          return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
+        });
       return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, showMoments, momentLength, momentColour, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
@@ -143,10 +160,11 @@ export function App() {
     setBondRules((r) => [...r, { centre: pair.centre, neighbour: pair.neighbour, max, maxText: String(max), complete: false }]);
     setNewPair("");
   };
-  const bondCount = (index: number): number => {
-    const used = bondRules.map((r, i) => (r.max > 0.1 && r.max <= 10 ? i : -1)).filter((i) => i >= 0);
-    return scene?.sticks.filter((s) => used[s.rule] === index).length ?? 0;
-  };
+  // Rules with an unusable distance are left out of the scene; this maps a rule on the page to its place in the scene.
+  const sceneRule = (index: number): number => bondRules.slice(0, index).filter((r) => r.max > 0.1 && r.max <= 10).length;
+  const bondCount = (index: number): number => scene?.sticks.filter((s) => s.rule === sceneRule(index)).length ?? 0;
+  const changeRule = (index: number, change: Partial<BondRule & { maxText: string; widthText: string }>) =>
+    setBondRules((all) => all.map((x, i) => (i === index ? { ...x, ...change } : x)));
   lastScene.current = scene;
   const counts = useMemo(() => {
     const n = new Map<string, number>();
@@ -325,12 +343,20 @@ export function App() {
                   <b className="symbol">{element}</b>
                   {pure && (
                     <>
+                      <input
+                        type="checkbox"
+                        title={`Show ${element}`}
+                        data-testid={`show-${element}`}
+                        checked={!looks[element]?.hidden}
+                        onChange={(e) => setLook(element, { hidden: !e.target.checked })}
+                      />
                       radius
                       <input
                         type="number"
                         step={0.05}
                         min={0.05}
                         max={5}
+                        data-testid={`radius-${element}`}
                         value={looks[element]?.radiusText ?? speciesRadius(element, pure.components, {}).toFixed(2)}
                         onChange={(e) => setLook(element, { radiusText: e.target.value })}
                       />
@@ -347,6 +373,7 @@ export function App() {
                   {x.varied && " (and other proportions)"}
                 </p>
                 <div className="row">
+                  <input type="checkbox" title="Show this site" checked={!looks[x.key]?.hidden} onChange={(e) => setLook(x.key, { hidden: !e.target.checked })} />
                   name
                   <input type="text" className="name" value={looks[x.key]?.name ?? x.key} onChange={(e) => setLook(x.key, { name: e.target.value })} />
                 </div>
@@ -405,8 +432,49 @@ export function App() {
                   />
                   Add {nameOf(r.neighbour)} outside the range bonded to {nameOf(r.centre)} inside
                 </label>
+                <div className="row">
+                  <input type="color" title="Colour of these bonds" value={r.colour ?? DEFAULT_STICK.colour} onChange={(e) => changeRule(index, { colour: e.target.value })} />
+                  thickness
+                  <input
+                    type="number"
+                    step={0.02}
+                    min={0.02}
+                    max={2}
+                    data-testid={`bond-width-${index}`}
+                    value={r.widthText ?? String(DEFAULT_STICK.width)}
+                    onChange={(e) => changeRule(index, { widthText: e.target.value })}
+                  />
+                  Å
+                </div>
+                <label className="row">
+                  <input type="checkbox" data-testid={`bond-band-${index}`} checked={r.band ?? false} onChange={(e) => changeRule(index, { band: e.target.checked })} />
+                  Highlight band behind these bonds
+                </label>
+                {r.band && (scene?.ruleInfo[sceneRule(index)]?.groups ?? 0) > 1 && (
+                  <div className="row">
+                    highlight
+                    <select
+                      data-testid={`bond-chain-${index}`}
+                      value={r.chain ?? "all"}
+                      onChange={(e) => changeRule(index, { chain: e.target.value === "all" ? null : Number(e.target.value) })}
+                    >
+                      <option value="all">all chains</option>
+                      {Array.from({ length: Math.min(scene?.ruleInfo[sceneRule(index)]?.groups ?? 0, 60) }, (_, g) => (
+                        <option key={g} value={g}>
+                          chain {g + 1} only
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <label className="row">
+                  <input type="checkbox" data-testid={`bond-fill-${index}`} checked={r.fill ?? false} onChange={(e) => changeRule(index, { fill: e.target.checked })} />
+                  Fill triangles
+                </label>
                 <p className="sub" data-testid={`bond-count-${index}`}>
-                  {r.max > 0.1 && r.max <= 10 ? `${bondCount(index)} bonds drawn` : "Give a distance between 0.1 and 10 Å."}
+                  {r.max > 0.1 && r.max <= 10
+                    ? `${bondCount(index)} bonds drawn, in ${scene?.ruleInfo[sceneRule(index)]?.groups ?? 0} connected group(s); ${scene?.ruleInfo[sceneRule(index)]?.triangles ?? 0} triangles`
+                    : "Give a distance between 0.1 and 10 Å."}
                 </p>
               </div>
             ))}
@@ -454,9 +522,42 @@ export function App() {
             </label>
 
             <h2>View</h2>
-            <p className="sub">Drag the figure to rotate.</p>
+            <p className="sub">Drag the figure to rotate, or set the direction:</p>
             <div className="row">
-              <button onClick={() => setView(DEFAULT_VIEW)}>Reset view</button>
+              up
+              <select
+                data-testid="view-up"
+                value={upAxis}
+                onChange={(e) => {
+                  const up = Number(e.target.value) as 0 | 1 | 2;
+                  setUpAxis(up);
+                  applyView(up, azText, elText);
+                }}
+              >
+                <option value={0}>a</option>
+                <option value={1}>b</option>
+                <option value={2}>c</option>
+              </select>
+              turn
+              <input type="number" step={5} data-testid="view-az" value={azText} onChange={(e) => { setAzText(e.target.value); applyView(upAxis, e.target.value, elText); }} />
+              °
+            </div>
+            <div className="row">
+              tilt
+              <input type="number" step={5} data-testid="view-el" value={elText} onChange={(e) => { setElText(e.target.value); applyView(upAxis, azText, e.target.value); }} />
+              ° (from above when positive)
+            </div>
+            <div className="row">
+              <button
+                onClick={() => {
+                  setUpAxis(2);
+                  setAzText("18");
+                  setElText("12");
+                  setView(DEFAULT_VIEW);
+                }}
+              >
+                Reset view
+              </button>
             </div>
 
             <h2>Export</h2>

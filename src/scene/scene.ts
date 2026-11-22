@@ -6,6 +6,8 @@ import { fractionalToCartesian } from "../structure/cell";
 import type { CellAtom, Component, Structure, Vec3 } from "../structure/types";
 import { defaultColour, defaultRadius } from "./elementStyle";
 import { atomsAndBonds, type BondRule } from "./bonds";
+import { mixHex } from "./elementStyle";
+import { connectedGroups, triangles } from "./highlight";
 import { BOUNDARY_TOLERANCE, ONE_CELL, type Range } from "./select";
 
 /** One sector of a pie sphere. */
@@ -60,13 +62,57 @@ export interface Stick {
   readonly rule: number;
   /** Centre-to-centre distance in angstrom. */
   readonly length: number;
+  /** True for a bond outside the highlighted chain: drawn paler and thinner. */
+  readonly pale?: boolean;
 }
+
+/** Look of the sticks of one bond rule. */
+export interface StickStyle {
+  readonly colour: string;
+  /** Thickness in angstrom. */
+  readonly width: number;
+}
+
+/** A soft band laid behind a chain: wide, translucent strokes along its bonds, drawn as one shape. */
+export interface Band {
+  /** Pairs of indices into Scene.spheres. */
+  readonly segments: readonly (readonly [number, number])[];
+  readonly colour: string;
+  /** Width in angstrom. */
+  readonly width: number;
+  readonly opacity: number;
+}
+
+/** A filled polygon between atoms. */
+export interface Polygon {
+  /** Indices into Scene.spheres. */
+  readonly corners: readonly number[];
+  readonly colour: string;
+  readonly opacity: number;
+}
+
+/** What a bond rule found: shown to the user beside the rule. */
+export interface RuleInfo {
+  /** Number of connected groups (chains, nets) its bonds form. */
+  readonly groups: number;
+  readonly triangles: number;
+}
+
+export const DEFAULT_STICK: StickStyle = { colour: "#b4bbc1", width: 0.12 };
+export const BAND_COLOUR = "#f3c26a";
+/** How far a pale atom or bond is mixed towards white. */
+export const PALE = 0.68;
 
 export interface Scene {
   readonly spheres: readonly Sphere[];
   readonly sticks: readonly Stick[];
   /** Unit-cell edges, each a pair of end points in angstrom. */
   readonly cellEdges: readonly (readonly [Vec3, Vec3])[];
+  /** One entry per bond rule of the spec, in the same order. */
+  readonly stickStyles: readonly StickStyle[];
+  readonly ruleInfo: readonly RuleInfo[];
+  readonly bands: readonly Band[];
+  readonly polygons: readonly Polygon[];
   readonly styles: Readonly<Record<string, SphereStyle>>;
   /** The point kept at the middle of the drawing. */
   readonly centre: Vec3;
@@ -129,6 +175,8 @@ export interface SceneSpec {
 }
 
 export interface Look {
+  /** For a species: leave its atoms out of the figure. */
+  readonly hidden?: boolean;
   readonly colour?: string;
   readonly radius?: number;
   readonly name?: string;
@@ -214,10 +262,46 @@ export function largestMoment(structure: Structure): number {
 
 /** One sphere per atom in the chosen range (plus neighbours added by bond rules), sticks for the bonds, and the cell outline. */
 export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC): Scene {
-  const { atoms, bonds, warnings } = atomsAndBonds(structure, spec.range, spec.bonds);
+  const hiddenSpecies = new Set(Object.entries(spec.looks).filter(([, look]) => look.hidden).map(([species]) => species));
+  const { atoms, bonds, warnings } = atomsAndBonds(structure, spec.range, spec.bonds, hiddenSpecies);
   const styles: Record<string, SphereStyle> = {};
-  const spheres: Sphere[] = atoms.map((atom) => {
-    const { key, style } = styleOf(atom, spec);
+  // Highlights: chains and triangles in the bonds of each rule.
+  const stickStyles: StickStyle[] = spec.bonds.map((r) => ({ colour: r.colour ?? DEFAULT_STICK.colour, width: r.width ?? DEFAULT_STICK.width }));
+  const ruleInfo: RuleInfo[] = [];
+  const bandSpecs: { segments: [number, number][]; rule: number }[] = [];
+  const polygonSpecs: { corners: number[]; rule: number }[] = [];
+  const paleAtoms = new Set<number>();
+  const paleBonds = new Set<number>();
+  spec.bonds.forEach((rule, ruleIndex) => {
+    const own = bonds.map((b, index) => ({ b, index })).filter(({ b }) => b.rule === ruleIndex);
+    const groups = connectedGroups(atoms, own.map(({ b }) => b));
+    const found = triangles(own.map(({ b }) => b));
+    ruleInfo.push({ groups: groups.length, triangles: found.length });
+    if (rule.fill) for (const t of found) polygonSpecs.push({ corners: t, rule: ruleIndex });
+    if (!rule.band) return;
+    const chosen = rule.chain !== undefined && rule.chain !== null && rule.chain >= 0 && rule.chain < groups.length ? rule.chain : null;
+    groups.forEach((group, g) => {
+      const members = new Set(group);
+      const inGroup = own.filter(({ b }) => members.has(b.i));
+      if (chosen === null || chosen === g) bandSpecs.push({ segments: inGroup.map(({ b }) => [b.i, b.j]), rule: ruleIndex });
+      else for (const { index } of inGroup) paleBonds.add(index);
+    });
+    if (chosen !== null) {
+      // Every atom of the rule's two species outside the highlighted group steps back.
+      const keep = new Set(groups[chosen]);
+      atoms.forEach((a, index) => {
+        if ((a.species === rule.centre || a.species === rule.neighbour) && !keep.has(index)) paleAtoms.add(index);
+      });
+    }
+  });
+  const pale = (style: SphereStyle): SphereStyle => ({
+    ...style,
+    colour: mixHex(style.colour, "#ffffff", PALE),
+    ...(style.wedges ? { wedges: style.wedges.map((w) => ({ ...w, colour: mixHex(w.colour, "#ffffff", PALE) })) } : {}),
+  });
+  const spheres: Sphere[] = atoms.map((atom, index) => {
+    const base = styleOf(atom, spec);
+    const [key, style] = paleAtoms.has(index) ? [`${base.key}~pale`, pale(base.style)] : [base.key, base.style];
     styles[key] ??= style;
     const moment = atom.moment ? momentToCartesian(structure, atom.moment) : undefined;
     return { style: key, species: atom.species, label: atom.label, frac: atom.frac, centre: atom.cart, ...(atom.added ? { added: true } : {}), ...(moment ? { moment } : {}) };
@@ -258,10 +342,23 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
       const name = styles[s.style]!.name ?? s.style;
       const site = atoms[index]!.siteIndex;
       const seen = first.get(name);
-      if (!seen || site < seen.site) first.set(name, { style: s.style, site });
+      // The legend shows the full-strength sphere, not a paled one, when both are drawn.
+      const better = !seen || (seen.style.endsWith("~pale") && !s.style.endsWith("~pale")) || (seen.style.endsWith("~pale") === s.style.endsWith("~pale") && site < seen.site);
+      if (better) first.set(name, { style: s.style, site: seen ? Math.min(seen.site, site) : site });
+      else if (site < seen.site) first.set(name, { style: seen.style, site });
     });
     for (const [name, { style }] of [...first].sort((p, q) => p[1].site - q[1].site)) legend.push({ style, name });
   }
   const axes = spec.showAxes ? cellAxes(structure) : [];
-  return { spheres, sticks: bonds, cellEdges, styles, centre, extent, arrows, arrowColour: spec.momentColour, legend, axes, warnings: [...warnings, ...arrowNote] };
+  const sticks: Stick[] = bonds.map((b, index) => (paleBonds.has(index) ? { ...b, pale: true } : b));
+  const radiusOf = (index: number): number => styles[spheres[index]!.style]!.radius;
+  const bands: Band[] = bandSpecs
+    .filter((b) => b.segments.length > 0)
+    .map((b) => ({ segments: b.segments, colour: BAND_COLOUR, width: 2.4 * Math.max(...b.segments.flat().map(radiusOf)), opacity: 0.5 }));
+  const polygons: Polygon[] = polygonSpecs.map((p) => ({
+    corners: p.corners,
+    colour: mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
+    opacity: 0.55,
+  }));
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, styles, centre, extent, arrows, arrowColour: spec.momentColour, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

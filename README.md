@@ -55,6 +55,13 @@ writes the reference atom lists in `tests/reference/`.
   moments to the same atom, the page says that the moment is not allowed by the site symmetry.
   Modulated (incommensurate) structures are refused.
 - Arrow length is proportional to the moment; the largest moment in the file gets the chosen length.
+- Highlights belong to a bond rule. Its bonds form connected groups (chains, nets), numbered by
+  the position of their middle along *a*, then *b*, then *c*, so the numbering does not depend on
+  the view. A band is a wide translucent stroke behind one group or all of them; with one group
+  chosen, the rule's other atoms and bonds are drawn pale. "Fill triangles" fills every three
+  mutually bonded atoms (a kagome net). Each rule has its own bond colour and thickness.
+- A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
+- The view can be set by the cell axis that points up, a turn about it and a tilt.
 - Arrows (the user's rule, for step 6 and later): a magnetic moment is drawn as an arrow passing
   through its atom, centred on it. An atomic displacement (a distortion mode, not yet a planned
   step) is drawn as an arrow starting at the centre of its atom.
@@ -70,7 +77,7 @@ writes the reference atom lists in `tests/reference/`.
 | 4 | Colour and size per element; pie spheres for mixed sites | done |
 | 5 | Legend and axis triad | built |
 | 6 | mCIF: magnetic moments as arrows | built |
-| 7 | Highlights: a band along a chain, filled polygons | not started |
+| 7 | Highlights: a band along a chain, filled polygons | built |
 | 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | after the main features |
 
 Each step is checked against an independent reference before the next one starts.

@@ -135,6 +135,17 @@ describe("colour and size", () => {
     expect(renderSvg(scene, DEFAULT_VIEW)).toContain('stop-color="#ff0000"');
   });
 
+  it("a hidden species is left out, with its bonds, and no neighbours are added for it", () => {
+    const rules = [{ centre: "Fe/Mg", neighbour: "O", max: 2.4, complete: true }, { centre: "Si", neighbour: "O", max: 1.8, complete: false }];
+    const all = buildScene(olivine, { ...DEFAULT_SPEC, bonds: rules });
+    const noO = buildScene(olivine, { ...DEFAULT_SPEC, bonds: rules, looks: { O: { hidden: true } } });
+    expect(all.sticks.length).toBeGreaterThan(0);
+    expect(noO.spheres.some((s) => s.species === "O")).toBe(false);
+    expect(noO.sticks.length).toBe(0);
+    expect(noO.legend.map((e) => e.name)).toEqual(["Si", "Fe/Mg"]);
+    expect(noO.spheres.length).toBe(all.spheres.filter((s) => s.species !== "O").length);
+  });
+
   it("changing a look moves no atom", () => {
     const a = buildScene(olivine, DEFAULT_SPEC).spheres.map((s) => s.centre);
     const b = buildScene(olivine, { ...DEFAULT_SPEC, looks: { O: { radius: 1.2 }, "Fe/Mg": { name: "M" } } }).spheres.map((s) => s.centre);

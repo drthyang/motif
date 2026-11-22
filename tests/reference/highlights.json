@@ -1,0 +1,112 @@
+[
+ {
+  "example": "CoSn-type-kagome_handwritten.cif",
+  "from": [
+   0,
+   0,
+   0
+  ],
+  "to": [
+   2,
+   2,
+   0
+  ],
+  "element": "Co",
+  "max": 2.7,
+  "atoms": 16,
+  "bonds": 24,
+  "triangles": 8,
+  "groups": [
+   16
+  ]
+ },
+ {
+  "example": "CoSn-type-kagome_handwritten.cif",
+  "from": [
+   0,
+   0,
+   0
+  ],
+  "to": [
+   3,
+   2,
+   1
+  ],
+  "element": "Co",
+  "max": 2.7,
+  "atoms": 46,
+  "bonds": 72,
+  "triangles": 24,
+  "groups": [
+   23,
+   23
+  ]
+ },
+ {
+  "example": "halite-NaCl_COD-9008678.cif",
+  "from": [
+   0,
+   0,
+   0
+  ],
+  "to": [
+   1,
+   1,
+   1
+  ],
+  "element": "Na",
+  "max": 4.0,
+  "atoms": 14,
+  "bonds": 36,
+  "triangles": 32,
+  "groups": [
+   14
+  ]
+ },
+ {
+  "example": "silicon_COD-9008565.cif",
+  "from": [
+   0,
+   0,
+   0
+  ],
+  "to": [
+   2,
+   1,
+   1
+  ],
+  "element": "Si",
+  "max": 2.5,
+  "atoms": 31,
+  "bonds": 32,
+  "triangles": 0,
+  "groups": [
+   27
+  ]
+ },
+ {
+  "example": "MnF2-antiferromagnet_handwritten.mcif",
+  "from": [
+   0,
+   0,
+   0
+  ],
+  "to": [
+   1,
+   1,
+   3
+  ],
+  "element": "Mn",
+  "max": 3.4,
+  "atoms": 19,
+  "bonds": 14,
+  "triangles": 0,
+  "groups": [
+   3,
+   4,
+   4,
+   4,
+   4
+  ]
+ }
+]

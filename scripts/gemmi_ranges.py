@@ -18,7 +18,7 @@ CASES = [
 
 out = {}
 # The four examples without shared sites (shared sites are checked in tests/looks.test.ts).
-for path in sorted(p for p in glob.glob("examples/*.cif") if "olivine" not in p):
+for path in sorted(p for p in glob.glob("examples/*.cif") if "olivine" not in p and "handwritten" not in p):
     st = gemmi.make_small_structure_from_block(gemmi.cif.read_file(path).sole_block())
     results = []
     for case in CASES:

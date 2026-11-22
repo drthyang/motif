@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_CANVAS, MAX_SCALE, fitView, layout, pxPerAngstrom, renderSvg } from "../src/render/svg";
-import { DEFAULT_VIEW, determinant, dragView, viewFromAngles, type View } from "../src/render/view";
+import { DEFAULT_VIEW, determinant, dragView, viewFromAngles, viewWithAxisUp, type View } from "../src/render/view";
 import { buildScene, DEFAULT_SPEC, type Scene } from "../src/scene/scene";
 import { mulVec, orthogonalizationMatrix } from "../src/structure/cell";
 import { readCif } from "../src/structure/readCif";
@@ -60,6 +60,28 @@ describe("view", () => {
     expect(mulVec(dragView(IDENTITY, 0, 0.3), front)[1]).toBeLessThan(0); // screen y is up, so down is negative
   });
 
+  it("a chosen cell axis can point up: it is vertical on screen, the view stays a proper rotation, and c up is the default", () => {
+    const m = orthogonalizationMatrix(readCif(readFileSync("examples/quartz_COD-9009666.cif", "utf8")).cell);
+    const unit = (i: number): Vec3 => {
+      const v: Vec3 = [m[0][i]!, m[1][i]!, m[2][i]!];
+      const n = Math.hypot(...v);
+      return [v[0] / n, v[1] / n, v[2] / n];
+    };
+    const axes: [Vec3, Vec3, Vec3] = [unit(0), unit(1), unit(2)];
+    for (const up of [0, 1, 2] as const) {
+      const flat = viewWithAxisUp(axes, up, 37, 0);
+      const drawn = mulVec(flat, axes[up]);
+      expect(drawn[0]).toBeCloseTo(0, 12);
+      expect(drawn[1]).toBeCloseTo(1, 12); // straight up
+      expect(determinant(flat)).toBeCloseTo(1, 12);
+      // At az = 0 the next axis in the cycle points right (its part perpendicular to the up axis).
+      expect(mulVec(viewWithAxisUp(axes, up, 0, 0), axes[(up + 1) % 3]!)[0]).toBeGreaterThan(0);
+      expect(mulVec(viewWithAxisUp(axes, up, 0, 0), axes[(up + 1) % 3]!)[2]).toBeCloseTo(0, 12);
+    }
+    const same = viewWithAxisUp(axes, 2, 18, 12);
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) expect(same[i]![j]).toBeCloseTo(DEFAULT_VIEW[i]![j]!, 12);
+  });
+
   it("azimuth and elevation: positive elevation looks from above", () => {
     // From above, a point higher along z appears higher on screen and a point nearer the viewer appears lower.
     const view = viewFromAngles(0, 30);
@@ -84,6 +106,10 @@ describe("drawing", () => {
       spheres: [{ style: "X", label: "o", centre: [0, 0, 0] }, { style: "X", label: "p", centre: [1, 0, 2] }],
       sticks: [],
       cellEdges: [],
+      stickStyles: [],
+      ruleInfo: [],
+      bands: [],
+      polygons: [],
       styles: { X: { colour: "#808080", radius: 0.3 } },
       centre: [0, 0, 0],
       extent: 4,

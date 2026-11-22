@@ -43,6 +43,8 @@ export interface DrawnSphere {
 /** A straight line as drawn (a bond or a cell edge), end points in px. */
 export interface DrawnLine {
   readonly kind: "bond" | "cell";
+  /** Bonds only. */
+  readonly colour?: string;
   readonly x1: number;
   readonly y1: number;
   readonly x2: number;
@@ -67,7 +69,22 @@ export interface DrawnArrow {
   readonly depth: number;
 }
 
-export type Drawn = DrawnSphere | DrawnLine | DrawnArrow;
+/** A filled polygon, or a highlight band (several wide strokes drawn as one translucent shape). */
+interface Shape<K extends string> {
+  readonly kind: K;
+  /** Polygon: its corners "x,y x,y ...". Band: one "x1,y1 x2,y2" per segment. */
+  readonly parts: readonly string[];
+  readonly colour: string;
+  readonly opacity: number;
+  /** Band only: stroke width in px. */
+  readonly width: number;
+  readonly depth: number;
+}
+
+export type DrawnPolygon = Shape<"polygon">;
+export type DrawnBand = Shape<"band">;
+
+export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand;
 
 /** Moment arrows, in angstrom: shaft thickness, head length and head width. */
 export const ARROW_SHAFT = 0.16;
@@ -152,7 +169,27 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const at = (t: number): Vec3 => [0, 1, 2].map((i) => a.centre[i]! + (b.centre[i]! - a.centre[i]!) * t) as unknown as Vec3;
     const [p, q] = [project(at(ra / stick.length)), project(at(1 - rb / stick.length))];
     // Drawn just behind an atom at the same depth, so the nearer atom covers its end of the bond.
-    drawn.push({ kind: "bond", x1: p[0], y1: p[1], x2: q[0], y2: q[1], width: BOND_WIDTH * scale, depth: (p[2] + q[2]) / 2 - 0.1 });
+    const look = scene.stickStyles[stick.rule] ?? { colour: BOND_COLOUR, width: BOND_WIDTH };
+    const colour = stick.pale ? mixHex(look.colour, "#ffffff", 0.55) : look.colour;
+    const width = (stick.pale ? 0.65 : 1) * look.width * scale;
+    drawn.push({ kind: "bond", colour, x1: p[0], y1: p[1], x2: q[0], y2: q[1], width, depth: (p[2] + q[2]) / 2 - 0.1 });
+  }
+  for (const polygon of scene.polygons) {
+    // Just behind its own atoms and bonds.
+    const corners = polygon.corners.map((c) => project(scene.spheres[c]!.centre));
+    const depth = corners.reduce((sum, c) => sum + c[2], 0) / corners.length - 0.4;
+    drawn.push({ kind: "polygon", parts: [corners.map((c) => `${n1(c[0])},${n1(c[1])}`).join(" ")], colour: polygon.colour, opacity: polygon.opacity, width: 0, depth });
+  }
+  for (const band of scene.bands) {
+    // One translucent shape behind the whole chain: behind its farthest atom, in front of everything further back.
+    let depth = Infinity;
+    const parts = band.segments.map(([i, j]) => {
+      const [a, b] = [scene.spheres[i]!, scene.spheres[j]!];
+      const [p, q] = [project(a.centre), project(b.centre)];
+      depth = Math.min(depth, p[2] - scene.styles[a.style]!.radius, q[2] - scene.styles[b.style]!.radius);
+      return `${n1(p[0])},${n1(p[1])} ${n1(q[0])},${n1(q[1])}`;
+    });
+    drawn.push({ kind: "band", parts, colour: band.colour, opacity: band.opacity, width: band.width * scale, depth: depth - 0.05 });
   }
   for (const arrow of scene.arrows) {
     // The arrow passes through the atom, centred on it. The part inside the sphere is never visible, so two
@@ -387,6 +424,16 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
   for (const d of drawn) {
     if (d.kind === "sphere") {
       out += sphereSvg(scene, d.style, d.x, d.y, d.r);
+    } else if (d.kind === "polygon") {
+      out += `<polygon class="fill" points="${d.parts[0]}" fill="${d.colour}" fill-opacity="${d.opacity}"/>\n`;
+    } else if (d.kind === "band") {
+      // A group, so that where two strokes of the band overlap the colour does not double.
+      out += `<g class="band" opacity="${d.opacity}" stroke="${d.colour}" stroke-width="${n1(d.width)}" stroke-linecap="round">`;
+      for (const part of d.parts) {
+        const [p, q] = part.split(" ");
+        out += `<line x1="${p!.split(",")[0]}" y1="${p!.split(",")[1]}" x2="${q!.split(",")[0]}" y2="${q!.split(",")[1]}"/>`;
+      }
+      out += "</g>\n";
     } else if (d.kind === "arrow") {
       out += `<line class="arrow" x1="${n1(d.x1)}" y1="${n1(d.y1)}" x2="${n1(d.x2)}" y2="${n1(d.y2)}" stroke="${scene.arrowColour}" stroke-width="${n1(d.width)}" stroke-linecap="butt"/>`;
       if (d.head) out += `<polygon class="arrow-head" points="${d.head}" fill="${scene.arrowColour}"/>`;
@@ -394,7 +441,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
     } else {
       const look =
         d.kind === "bond"
-          ? `stroke="${BOND_COLOUR}" stroke-width="${n1(d.width)}" stroke-linecap="round"`
+          ? `stroke="${d.colour ?? BOND_COLOUR}" stroke-width="${n1(d.width)}" stroke-linecap="round"`
           : `${CELL_STROKE} stroke-dashoffset="${n1(d.along ?? 0)}"`;
       out += `<line class="${d.kind}" x1="${n1(d.x1)}" y1="${n1(d.y1)}" x2="${n1(d.x2)}" y2="${n1(d.y2)}" ${look}/>\n`;
     }

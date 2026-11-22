@@ -26,6 +26,23 @@ export function viewFromAngles(az: number, el: number): View {
 
 export const DEFAULT_VIEW: View = viewFromAngles(18, 12);
 
+/**
+ * The same, with a chosen cell axis pointing up instead of cartesian z.
+ * `axes` are the unit vectors along a, b, c; `up` is 0, 1 or 2. The axis that follows it in the
+ * cycle a -> b -> c -> a points to the right (its part perpendicular to the up axis) at az = 0, el = 0.
+ */
+export function viewWithAxisUp(axes: readonly [Vec3, Vec3, Vec3], up: 0 | 1 | 2, az: number, el: number): View {
+  const u = axes[up];
+  const next = axes[(up + 1) % 3]!;
+  const d = u[0] * next[0] + u[1] * next[1] + u[2] * next[2];
+  const r0: Vec3 = [next[0] - d * u[0], next[1] - d * u[1], next[2] - d * u[2]];
+  const n = Math.hypot(r0[0], r0[1], r0[2]);
+  const right: Vec3 = [r0[0] / n, r0[1] / n, r0[2] / n];
+  // (right, depth, up) is right-handed when depth = up x right.
+  const depth: Vec3 = [u[1] * right[2] - u[2] * right[1], u[2] * right[0] - u[0] * right[2], u[0] * right[1] - u[1] * right[0]];
+  return mulMat(viewFromAngles(az, el), [right, depth, u]);
+}
+
 const rotX = (t: number): Mat3 => [[1, 0, 0], [0, Math.cos(t), -Math.sin(t)], [0, Math.sin(t), Math.cos(t)]];
 const rotY = (t: number): Mat3 => [[Math.cos(t), 0, Math.sin(t)], [0, 1, 0], [-Math.sin(t), 0, Math.cos(t)]];
 
