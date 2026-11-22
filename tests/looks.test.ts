@@ -149,7 +149,7 @@ describe("surfaces", () => {
     expect(draw("flat")).not.toContain("<radialGradient id=\"g-");
     for (const m of ["glossy", "metal", "glass"] as const) expect(draw(m).match(/class="gloss"/g)?.length).toBe(atoms);
     expect(soft).not.toContain('class="gloss"');
-    expect(draw("glass")).toMatch(/<radialGradient id="g-[0-9a-f]+"[^>]*><stop offset="0" stop-color="#[0-9a-f]{6}" stop-opacity="0.1"\/>/);
+    expect(draw("glass")).toMatch(/<radialGradient id="g-[0-9a-f]+"[^>]*><stop offset="0" stop-color="#[0-9a-f]{6}" stop-opacity="0.05"\/>/); // clear in the middle
     expect(draw("glass")).toContain('<g fill-opacity="0.45"><path class="wedge"'); // pies too
     // Metal: light comes back at the rim (the last stop is lighter than the one before it).
     const stops = /<radialGradient id="g-[0-9a-f]+"[^>]*>(.*?)<\/radialGradient>/.exec(draw("metal"))![1]!.match(/stop-color="#[0-9a-f]{6}"/g)!;

@@ -293,13 +293,16 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       const front = out > 0.02;
       const centre = fromA ? pa : pb;
       // Where it starts, as a fraction of the bond from a: at the atom's centre, or where it pierces the surface.
+      // A glass atom is seen through, so a rod must not run on to its centre: every half then starts at the
+      // surface, also the one behind the atom, which is seen through the glass.
+      const atSurface = front || scene.atomMaterial === "glass";
       const pierce = Math.sqrt(Math.max(0, radius * radius - rho * rho)) / stick.length;
-      const start = project(at(fromA ? (front ? pierce : 0) : 1 - (front ? pierce : 0)));
+      const start = project(at(fromA ? (atSurface ? pierce : 0) : 1 - (atSurface ? pierce : 0)));
       const end = project(at(0.5 + sign * 0.01)); // a hair past the middle, so the two halves leave no gap
       const corner = (p: Vec3, side: number): string => `${n1(p[0] + side * px * w)},${n1(p[1] + side * py * w)}`;
       let outline = `${corner(start, 1)} ${corner(end, 1)} ${corner(end, -1)} ${corner(start, -1)}`;
       let foot = "";
-      if (front) {
+      if (atSurface) {
         // Round the foot: half an ellipse, as wide as the rod and |out| times that along it, bulging back into the atom.
         for (let k = 1; k < 8; k++) {
           const phi = Math.PI * (1 - k / 8);
@@ -312,7 +315,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       const sides = edge
         ? `<path class="bond-edge" d="M${corner(end, -1)} L${corner(start, -1)}${foot ? foot.trim().split(" ").map((q) => ` L${q}`).join("") : ""} L${corner(start, 1)} L${corner(end, 1)}" fill="none"${edge}/>`
         : "";
-      const depth = front ? Math.max((start[2] + end[2]) / 2, centre[2] + 0.01) : Math.min((centre[2] + end[2]) / 2, centre[2] - 0.01);
+      const depth = front ? Math.max((start[2] + end[2]) / 2, centre[2] + 0.01) : Math.min((start[2] + end[2]) / 2, centre[2] - 0.01);
       drawn.push({
         kind: "bond",
         colour,
@@ -551,6 +554,11 @@ function sphereSvg(scene: Scene, styleKey: string, x: number, y: number, r: numb
     material === "glossy" || material === "metal" || material === "glass"
       ? `<ellipse class="gloss" cx="${n1(x - 0.36 * r)}" cy="${n1(y - 0.42 * r)}" rx="${n1(0.3 * r)}" ry="${n1(0.19 * r)}" transform="rotate(-38 ${n1(x - 0.36 * r)} ${n1(y - 0.42 * r)})" fill="url(#gloss)"/>`
       : "";
+  // Glass also shows the light that has passed through the ball: a soft glow low on the far side from the highlight.
+  const glow =
+    material === "glass"
+      ? `<ellipse class="glow" cx="${n1(x + 0.3 * r)}" cy="${n1(y + 0.36 * r)}" rx="${n1(0.46 * r)}" ry="${n1(0.3 * r)}" transform="rotate(-38 ${n1(x + 0.3 * r)} ${n1(y + 0.36 * r)})" fill="url(#gloss)" fill-opacity="0.5"/>`
+      : "";
   if (style.wedges) {
     // A pie: flat wedges under one shading circle. Glass makes the wedges see-through; flat leaves the shading out.
     const wedges = material === "glass" ? `<g fill-opacity="0.45">${wedgePaths(x, y, r, style.wedges)}</g>` : wedgePaths(x, y, r, style.wedges);
@@ -559,7 +567,7 @@ function sphereSvg(scene: Scene, styleKey: string, x: number, y: number, r: numb
   }
   const outline = mixHex(style.colour, "#000000", material === "metal" ? 0.5 : 0.35);
   const fill = material === "flat" ? style.colour : `url(#${gradientId(style.colour)})`;
-  return `<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="${fill}" stroke="${outline}" stroke-width="2"${material === "glass" ? ' stroke-opacity="0.75"' : ""}/>${gloss}\n`;
+  return `<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="${fill}" stroke="${outline}" stroke-width="2"${material === "glass" ? ' stroke-opacity="0.85" stroke-width="1.5"' : ""}/>${glow}${gloss}\n`;
 }
 
 /**
@@ -588,8 +596,8 @@ function sphereStops(colour: string, material: Material): string {
       return stop(0, w(0.55)) + stop(0.4, colour) + stop(1, k(0.5));
     case "metal": // a bright highlight, a quick fall to dark, and light coming back at the rim
       return stop(0, w(0.9)) + stop(0.22, w(0.4)) + stop(0.5, k(0.2)) + stop(0.78, k(0.6)) + stop(0.93, k(0.35)) + stop(1, w(0.2));
-    case "glass": // nearly clear in the middle, more colour towards the rim, where one looks through more glass
-      return stop(0, w(0.6), 0.1) + stop(0.6, colour, 0.28) + stop(1, k(0.2), 0.72);
+    case "glass": // clear in the middle; the colour gathers in a rim, where one looks through the most glass
+      return stop(0, w(0.7), 0.05) + stop(0.55, w(0.3), 0.1) + stop(0.8, colour, 0.24) + stop(0.93, colour, 0.52) + stop(1, k(0.25), 0.8);
     default: // soft (flat uses no gradient)
       return stop(0, w(0.65)) + stop(0.55, colour) + stop(1, k(0.35));
   }
@@ -836,7 +844,9 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
   const material = scene.atomMaterial ?? "soft";
   for (const colour of material === "flat" ? [] : plain) {
     // One radial gradient per colour, highlight up and to the left.
-    out += `<radialGradient id="${gradientId(colour)}" cx="36%" cy="30%" r="72%">${sphereStops(colour, material)}</radialGradient>\n`;
+    // Glass is shaded from its own centre (clear in the middle, coloured at the rim); the others from the highlight.
+    const from = material === "glass" ? 'cx="50%" cy="50%" r="50%"' : 'cx="36%" cy="30%" r="72%"';
+    out += `<radialGradient id="${gradientId(colour)}" ${from}>${sphereStops(colour, material)}</radialGradient>\n`;
   }
   if (material === "glossy" || material === "metal" || material === "glass") {
     // The highlight spot: white, fading out.

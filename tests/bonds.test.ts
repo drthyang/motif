@@ -180,6 +180,27 @@ describe("bonds as rods", () => {
     expect(Math.hypot(fromP.x1 - p.x, fromP.y1 - p.y)).toBeGreaterThan(0.2 * p.r);
   });
 
+  it("glass atoms: no rod runs inside a sphere; every half starts at the surface with a rounded foot, also the one behind the atom", () => {
+    const corners = (svg: string): number => /class="bond" points="([^"]+)"/.exec(svg)![1]!.split(" ").length;
+    for (const view of [viewFromAngles(0, 0), viewFromAngles(-60, 0), viewFromAngles(40, 30)]) {
+      const scene: Scene = { ...pair("soft"), atomMaterial: "glass" };
+      const order = layoutAll(scene, view, DEFAULT_CANVAS);
+      const scale = pxPerAngstrom(scene, view, DEFAULT_CANVAS);
+      const spheres = order.filter((d) => d.kind === "sphere");
+      for (const h of order) {
+        if (h.kind !== "bond") continue;
+        expect(corners(h.svg!)).toBe(4 + 7);
+        // Its start is on a sphere's surface as seen: no nearer the centre than the surface's projection allows,
+        // and never at the centre itself unless the bond points straight at the viewer.
+        const own = spheres.reduce((p, q) => (q.kind === "sphere" && p.kind === "sphere" && Math.hypot(h.x1 - q.x, h.y1 - q.y) < Math.hypot(h.x1 - p.x, h.y1 - p.y) ? q : p));
+        if (own.kind !== "sphere") continue;
+        const offCentre = Math.hypot(h.x1 - own.x, h.y1 - own.y) / scale;
+        expect(offCentre).toBeLessThanOrEqual(0.5 + 1e-6);
+        expect(offCentre).toBeGreaterThan(0.2);
+      }
+    }
+  });
+
   it("without a surface, or above the limit, a bond is one plain stroke as before", () => {
     const order = layoutAll(pair(), viewFromAngles(0, 0), DEFAULT_CANVAS);
     expect(order.filter((d) => d.kind === "bond").length).toBe(1);
