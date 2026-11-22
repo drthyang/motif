@@ -107,17 +107,22 @@ export interface DrawnSector {
 export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand | DrawnSector;
 
 /**
- * The silhouette of a cone that points towards the viewer: from the tip to one end of the base's width, round
- * the far half of the base's rim (an ellipse `squash` times as deep as it is wide), to the other end.
- * (ux, uy) is the arrow's direction on screen, (px, py) the direction across it, `half` half the base's width.
+ * The silhouette of a cone that points towards the viewer. Its base is a circle seen at an angle: an ellipse,
+ * `half` wide across the arrow and `squash` times that along it. The silhouette is the tip, the two lines from
+ * the tip that just touch the ellipse, and the ellipse's arc round the back between the touching points. When
+ * the cone points so nearly at the viewer that the tip lies inside the ellipse, the silhouette is the ellipse.
+ * (ux, uy) is the arrow's direction on screen, (px, py) the direction across it.
  */
 function coneOutline(tx: number, ty: number, bx: number, by: number, ux: number, uy: number, px: number, py: number, half: number, squash: number): string {
+  const [a, b] = [half * squash, half]; // semi-axes along and across the arrow
+  const length = (tx - bx) * ux + (ty - by) * uy; // from the base's centre to the tip, on screen
+  const at = (theta: number): string => `${n1(bx + ux * a * Math.cos(theta) + px * b * Math.sin(theta))},${n1(by + uy * a * Math.cos(theta) + py * b * Math.sin(theta))}`;
+  if (length <= a * 1.0001) return Array.from({ length: 24 }, (_, k) => at((2 * Math.PI * k) / 24)).join(" ");
+  // The touching points are at the angles +-t on the ellipse, with cos t = a / length.
+  const t = Math.acos(Math.min(1, a / length));
+  const steps = 12;
   let points = `${n1(tx)},${n1(ty)}`;
-  for (let k = 0; k <= 10; k++) {
-    const phi = (Math.PI * k) / 10;
-    const [across, back] = [half * Math.cos(phi), half * squash * Math.sin(phi)];
-    points += ` ${n1(bx + px * across - ux * back)},${n1(by + py * across - uy * back)}`;
-  }
+  for (let k = 0; k <= steps; k++) points += ` ${at(t + ((2 * Math.PI - 2 * t) * k) / steps)}`;
   return points;
 }
 
