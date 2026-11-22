@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CANVAS, renderSvg, wedgePaths } from "../src/render/svg";
+import { DEFAULT_CANVAS, glassAlpha, renderSvg, wedgePaths } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
 import { atomsAndBonds } from "../src/scene/bonds";
 import { defaultColour, defaultRadius } from "../src/scene/elementStyle";
@@ -156,6 +156,24 @@ describe("surfaces", () => {
     const light = (stop: string): number => [1, 3, 5].reduce((sum, i) => sum + parseInt(stop.slice(13 + i - 1, 15 + i - 1), 16), 0);
     expect(stops.length).toBe(6);
     expect(light(stops[5]!)).toBeGreaterThan(light(stops[4]!));
+  });
+
+  it("how solid glass is can be set: 0.3 is the usual glass, lower is clearer, 1 is not see-through at all", () => {
+    expect(glassAlpha(0.45, 0.3)).toBe(0.45);
+    expect(glassAlpha(0.45, 0.15)).toBeCloseTo(0.225, 9);
+    expect(glassAlpha(0.45, 0)).toBe(0);
+    expect(glassAlpha(0.45, 1)).toBe(1);
+    expect(glassAlpha(0.45, 0.65)).toBeCloseTo(0.725, 9);
+    const opacities = (g: number): number[] => {
+      const svg = renderSvg(buildScene(olivine, { ...DEFAULT_SPEC, atomMaterial: "glass", glassOpacity: g }), DEFAULT_VIEW);
+      return /<radialGradient id="g-[0-9a-f]+"[^>]*>(.*?)<\/radialGradient>/.exec(svg)![1]!.match(/stop-opacity="([\d.]+)"/g)!.map((x) => Number(x.slice(14, -1)));
+    };
+    expect(opacities(0.3)).toEqual([0.05, 0.1, 0.24, 0.52, 0.8]);
+    expect(opacities(1)).toEqual([1, 1, 1, 1, 1]);
+    opacities(0.1).forEach((o, i) => expect(o).toBeLessThan(opacities(0.3)[i]!));
+    opacities(0.7).forEach((o, i) => expect(o).toBeGreaterThan(opacities(0.3)[i]!));
+    // The default figure is the usual glass.
+    expect(draw("glass")).toBe(renderSvg(buildScene(olivine, { ...DEFAULT_SPEC, atomMaterial: "glass", glassOpacity: 0.3 }), DEFAULT_VIEW));
   });
 
   it("the arrows' surface is set separately, and applies to the axis arrows too", () => {

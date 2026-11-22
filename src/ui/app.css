@@ -181,3 +181,5 @@ input.indices { width: 86px; }
 .more > summary::before { content: "+ "; }
 .more[open] > summary::before { content: "− "; }
 .more[open] > summary { margin-bottom: 4px; }
+.slider { flex-wrap: nowrap; }
+.slider input[type="range"] { width: 120px; accent-color: var(--primary); }

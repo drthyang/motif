@@ -284,7 +284,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${n1(middle[0] + px * w)}" y1="${n1(middle[1] + py * w)}" x2="${n1(middle[0] - px * w)}" y2="${n1(middle[1] - py * w)}">` +
       `${rodStops(colour, scene.bondMaterial ?? "soft")}</linearGradient></defs>`;
     const edge = scene.bondOutline ? ` stroke="${mixHex(colour, "#000000", 0.4)}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"` : "";
-    const glass = scene.bondMaterial === "glass" ? ' fill-opacity="0.45"' : "";
+    const glass = scene.bondMaterial === "glass" ? ` fill-opacity="${glassAlpha(0.45, scene.glassOpacity)}"` : "";
     const rho = look.width / 2; // the rod's radius, angstrom
     /** One half: from its atom (the end `fromA` says) to just past the middle. */
     const half = (fromA: boolean): void => {
@@ -561,7 +561,7 @@ function sphereSvg(scene: Scene, styleKey: string, x: number, y: number, r: numb
       : "";
   if (style.wedges) {
     // A pie: flat wedges under one shading circle. Glass makes the wedges see-through; flat leaves the shading out.
-    const wedges = material === "glass" ? `<g fill-opacity="0.45">${wedgePaths(x, y, r, style.wedges)}</g>` : wedgePaths(x, y, r, style.wedges);
+    const wedges = material === "glass" ? `<g fill-opacity="${glassAlpha(0.45, scene.glassOpacity)}">${wedgePaths(x, y, r, style.wedges)}</g>` : wedgePaths(x, y, r, style.wedges);
     const shade = material === "flat" ? "none" : `url(#${PIE_SHADE})`;
     return `${wedges}<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="${shade}" stroke="${PIE_OUTLINE}" stroke-width="2"/>${gloss}\n`;
   }
@@ -587,8 +587,18 @@ function cellStroke(scene: Scene, depth: number, along: number): string {
     : `stroke="${CELL_FAR}" stroke-width="${n1(width * 0.8)}" ${dashes}`;
 }
 
+/**
+ * An opacity of the usual glass, for a chosen solidity (0 to 1). At 0.3 it is unchanged; below that it
+ * falls towards 0 (clearer); above it rises towards 1, so that at 1 nothing is seen through.
+ */
+export function glassAlpha(usual: number, solidity = 0.3): number {
+  const g = Math.max(0, Math.min(1, solidity));
+  const value = g <= 0.3 ? usual * (g / 0.3) : usual + (1 - usual) * ((g - 0.3) / 0.7);
+  return Math.round(value * 1000) / 1000;
+}
+
 /** The colour stops of a sphere's radial shading, from the highlight (up and to the left) to the rim. */
-function sphereStops(colour: string, material: Material): string {
+function sphereStops(colour: string, material: Material, glass?: number): string {
   const stop = (offset: number, c: string, opacity?: number): string => `<stop offset="${offset}" stop-color="${c}"${opacity === undefined ? "" : ` stop-opacity="${opacity}"`}/>`;
   const [w, k] = [(t: number): string => mixHex(colour, "#ffffff", t), (t: number): string => mixHex(colour, "#000000", t)];
   switch (material) {
@@ -597,7 +607,7 @@ function sphereStops(colour: string, material: Material): string {
     case "metal": // a bright highlight, a quick fall to dark, and light coming back at the rim
       return stop(0, w(0.9)) + stop(0.22, w(0.4)) + stop(0.5, k(0.2)) + stop(0.78, k(0.6)) + stop(0.93, k(0.35)) + stop(1, w(0.2));
     case "glass": // clear in the middle; the colour gathers in a rim, where one looks through the most glass
-      return stop(0, w(0.7), 0.05) + stop(0.55, w(0.3), 0.1) + stop(0.8, colour, 0.24) + stop(0.93, colour, 0.52) + stop(1, k(0.25), 0.8);
+      return stop(0, w(0.7), glassAlpha(0.05, glass)) + stop(0.55, w(0.3), glassAlpha(0.1, glass)) + stop(0.8, colour, glassAlpha(0.24, glass)) + stop(0.93, colour, glassAlpha(0.52, glass)) + stop(1, k(0.25), glassAlpha(0.8, glass));
     default: // soft (flat uses no gradient)
       return stop(0, w(0.65)) + stop(0.55, colour) + stop(1, k(0.35));
   }
@@ -846,7 +856,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
     // One radial gradient per colour, highlight up and to the left.
     // Glass is shaded from its own centre (clear in the middle, coloured at the rim); the others from the highlight.
     const from = material === "glass" ? 'cx="50%" cy="50%" r="50%"' : 'cx="36%" cy="30%" r="72%"';
-    out += `<radialGradient id="${gradientId(colour)}" ${from}>${sphereStops(colour, material)}</radialGradient>\n`;
+    out += `<radialGradient id="${gradientId(colour)}" ${from}>${sphereStops(colour, material, scene.glassOpacity)}</radialGradient>\n`;
   }
   if (material === "glossy" || material === "metal" || material === "glass") {
     // The highlight spot: white, fading out.
@@ -885,7 +895,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
     } else if (d.kind === "arrow") {
       // The outline, when asked for: every shape of the arrow in the darker tone of its colour, as the spheres have.
       const outline = scene.arrowOutline ? ` stroke="${mixHex(scene.arrowColour, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round"` : "";
-      out += `<g class="arrow"${outline}${scene.arrowMaterial === "glass" ? ' fill-opacity="0.45"' : ""}>${d.svg}</g>\n`;
+      out += `<g class="arrow"${outline}${scene.arrowMaterial === "glass" ? ` fill-opacity="${glassAlpha(0.45, scene.glassOpacity)}"` : ""}>${d.svg}</g>\n`;
     } else if (d.kind === "bond" && d.svg !== undefined) {
       out += `${d.svg}\n`;
     } else {
@@ -914,7 +924,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       `<text class="legend" x="${n1(item.textX)}" y="${n1(item.y + 0.35 * item.fontSize)}" font-family="${fontList(scene.fontFamily)}" font-weight="${scene.letterWeight}" ` +
       `font-size="${n1(item.fontSize)}" fill="${LEGEND_COLOUR}">${escapeXml(item.name)}</text>\n`;
   }
-  const axesGlass = scene.arrowMaterial === "glass" ? ' fill-opacity="0.45"' : "";
+  const axesGlass = scene.arrowMaterial === "glass" ? ` fill-opacity="${glassAlpha(0.45, scene.glassOpacity)}"` : "";
   out += scene.axesOutline
     ? `<g class="axes-outline" stroke="${mixHex(AXIS_COLOUR, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round"${axesGlass}>${axes.svg}</g>\n`
     : axesGlass
