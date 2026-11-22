@@ -149,8 +149,8 @@ describe("surfaces", () => {
     expect(draw("flat")).not.toContain("<radialGradient id=\"g-");
     for (const m of ["glossy", "metal", "glass"] as const) expect(draw(m).match(/class="gloss"/g)?.length).toBe(atoms);
     expect(soft).not.toContain('class="gloss"');
-    expect(draw("glass")).toMatch(/<radialGradient id="g-[0-9a-f]+"[^>]*><stop offset="0" stop-color="#[0-9a-f]{6}" stop-opacity="0.05"\/>/); // clear in the middle
-    expect(draw("glass")).toContain('<g fill-opacity="0.45"><path class="wedge"'); // pies too
+    expect(draw("glass")).toMatch(new RegExp(`<radialGradient id="g-[0-9a-f]+"[^>]*><stop offset="0" stop-color="#[0-9a-f]{6}" stop-opacity="${glassAlpha(0.05, DEFAULT_SPEC.glassOpacity)}"/>`)); // clearest in the middle
+    expect(draw("glass")).toContain(`<g fill-opacity="${glassAlpha(0.45, DEFAULT_SPEC.glassOpacity)}"><path class="wedge"`); // pies too
     // Metal: light comes back at the rim (the last stop is lighter than the one before it).
     const stops = /<radialGradient id="g-[0-9a-f]+"[^>]*>(.*?)<\/radialGradient>/.exec(draw("metal"))![1]!.match(/stop-color="#[0-9a-f]{6}"/g)!;
     const light = (stop: string): number => [1, 3, 5].reduce((sum, i) => sum + parseInt(stop.slice(13 + i - 1, 15 + i - 1), 16), 0);
@@ -172,8 +172,8 @@ describe("surfaces", () => {
     expect(opacities(1)).toEqual([1, 1, 1, 1, 1]);
     opacities(0.1).forEach((o, i) => expect(o).toBeLessThan(opacities(0.3)[i]!));
     opacities(0.7).forEach((o, i) => expect(o).toBeGreaterThan(opacities(0.3)[i]!));
-    // The default figure is the usual glass.
-    expect(draw("glass")).toBe(renderSvg(buildScene(olivine, { ...DEFAULT_SPEC, atomMaterial: "glass", glassOpacity: 0.3 }), DEFAULT_VIEW));
+    // The default glass is 75 % solid (the user's choice).
+    expect(draw("glass")).toBe(renderSvg(buildScene(olivine, { ...DEFAULT_SPEC, atomMaterial: "glass", glassOpacity: 0.75 }), DEFAULT_VIEW));
   });
 
   it("the arrows' surface is set separately, and applies to the axis arrows too", () => {
@@ -182,7 +182,7 @@ describe("surfaces", () => {
     const axisStops = (svg: string): number => /<linearGradient id="axis-a-shaft"[^>]*>(.*?)<\/linearGradient>/.exec(svg)![1]!.match(/<stop /g)!.length;
     expect(axisStops(soft)).toBe(4);
     expect(axisStops(metalArrows)).toBe(6);
-    expect(draw("soft", "glass")).toMatch(/<g class="axes-outline"[^>]*fill-opacity="0.45"/);
+    expect(draw("soft", "glass")).toContain(`fill-opacity="${glassAlpha(0.45, DEFAULT_SPEC.glassOpacity)}"`);
     // The letters of the axes stay solid.
     for (const m of draw("soft", "glass").matchAll(/<text [^>]*font-style="italic"[^>]*>/g)) expect(m[0]).toContain('fill-opacity="1"');
   });

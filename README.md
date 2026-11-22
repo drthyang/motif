@@ -115,7 +115,7 @@ writes the reference atom lists in `tests/reference/`.
 - Surfaces: the atoms, and separately the arrows (moment arrows and axis arrows together), can be
   drawn soft (the default), flat, glossy, metal or glass. These are vector shading only (gradient
   stops, a highlight spot, opacity), so the figure stays an editable SVG; a glass sphere shows
-  what is behind it, and a slider sets how solid the glass is (one setting for all glass). The GPU preview shown while a large structure moves does not draw
+  what is behind it, and a slider sets how solid the glass is (one setting for all glass; 75 % by default). The GPU preview shown while a large structure moves does not draw
   the surfaces.
 - When a file is opened MOTIF suggests bonds (`src/scene/autoBonds.ts`; can be switched off): each
   kind of cation to its nearest anions, or a single element to itself, first shell only, with the
