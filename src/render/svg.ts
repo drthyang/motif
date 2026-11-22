@@ -721,12 +721,13 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
   // Back to front: the arrow pointing most away from the viewer first, then the ball at the origin.
   const order = arrows.map((a, i) => ({ a, letter: letters[i]! })).sort((p, q) => p.a.depth - q.a.depth);
   const baseShade = mixHex(AXIS_COLOUR, "#000000", 0.18);
-  const ball = (): string => `<circle class="axis-origin" cx="${n1(ox)}" cy="${n1(oy)}" r="${n1(shaftPx * 0.95)}" fill="url(#axis-ball)"/>\n`;
+  const ballRadius = shaftPx * 0.95;
+  const ball = (): string => `<circle class="axis-origin" cx="${n1(ox)}" cy="${n1(oy)}" r="${n1(ballRadius)}" fill="url(#axis-ball)"/>\n`;
   let ballDrawn = false;
   for (const { a, letter } of order) {
-    // The ball at the origin covers the square starts of the shafts, except of an arrow that points well
-    // towards the viewer, which comes out of the ball's face and is drawn over it.
-    if (!ballDrawn && a.depth >= 0.5) {
+    // The ball at the origin is drawn after the arrows that point away (it covers their starts) and before
+    // those that point at the viewer (they come out of its face).
+    if (!ballDrawn && a.depth > 0.02) {
       svg += ball();
       ballDrawn = true;
     }
@@ -752,7 +753,20 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     const turnedBack = ` gradientTransform="rotate(${n1(-angle)} ${n1(bx)} ${n1(by)})"`;
     defs += across(`${id}-shaft`, shaftPx, ox, oy) + across(`${id}-head`, headWidthPx, bx, by) + across(`${id}-base`, headWidthPx, bx, by, turnedBack);
     const corner = (x: number, y: number, side: number, width: number): string => `${n1(x + (side * px * width) / 2)},${n1(y + (side * py * width) / 2)}`;
-    const shaft = `<polygon class="axis-shaft" points="${corner(ox, oy, 1, shaftPx)} ${corner(bx, by, 1, shaftPx)} ${corner(bx, by, -1, shaftPx)} ${corner(ox, oy, -1, shaftPx)}" fill="url(#${id}-shaft)"/>`;
+    // The shaft. An arrow that points at the viewer comes out of the face of the ball at the origin: its
+    // shaft starts where it pierces the ball, with a rounded foot, and is drawn over the ball. One that points
+    // away, or lies in the screen, starts at the centre and is drawn before the ball, which covers its start.
+    const front = a.depth > 0.02;
+    const [sx, sy] = front ? [ox + ux * ballRadius * Math.sqrt(1 - tilt * tilt), oy + uy * ballRadius * Math.sqrt(1 - tilt * tilt)] : [ox, oy];
+    let shaftOutline = `${corner(sx, sy, 1, shaftPx)} ${corner(bx, by, 1, shaftPx)} ${corner(bx, by, -1, shaftPx)} ${corner(sx, sy, -1, shaftPx)}`;
+    if (front) {
+      for (let step = 1; step < 8; step++) {
+        const phi = Math.PI * (1 - step / 8);
+        const back = Math.sin(phi) * (shaftPx / 2) * tilt;
+        shaftOutline += ` ${n1(sx - ux * back + (px * shaftPx * Math.cos(phi)) / 2)},${n1(sy - uy * back + (py * shaftPx * Math.cos(phi)) / 2)}`;
+      }
+    }
+    const shaft = `<polygon class="axis-shaft" points="${shaftOutline}" fill="url(#${id}-shaft)"/>`;
     // The base of the cone is a circle seen at an angle: an ellipse, as wide as the head across the arrow
     // and `tilt` times that along it.
     const base = (fill: string, extra = ""): string =>
