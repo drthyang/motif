@@ -510,8 +510,13 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
   return { svg, defs, left: ox + Math.min(...xs) };
 }
 
-export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CANVAS, fit?: Fit): string {
-  const drawn = layoutAll(scene, view, canvas, fit);
+/**
+ * The figure as SVG text. `part` is for the page only, which shows the figure as two layers so that the
+ * legend and axes can follow a movement without the structure being redrawn: "structure" is everything but
+ * the legend and axes, "band" is only those. Together they hold exactly what "all" (the saved figure) holds.
+ */
+export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CANVAS, fit?: Fit, part: "all" | "structure" | "band" = "all"): string {
+  const drawn = part === "band" ? [] : layoutAll(scene, view, canvas, fit);
   const { width, height } = canvas;
   let out = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n<defs>\n`;
   const used = new Set([...drawn.flatMap((d) => (d.kind === "sphere" ? [d.style] : [])), ...scene.legend.map((e) => e.style)]);
@@ -538,7 +543,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
   }
   const axes = axesSvg(scene, view, canvas);
   out += `${axes.defs}</defs>\n`;
-  if (canvas.background !== null) out += `<rect width="${width}" height="${height}" fill="${canvas.background}"/>\n`;
+  if (canvas.background !== null && part !== "band") out += `<rect width="${width}" height="${height}" fill="${canvas.background}"/>\n`;
   // Zoomed or moved: the structure may reach past its space; it is cut off there, so it never runs under the legend.
   if (fit?.clip) {
     out += `<clipPath id="structure-space"><rect width="${width}" height="${structureHeight(scene, canvas)}"/></clipPath>\n<g clip-path="url(#structure-space)">\n`;
@@ -580,6 +585,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       `font-size="${ANGLE_LABEL_SIZE}" fill="${mixHex(d.colour, "#000000", 0.35)}" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${d.label.text}</text>\n`;
   }
   if (fit?.clip) out += "</g>\n";
+  if (part === "structure") return `${out}</svg>\n`;
   // The band under the structure: axes on the right, legend on the left in the space that remains.
   for (const item of legendLayout(scene, canvas, axes.left - 40)) {
     out += sphereSvg(scene, item.style, item.x, item.y, item.r);

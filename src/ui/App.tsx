@@ -3,6 +3,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { svgToPng } from "../render/png";
+import { previewFrame } from "../preview/data";
+import { PREVIEW_FROM, usePreview } from "../preview/usePreview";
 import { AnglePlot } from "./AnglePlot";
 import { DEFAULT_CANVAS, fitView, renderSvg, structureCentre, structureHeight, type Fit } from "../render/svg";
 import { NO_ZOOM, isZoomed, panBy, zoomAbout, zoomToBox, zoomedFit, type Zoom } from "../render/zoom";
@@ -214,19 +216,83 @@ export function App() {
     }
     return [...n].map(([name, k]) => `${name} ${k}`).join(", ");
   }, [scene]);
-  const svg = useMemo(
-    () => {
-      if (!scene) return "";
-      const fit = zoomedFit(heldFit ?? fitView(scene, view, DEFAULT_CANVAS), zoom, structureCentre(scene, DEFAULT_CANVAS));
-      return renderSvg(scene, view, { ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }, fit);
-    },
-    [scene, view, transparent, heldFit, zoom],
+  // ---- Moving a large structure: the GPU preview stands in for the structure while the view is changing,
+  // and the SVG is drawn again once it has been still for a moment. Small structures are simply redrawn.
+  const preview = usePreview();
+  const [smooth, setSmooth] = useState(true);
+  const large = scene !== null && scene.spheres.length + scene.sticks.length >= PREVIEW_LIMIT;
+  const usePreviewNow = smooth && large && !preview.failed;
+  useEffect(() => {
+    if (!scene || !usePreviewNow || preview.loaded === scene) return;
+    preview.load(scene);
+    // Draw one frame at once, unseen: the graphics card then has the structure and the programs ready
+    // before the first movement, instead of preparing them during it.
+    const f = fitView(scene, view, DEFAULT_CANVAS);
+    preview.draw(previewFrame(scene, view, DEFAULT_CANVAS, f), 720, 550);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene, usePreviewNow, preview.loaded]);
+  // The view and zoom last drawn in full. While the current ones differ, the structure is moving.
+  const [settled, setSettled] = useState<{ view: View; zoom: Zoom; held: Fit | null }>({ view, zoom, held: heldFit });
+  const moving = settled.view !== view || settled.zoom !== zoom || settled.held !== heldFit;
+  useEffect(() => {
+    if (!moving) return;
+    // Still for a moment (and no button held): draw the figure in full again.
+    const timer = setTimeout(() => setSettled({ view, zoom, held: heldFit }), heldFit ? 100000 : SETTLE_MS);
+    return () => clearTimeout(timer);
+  }, [moving, view, zoom, heldFit]);
+  const previewing = usePreviewNow && moving && preview.loaded === scene;
+  const canvasOptions = useMemo(() => ({ ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }), [transparent]);
+  const fit = useMemo(
+    () => (scene ? zoomedFit(heldFit ?? fitView(scene, view, DEFAULT_CANVAS), zoom, structureCentre(scene, DEFAULT_CANVAS)) : null),
+    [scene, view, heldFit, zoom],
   );
-  // What "Save" writes: the figure as shown, or (if the user prefers) the whole structure fitted, whatever the zoom.
-  const savedSvg = useMemo(
-    () => (scene && isZoomed(zoom) && !saveZoomed ? renderSvg(scene, view, { ...DEFAULT_CANVAS, background: transparent ? null : "#ffffff" }) : svg),
-    [scene, view, transparent, zoom, saveZoomed, svg],
-  );
+  // Ask the worker for each frame of the movement; `firstFrame` is the first of this movement.
+  const [firstFrame, setFirstFrame] = useState(0);
+  const wasPreviewing = useRef(false);
+  useEffect(() => {
+    if (!previewing || !scene || !fit || !figureRef.current) {
+      if (wasPreviewing.current) setFirstFrame(0);
+      wasPreviewing.current = false;
+      return;
+    }
+    const r = figureRef.current.getBoundingClientRect();
+    const k = Math.min(r.width / DEFAULT_CANVAS.width, r.height / DEFAULT_CANVAS.height) * Math.min(window.devicePixelRatio || 1, 2);
+    const id = preview.draw(previewFrame(scene, view, DEFAULT_CANVAS, fit), Math.round(DEFAULT_CANVAS.width * k), Math.round(DEFAULT_CANVAS.height * k));
+    if (!wasPreviewing.current) setFirstFrame(id);
+    wasPreviewing.current = true;
+  }, [previewing, scene, view, fit, preview.draw]);
+  // Where the drawing sits inside its frame, in screen px: centred, with the canvas's own shape.
+  const [drawingBox, setDrawingBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
+  useEffect(() => {
+    const el = figureRef.current;
+    if (!el) return;
+    const measure = () => {
+      const k = Math.min(el.clientWidth / DEFAULT_CANVAS.width, el.clientHeight / DEFAULT_CANVAS.height);
+      const [width, height] = [DEFAULT_CANVAS.width * k, DEFAULT_CANVAS.height * k];
+      setDrawingBox({ left: (el.clientWidth - width) / 2 + el.clientLeft, top: (el.clientHeight - height) / 2 + el.clientTop, width, height });
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [scene !== null]);
+  // The preview is shown once the worker has drawn a frame of this movement; until then the last full figure stays.
+  const previewLive = previewing && firstFrame > 0 && preview.drawn >= firstFrame;
+  // The page shows the figure as two layers: the structure, and on top of it the legend and axes. While the
+  // preview is live the structure layer is only hidden (its drawing is kept, so nothing has to be torn down),
+  // and the legend and axes go on following the view. Both layers come from the same code as the saved figure.
+  const lastStructure = useRef("");
+  const structureSvg = useMemo(() => {
+    if (!scene || !fit) return "";
+    if (!previewing) lastStructure.current = renderSvg(scene, view, canvasOptions, fit, "structure");
+    return lastStructure.current;
+  }, [scene, view, canvasOptions, fit, previewing]);
+  const bandSvg = useMemo(() => (scene && fit ? renderSvg(scene, view, canvasOptions, fit, "band") : ""), [scene, view, canvasOptions, fit]);
+  /** What "Save" writes: always the full vector figure, as shown, or (if chosen) the whole structure fitted. */
+  const figureToSave = (): string => {
+    if (!scene || !fit) return "";
+    return isZoomed(zoom) && !saveZoomed ? renderSvg(scene, view, canvasOptions) : renderSvg(scene, view, canvasOptions, fit);
+  };
   const baseName = fileName.replace(/\.[^.]+$/, "") || "motif";
 
   const onDrop = (e: DragEvent) => {
@@ -394,7 +460,7 @@ export function App() {
                 <input type="checkbox" checked={transparent} onChange={(e) => setTransparent(e.target.checked)} />
                 Transparent
               </label>
-              <button data-testid="export-svg" title="Vector figure, editable in Keynote or Illustrator" onClick={() => download(new Blob([savedSvg], { type: "image/svg+xml" }), `${baseName}.svg`)}>
+              <button data-testid="export-svg" title="Vector figure, editable in Keynote or Illustrator" onClick={() => download(new Blob([figureToSave()], { type: "image/svg+xml" }), `${baseName}.svg`)}>
                 Save SVG
               </button>
               <span className="joined">
@@ -402,7 +468,7 @@ export function App() {
                   data-testid="export-png"
                   title="Image made from the same SVG, at the width given"
                   onClick={() => {
-                    svgToPng(savedSvg, pngWidth).then(
+                    svgToPng(figureToSave(), pngWidth).then(
                       (blob) => download(blob, `${baseName}.png`),
                       (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
                     );
@@ -456,8 +522,18 @@ export function App() {
                   onDoubleClick={resetZoom}
                   onKeyDown={onKeyDown}
                   onAuxClick={(e) => e.preventDefault()}
-                  dangerouslySetInnerHTML={{ __html: svg }}
+                >
+                  <div className="layer" data-testid="layer-structure" data-hidden={previewLive ? "yes" : "no"} style={{ opacity: previewLive ? 0 : 1 }} dangerouslySetInnerHTML={{ __html: structureSvg }} />
+                  <div className="layer" data-testid="layer-band" dangerouslySetInnerHTML={{ __html: bandSvg }} />
+                </div>
+                <canvas
+                  ref={preview.canvasRef}
+                  className="preview"
+                  data-testid="preview"
+                  data-live={previewLive ? "yes" : "no"}
+                  style={{ display: previewLive ? "block" : "none", left: drawingBox.left, top: drawingBox.top, width: drawingBox.width, height: drawingBox.height }}
                 />
+                {previewLive && <div className="preview-note">Simplified while moving</div>}
                 {box && (() => {
                   // The dragged rectangle, in screen px of the frame.
                   const r = figureRef.current!.getBoundingClientRect();
@@ -912,6 +988,11 @@ export function App() {
                 <input type="number" step={5} data-testid="view-el" value={elText} onChange={(e) => { setElText(e.target.value); applyView(upAxis, azText, e.target.value); }} />
                 ° (from above when positive)
               </div>
+              <label className="row" title="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
+                <input type="checkbox" data-testid="smooth" checked={smooth} onChange={(e) => setSmooth(e.target.checked)} />
+                Smooth movement for large structures
+              </label>
+              {preview.failed && <p className="sub">Not available in this browser: {preview.failed}</p>}
               <div className="row">
                 <button
                   onClick={() => {
@@ -937,6 +1018,12 @@ export function App() {
 }
 
 const VERSION = "0.1";
+
+// For testing: "?preview=all" uses the GPU preview for every structure, "?settle=ms" sets how long the view
+// must be still before the full figure is drawn again.
+const QUERY = new URLSearchParams(typeof location === "undefined" ? "" : location.search);
+const PREVIEW_LIMIT = QUERY.get("preview") === "all" ? 0 : PREVIEW_FROM;
+const SETTLE_MS = Number(QUERY.get("settle")) > 0 ? Number(QUERY.get("settle")) : 180;
 
 /** Fonts offered for the lettering. All are fonts of the computer, not of the page: the PNG is drawn from the SVG alone. */
 const FONTS = ["Avenir", "Avenir Next", "Helvetica Neue", "Helvetica", "Arial", "Gill Sans", "Futura", "Optima", "Verdana", "Times New Roman", "Georgia", "Palatino", "Menlo"];

@@ -50,6 +50,16 @@ writes the reference atom lists in `tests/reference/`.
   "Fit"; "Box" then a drag zooms to a rectangle (Esc cancels). A plain wheel scrolls the page.
   A switch says whether Save writes the zoomed view (the default; the user's answer of 2026-11-22,
   relayed by the hub) or the whole structure.
+- Moving a large structure (1,200 drawn atoms and bonds or more): while the view is changing, a
+  drawing made by the graphics card (WebGL 2 in a worker, `src/preview`) stands in for the
+  structure; the vector figure is drawn again about 0.2 s after the movement stops. The preview is
+  given the same scene and places every atom with the same formula as the SVG (tested), and shades
+  spheres the same way, but it is simpler: a shared site in the blend of its colours, arrows as
+  bars, a plain cell, and no bands, filled triangles, angle marks or labels. It is never what is
+  saved: Save always writes the vector figure. Small structures are simply redrawn as SVG. The
+  page shows the figure as two layers (structure; legend and axes) made by the same code as the
+  saved figure. Measured on an Apple M5 Pro in Chromium, per frame while dragging, without and
+  with the preview: 729 atoms 17 ms / 8 ms; 4,913 atoms 167 ms / 8 ms; 19,683 atoms 667 ms / 16 ms.
 - Legend and axes share a band under the structure. The axis arrows are the directions of the cell
   edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
   no letter. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). The font can be chosen

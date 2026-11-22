@@ -179,6 +179,18 @@ describe("legend", () => {
     expect(strip(svg)).toBe(strip(renderSvg(buildScene(quartz), DEFAULT_VIEW)));
   });
 
+  it("the page's two layers hold together exactly what the saved figure holds", () => {
+    const scene = buildScene(olivine, { ...DEFAULT_SPEC, bonds: [{ centre: "Si", neighbour: "O", max: 1.8, complete: true }], angles: [{ centre: "Si", ends: ["O", "O"], min: 0, max: 180 }] });
+    const canvas = { ...DEFAULT_CANVAS, background: "#ffffff" };
+    const body = (part: "all" | "structure" | "band"): string[] => {
+      const svg = renderSvg(scene, DEFAULT_VIEW, canvas, undefined, part);
+      return svg.slice(svg.indexOf("</defs>") + 8, svg.lastIndexOf("</svg>")).split("\n").filter(Boolean);
+    };
+    expect([...body("structure"), ...body("band")]).toEqual(body("all"));
+    expect(body("band").some((line) => line.includes("<rect"))).toBe(false); // the background belongs to the structure layer
+    expect(body("structure").some((line) => line.includes('class="legend"') || line.includes("axis-"))).toBe(false);
+  });
+
   it("the band under the structure is there only when the legend or the axes are", () => {
     const both = buildScene(quartz);
     const none = buildScene(quartz, { ...DEFAULT_SPEC, showLegend: false, showAxes: false });
