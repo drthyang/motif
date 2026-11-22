@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { AXIS_LENGTH, BAND, DEFAULT_CANVAS, FONT, LEGEND_FOLLOW_MAX, LEGEND_FOLLOW_MIN, axisArrows, fitView, fontList, layout, legendLayout, pxPerAngstrom, renderSvg, structureHeight, textWidth } from "../src/render/svg";
+import { AXIS_LENGTH, AXIS_MIN_LENGTH, BAND, DEFAULT_CANVAS, FONT, LEGEND_FOLLOW_MAX, LEGEND_FOLLOW_MIN, axisArrows, fitView, fontList, layout, legendLayout, pxPerAngstrom, renderSvg, structureHeight, textWidth } from "../src/render/svg";
 import { DEFAULT_VIEW, dragView, viewFromAngles } from "../src/render/view";
 import { buildScene, cellAxes, DEFAULT_SPEC, type Scene } from "../src/scene/scene";
 import { fractionalToCartesian } from "../src/structure/cell";
@@ -105,7 +105,8 @@ describe("axes", () => {
   });
 
   it("are drawn as solids: the head's tip is where the arrow ends, and its round base opens up as the arrow tilts out of the screen", () => {
-    const scene = buildScene(structure("halite-NaCl_COD-9008678.cif".replace(".cif", "")));
+    // The exact projection (the "readable" adjustment off), so that the geometry can be checked.
+    const scene = buildScene(structure("halite-NaCl_COD-9008678"), { ...DEFAULT_SPEC, axesKeepReadable: false });
     const head = (view: typeof DEFAULT_VIEW, name: string) => {
       const svg = renderSvg(scene, view);
       // Each arrow's shapes sit together; find the group that ends with this letter, or by order for a letterless one.
@@ -240,6 +241,28 @@ describe("legend", () => {
     expect(width(renderSvg(cones, DEFAULT_VIEW))).toBeCloseTo(width(renderSvg(usual, DEFAULT_VIEW)), 0); // coordinates are written to 0.1 px
     // The structure itself is untouched.
     expect(big.spheres).toEqual(usual.spheres);
+  });
+
+  it("an arrow pointing mostly into the page is drawn at least 0.45 of the full length, in its true direction; that can be switched off", () => {
+    const tipOf = (svg: string, name: string): [number, number] => {
+      const line = svg.split("\n").find((l) => l.includes('class="axis-shaft"') && l.includes(`>${name}</text>`))!;
+      const origin = /class="axis-origin" cx="([\d.-]+)" cy="([\d.-]+)"/.exec(svg)!;
+      // The far end of the silhouette from the origin is the tip.
+      const pts = /class="axis-head" points="([^"]+)"/.exec(line)![1]!.split(" ").map((p) => p.split(",").map(Number));
+      const rel = pts.map((p) => [p[0]! - Number(origin[1]), p[1]! - Number(origin[2])] as [number, number]);
+      return rel.reduce((far, p) => (Math.hypot(...p) > Math.hypot(...far) ? p : far));
+    };
+    const view = viewFromAngles(18, 12); // b points mostly into the page: its projection is 0.37 of the full length (hypot of sin 18 and cos 18 sin 12)
+    const exact = axisArrows(buildScene(structure("halite-NaCl_COD-9008678")), view).find((x) => x.name === "b")!;
+    expect(Math.hypot(exact.dx, exact.dy) / AXIS_LENGTH).toBeCloseTo(0.37, 2);
+    const readable = tipOf(renderSvg(buildScene(structure("halite-NaCl_COD-9008678")), view), "b");
+    expect(Math.hypot(...readable) / AXIS_LENGTH).toBeCloseTo(AXIS_MIN_LENGTH, 1);
+    expect(Math.atan2(readable[1], readable[0])).toBeCloseTo(Math.atan2(exact.dy, exact.dx), 1); // same direction
+    const off = tipOf(renderSvg(buildScene(structure("halite-NaCl_COD-9008678"), { ...DEFAULT_SPEC, axesKeepReadable: false }), view), "b");
+    expect(Math.hypot(...off) / AXIS_LENGTH).toBeCloseTo(0.37, 2);
+    // An arrow long enough already is untouched.
+    const a = axisArrows(buildScene(structure("halite-NaCl_COD-9008678")), view).find((x) => x.name === "a")!;
+    expect(Math.hypot(...tipOf(renderSvg(buildScene(structure("halite-NaCl_COD-9008678")), view), "a"))).toBeCloseTo(Math.hypot(a.dx, a.dy), 0);
   });
 
   it("the axis arrows can be outlined; their letters are not", () => {

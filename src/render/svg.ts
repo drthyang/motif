@@ -380,9 +380,9 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
         return ellipse("arrow-base", base, hw, Math.abs(towards), `url(#${id}-base)`, ' stroke="none"') +
           `<polygon class="arrow-head" points="${coneOutline(tip[0], tip[1], base[0], base[1], ux, uy, px, py, hw, Math.abs(towards))}" fill="url(#${id}-head)"/>`;
       }
-      // Away from the viewer the flat base faces the viewer and covers the cone behind it.
-      const triangle = `<polygon class="arrow-head" points="${n1(tip[0])},${n1(tip[1])} ${corner(base, 1, hw)} ${corner(base, -1, hw)}" fill="url(#${id}-head)"/>`;
-      return triangle + ellipse("arrow-base", base, hw, Math.abs(towards), darker);
+      // Away from the viewer: the same silhouette, with the flat base facing the viewer, darker and with no line of its own.
+      return `<polygon class="arrow-head" points="${coneOutline(tip[0], tip[1], base[0], base[1], ux, uy, px, py, hw, Math.abs(towards))}" fill="url(#${id}-head)"/>` +
+        ellipse("arrow-base", base, hw, Math.abs(towards), darker, ' stroke="none"');
     };
     const head = `${n1(tip[0])},${n1(tip[1])} ${corner(base, 1, hw)} ${corner(base, -1, hw)}`;
     const headHalf = (start: number, foot: boolean): string => {
@@ -562,6 +562,10 @@ export function axisArrows(scene: Scene, view: View): AxisArrow[] {
 
 /** Sizes of the axis arrows, px: shaft thickness, head length and head width. */
 const AXIS_SHAFT = 13;
+/** Shortest drawn length of a readable axis arrow, as a fraction of the full length. */
+export const AXIS_MIN_LENGTH = 0.45;
+/** Largest tilt (0 = in the screen plane, 1 = end on) with which the head of a readable axis arrow is drawn. */
+export const AXIS_MAX_TILT = 0.6;
 const AXIS_HEAD = 48;
 const AXIS_HEAD_WIDTH = 29;
 
@@ -573,8 +577,17 @@ const AXIS_HEAD_WIDTH = 29;
  * shapes with gradients.
  */
 function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs: string; left: number } {
-  const arrows = axisArrows(scene, view);
-  if (arrows.length === 0) return { svg: "", defs: "", left: canvas.width };
+  const exact = axisArrows(scene, view);
+  if (exact.length === 0) return { svg: "", defs: "", left: canvas.width };
+  // An arrow that points mostly into or out of the page projects to a stub that is hard to read. Unless that
+  // is switched off, such an arrow is drawn at least AXIS_MIN_LENGTH of the full length, in its true
+  // direction on screen. (An arrow seen exactly end on has no direction on screen and stays a point.)
+  const full = AXIS_LENGTH * (scene.axesSize ?? 1);
+  const arrows = exact.map((a) => {
+    const n = Math.hypot(a.dx, a.dy);
+    if (scene.axesKeepReadable === false || n < 0.12 * full || n >= AXIS_MIN_LENGTH * full) return a;
+    return { ...a, dx: (a.dx / n) * AXIS_MIN_LENGTH * full, dy: (a.dy / n) * AXIS_MIN_LENGTH * full };
+  });
   // Every size of the triad follows the chosen size: arrow length and thickness, head, letters.
   const k = scene.axesSize ?? 1;
   const headSize = k * (scene.axesHeadSize ?? 1);
@@ -613,7 +626,9 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     // Across the arrow, on the side the light comes from (upper left).
     let [px, py] = [-uy, ux];
     if (px * -0.5 + py * -0.7 < 0) [px, py] = [-px, -py];
-    const tilt = Math.abs(a.depth); // 0 in the screen plane, 1 end on
+    // 0 in the screen plane, 1 end on. A readable arrow also keeps the shape of an arrow: its head is drawn as if
+    // it were tilted no more than AXIS_MAX_TILT, since a cone seen nearly end on is a disc with a stub.
+    const tilt = scene.axesKeepReadable === false || n < 0.12 * full ? Math.abs(a.depth) : Math.min(Math.abs(a.depth), AXIS_MAX_TILT);
     const [tx, ty] = [ox + a.dx, oy + a.dy]; // tip
     const headOnScreen = headPx * Math.sqrt(Math.max(0, 1 - tilt * tilt));
     const [bx, by] = [tx - ux * headOnScreen, ty - uy * headOnScreen]; // centre of the cone's base
@@ -632,7 +647,6 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     // and `tilt` times that along it.
     const base = (fill: string, extra = ""): string =>
       `<ellipse class="axis-base" cx="${n1(bx)}" cy="${n1(by)}" rx="${n1((headWidthPx / 2) * tilt)}" ry="${n1(headWidthPx / 2)}" transform="rotate(${n1(angle)} ${n1(bx)} ${n1(by)})" fill="${fill}"${extra}/>`;
-    const cone = `<polygon class="axis-head" points="${n1(tx)},${n1(ty)} ${corner(bx, by, 1, headWidthPx)} ${corner(bx, by, -1, headWidthPx)}" fill="url(#${id}-head)"/>`;
     if (a.depth >= 0) {
       // Pointing towards the viewer: the cone's side is seen down to the far half of its rim, as one shape,
       // covering its base and the end of the shaft (see coneOutline).
@@ -641,11 +655,9 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
         base(`url(#${id}-base)`, ' stroke="none"') +
         `<polygon class="axis-head" points="${coneOutline(tx, ty, bx, by, ux, uy, px, py, headWidthPx / 2, tilt)}" fill="url(#${id}-head)"/>`;
     } else {
-      // Pointing away: the flat base of the cone faces the viewer and covers the cone behind it. It is drawn in a
-      // quiet shade (a dark disc would be the loudest thing in the triad), and the shaft, which comes last, ends
-      // on it in the small ellipse of its own cross-section, so it reads as a rod set into the disc.
-      const plug = `<ellipse class="axis-plug" cx="${n1(bx)}" cy="${n1(by)}" rx="${n1((shaftPx / 2) * tilt)}" ry="${n1(shaftPx / 2)}" transform="rotate(${n1(angle)} ${n1(bx)} ${n1(by)})" fill="${AXIS_COLOUR}"/>`;
-      svg += cone + base(baseShade) + shaft + plug;
+      // Pointing away: the same silhouette, with the flat base of the cone facing the viewer in a quiet shade
+      // and no line of its own, and the shaft over it.
+      svg += `<polygon class="axis-head" points="${coneOutline(tx, ty, bx, by, ux, uy, px, py, headWidthPx / 2, tilt)}" fill="url(#${id}-head)"/>` + base(baseShade, ' stroke="none"') + shaft;
     }
     if (letter) {
       // The baseline is set 0.3 em below the wanted centre, so no reader needs to support "dominant-baseline".

@@ -124,6 +124,9 @@ writes the reference atom lists in `tests/reference/`.
   - Scale: fitted to each view (default), steady at every angle, or a fixed number of px per A.
   - A change of view by a click is shown as a short turn on screen (can be switched off; skipped
     when the system asks for reduced motion). It is never part of the saved figure.
+- An axis arrow that points mostly into or out of the page is drawn at least 0.45 of the full
+  length, in its true direction on screen, so that it stays readable (as in the user's slide
+  figures); this can be switched off, and every arrow is then the exact projection.
 - The size of the legend and the size of the axis arrows (length, thickness, head and letters
   together) can each be set as a multiple of the usual size.
 - The legend can follow the size of the structure: its largest sphere as large as that atom is
