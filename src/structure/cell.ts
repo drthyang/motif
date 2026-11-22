@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 import type { Cell, Mat3, Vec3 } from "./types";
 
 const rad = (deg: number): number => (deg * Math.PI) / 180;

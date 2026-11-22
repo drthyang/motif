@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /**
  * Symmetry operations: parsing Jones-Faithful strings ("x-y,x,1/2+z"), composing
  * and applying them. Adapted from MATERIA (src/core/crystal/symmetry.ts), by the same author.

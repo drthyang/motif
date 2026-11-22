@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /**
  * Default look of each element. These are drawing defaults, not physics:
  * the radius is roughly the covalent radius (angstrom) and is scaled down for

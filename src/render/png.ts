@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /** Rasterise the figure's SVG text to a PNG, in the browser. The PNG is made from the same SVG that is shown and exported. */
 
 /** Most browsers refuse canvases above roughly this many pixels per side. */

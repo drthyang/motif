@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /**
  * CIF 1.1 syntax: text -> data blocks of items and loops. No crystallography here.
  * Adapted from MATERIA (src/parsers/cif.ts), by the same author.

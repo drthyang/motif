@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /**
  * Zoom and pan on top of the fitted placement. Zoom 1 with no pan is the fitted figure.
  * All lengths are px of the canvas (the SVG's own coordinates), not of the screen.

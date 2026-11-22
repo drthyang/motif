@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /** Chains and triangles in the bonds of one rule: what the highlight band and the filled polygons are made from. */
 import type { Bond, BondRule, PlacedAtom } from "./bonds";
 

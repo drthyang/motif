@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tsung-Han Yang
+
 """Write tests/reference/bonds.json: bonds by distance, found by trying every pair of atoms.
 
 Independent of MOTIF's code: gemmi gives the atoms of one cell; atoms are placed by brute force

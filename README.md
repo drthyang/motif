@@ -102,3 +102,15 @@ writes the reference atom lists in `tests/reference/`.
 Each step is checked against an independent reference before the next one starts.
 
 Examples and screenshots in this repository use published structures only.
+
+## Licence
+
+Copyright (C) 2026 Tsung-Han Yang.
+
+MOTIF is free software under the GNU Affero General Public License, version 3 or later
+(AGPL-3.0-or-later); the full text is in `LICENSE`. The licence covers the program, not the figures
+made with it.
+
+Parts of the CIF reader and the symmetry code are adapted from MATERIA, by the same author; those
+files say so in their header. The page's font, IBM Plex Sans, is under the SIL Open Font License 1.1.
+The example structures marked COD are from the Crystallography Open Database (public domain).

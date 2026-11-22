@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /** Bond angles: for two bonds that meet at an atom, the angle between them, and which of them to mark in the figure. */
 import type { Bond, PlacedAtom } from "./bonds";
 

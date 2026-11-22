@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /**
  * Scene + view -> SVG text. This text is the figure: the screen shows it, the
  * SVG export saves it, and the PNG export rasterises it.

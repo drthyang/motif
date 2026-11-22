@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tsung-Han Yang
+
 """Write tests/reference/<example>.json: the atoms of one unit cell of each example, computed by gemmi.
 
 An independent check of MOTIF's own CIF reader, symmetry expansion and cartesian axes.

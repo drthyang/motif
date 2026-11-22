@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tsung-Han Yang
+
 """Write tests/reference/angles.json: the distinct bond angles in three examples, to 0.1 degree.
 
 Independent of MOTIF's code: gemmi gives the atoms of one cell; for every atom of the centre

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /**
  * The view: a proper rotation (determinant +1) taking cartesian crystal axes to
  * screen axes. Screen x points right, y up, z towards the viewer; the projection

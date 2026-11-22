@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /**
  * CIF text -> Structure (cell, symmetry operations, sites).
  * Site reading adapted from MATERIA (src/parsers/cif.ts), by the same author.

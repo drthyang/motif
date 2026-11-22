@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { AXIS_LENGTH, BAND, DEFAULT_CANVAS, axisArrows, layout, legendLayout, pxPerAngstrom, renderSvg, structureHeight, textWidth } from "../src/render/svg";

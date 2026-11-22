@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 export type Vec3 = readonly [number, number, number];
 export type Mat3 = readonly [Vec3, Vec3, Vec3];
 

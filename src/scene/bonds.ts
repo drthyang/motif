@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /** Bonds by distance: a rule names two elements and a longest distance; every such pair of shown atoms is joined. */
 import { fractionalToCartesian, planeSpacings } from "../structure/cell";
 import type { CellAtom, Structure, Vec3 } from "../structure/types";

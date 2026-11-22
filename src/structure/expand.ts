@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 import { orthogonalizationMatrix, mulVec } from "./cell";
 import { applyOperation, wrapFractional } from "./symmetry";
 import type { SymmetryOperation } from "./types";

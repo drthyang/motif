@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tsung-Han Yang
+
 """Write tests/reference/moments_pymatgen.json: the magnetic moment of every atom of the unit cell,
 computed by pymatgen (an independent program) from the magnetic CIFs in tests/fixtures and the
 hand-written MnF2 example.

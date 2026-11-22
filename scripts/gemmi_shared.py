@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tsung-Han Yang
+
 """Write tests/reference/shared.json: for the olivine example, every distinct place in the unit cell
 and what gemmi says sits there (elements and occupancies). Independent check of how MOTIF merges
 the sites of a file that share one place.

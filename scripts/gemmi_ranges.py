@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tsung-Han Yang
+
 """Write tests/reference/ranges.json: the atoms inside several fractional ranges of each example.
 
 Independent of MOTIF's code: gemmi gives the atoms of one cell; every lattice translation

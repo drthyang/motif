@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /** Adapted from MATERIA (src/core/crystal/elements.ts), by the same author. */
 /**
  * Chemical element symbols (IUPAC), indexed by atomic number − 1, and the

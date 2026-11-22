@@ -34,8 +34,12 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
   and carried between atoms as m' = (time reversal) x det(R) x R m. Other forms and modulated
   structures are refused (2026-11-22).
 - Default lettering weight: regular (2026-11-22).
-- Code from MATERIA may be adapted under MIT. Nothing is copied from RMCProfile Workbench or
-  NEBULA3D (AGPL) unless the user says so: write MOTIF's own code for the same behaviour.
+- Licence: AGPL-3.0-or-later, as in NEBULA3D and RMCProfile Workbench (2026-11-22; switched
+  from MIT while the repo was private, before any release).
+- Code from the user's own apps (MATERIA, NEBULA3D, RMCProfile Workbench) may be reused; rewrite
+  only where MOTIF's design needs it. Name the project it came from in the file's header comment
+  and in the README. Check first that the file is the user's own work, not third-party code
+  carried in that repo.
 
 ## Data rule (strict)
 
@@ -49,6 +53,6 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
 ## Repository
 
 - Private. No tags or releases without the user. Commit and push to `main` while private.
-- No paid API calls. Do not edit any other repo; propose code reuse to the user first.
+- No paid API calls. Do not edit any other repo.
 - Builders work in their own worktree under /tmp, never under ~/GitHub.
 - Write for a scientist: plain sentences, defined terms.

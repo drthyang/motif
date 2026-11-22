@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tsung-Han Yang
+
 """Write tests/reference/highlights.json: bonds, triangles and connected groups counted by brute force.
 
 Independent of MOTIF's code: gemmi gives the atoms of one cell; atoms in the range are placed by

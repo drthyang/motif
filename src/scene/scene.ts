@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /**
  * The scene: what is drawn and how it is styled, as plain data (JSON-safe).
  * Positions are cartesian, in angstrom. The scene knows nothing about the view.

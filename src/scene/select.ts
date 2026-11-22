@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
 /** Which atoms are shown: every atom whose fractional coordinates fall in a chosen range along a, b and c. */
 import { expandToUnitCell } from "../structure/expand";
 import type { CellAtom, Structure, Vec3 } from "../structure/types";
