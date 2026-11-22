@@ -7,8 +7,8 @@
  *
  * The preview places every atom with the same formula as the SVG (see previewScreen below, which
  * the shader repeats line for line), from the same view, the same placement and the same scene.
- * It draws less than the figure: spheres (a shared site in the blend of its wedge colours), bonds,
- * moment arrows as bars, and the cell as plain lines. Bands, filled triangles, angle marks and
+ * It draws less than the figure: spheres (pie spheres with their wedges), bonds, moment arrows as
+ * bars, and the cell as plain lines. Bands, filled triangles, angle marks and
  * labels come back when the movement stops.
  */
 import { ARROW_HEAD_LENGTH, ARROW_HEAD_WIDTH, ARROW_SHAFT, BOND_COLOUR, BOND_WIDTH, type Canvas, type Fit, structureHeight } from "../render/svg";
@@ -18,8 +18,12 @@ import type { Scene } from "../scene/scene";
 import { mulVec } from "../structure/cell";
 import type { Vec3 } from "../structure/types";
 
-/** Numbers per sphere: centre x, y, z (angstrom), radius (angstrom), red, green, blue (0 to 1). */
-export const SPHERE_STRIDE = 7;
+/**
+ * Numbers per sphere, or per wedge of a pie sphere: centre x, y, z (angstrom), radius (angstrom), red, green,
+ * blue (0 to 1), then the part of the disc it covers as fractions of a turn, clockwise from the top (0 to 1
+ * for a plain sphere), and 1 for a wedge of a pie (shaded like the SVG's pies) or 0 for a plain sphere.
+ */
+export const SPHERE_STRIDE = 10;
 /** Numbers per line: both ends (angstrom), width (angstrom if positive, px of the canvas if negative), red, green, blue. */
 export const LINE_STRIDE = 10;
 
@@ -34,17 +38,23 @@ export interface PreviewData {
 const rgb = (hex: string): [number, number, number] => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
 
 export function buildPreviewData(scene: Scene): PreviewData {
-  const spheres = new Float32Array(scene.spheres.length * SPHERE_STRIDE);
-  scene.spheres.forEach((s, i) => {
-    const style = scene.styles[s.style]!;
-    // A pie sphere is shown in the blend of its wedges, each weighted by its share.
-    let colour = rgb(style.colour);
-    if (style.wedges) {
-      colour = [0, 0, 0];
-      for (const w of style.wedges) rgb(w.colour).forEach((c, k) => (colour[k]! += c * w.fraction));
+  const sphereData: number[] = [];
+  for (const sphere of scene.spheres) {
+    const style = scene.styles[sphere.style]!;
+    const place = [sphere.centre[0], sphere.centre[1], sphere.centre[2], style.radius];
+    if (!style.wedges) {
+      sphereData.push(...place, ...rgb(style.colour), 0, 1, 0);
+      continue;
     }
-    spheres.set([s.centre[0], s.centre[1], s.centre[2], style.radius, ...colour], i * SPHERE_STRIDE);
-  });
+    // A pie sphere: one entry per wedge, each covering its share of the turn, in the SVG's order.
+    let turn = 0;
+    for (const w of style.wedges) {
+      if (w.fraction <= 0) continue;
+      sphereData.push(...place, ...rgb(w.colour), turn, turn + w.fraction, 1);
+      turn += w.fraction;
+    }
+  }
+  const spheres = new Float32Array(sphereData);
   const lines: number[] = [];
   for (const stick of scene.sticks) {
     const [a, b] = [scene.spheres[stick.i]!.centre, scene.spheres[stick.j]!.centre];

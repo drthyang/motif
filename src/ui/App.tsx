@@ -220,7 +220,9 @@ export function App() {
   // and the SVG is drawn again once it has been still for a moment. Small structures are simply redrawn.
   const preview = usePreview();
   const [smooth, setSmooth] = useState(true);
-  const large = scene !== null && scene.spheres.length + scene.sticks.length >= PREVIEW_LIMIT;
+  const [previewFromText, setPreviewFromText] = useState(String(PREVIEW_LIMIT));
+  const previewFrom = previewFromText.trim() !== "" && Number(previewFromText) >= 0 ? Number(previewFromText) : PREVIEW_LIMIT;
+  const large = scene !== null && scene.spheres.length + scene.sticks.length >= previewFrom;
   const usePreviewNow = smooth && large && !preview.failed;
   useEffect(() => {
     if (!scene || !usePreviewNow || preview.loaded === scene) return;
@@ -992,7 +994,15 @@ export function App() {
                 <input type="checkbox" data-testid="smooth" checked={smooth} onChange={(e) => setSmooth(e.target.checked)} />
                 Smooth movement for large structures
               </label>
-              {preview.failed && <p className="sub">Not available in this browser: {preview.failed}</p>}
+              {smooth && !preview.failed && (
+                <div className="row">
+                  from
+                  <input type="number" min={0} step={100} data-testid="preview-from" title="Atoms plus bonds drawn. Below this the vector figure itself is redrawn while moving." value={previewFromText} onChange={(e) => setPreviewFromText(e.target.value)} />
+                  atoms and bonds
+                  {scene && <span className="sub">(now {scene.spheres.length + scene.sticks.length})</span>}
+                </div>
+              )}
+              {preview.failed && <p className="sub" data-testid="preview-failed">Not available in this browser ({preview.failed}); the vector figure is redrawn instead.</p>}
               <div className="row">
                 <button
                   onClick={() => {

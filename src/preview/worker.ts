@@ -34,7 +34,9 @@ precision highp float;
 layout(location = 0) in vec2 aCorner;
 layout(location = 1) in vec4 aSphere;   // centre and radius, angstrom
 layout(location = 2) in vec3 aColour;
+layout(location = 3) in vec3 aWedge;    // from and to (fractions of a turn, clockwise from the top), and 1 for a pie
 ${PLACE}
+out vec3 vWedge;
 out vec2 vAt;        // position on the disc: -1..1, y down as on the canvas
 out vec3 vColour;
 out float vDepth;    // depth of the sphere's centre, angstrom
@@ -43,10 +45,12 @@ out float vRadiusPx;
 void main() {
   vec3 c = place(aSphere.xyz);
   vAt = aCorner;
+  vWedge = aWedge;
   vColour = aColour;
   vDepth = c.z;
   vRadius = aSphere.w;
-  vRadiusPx = aSphere.w * uFit.x;
+  // The SVG's 2 px outline is centred on the circle, so the disc reaches 1 px beyond the atom's radius.
+  vRadiusPx = aSphere.w * uFit.x + 1.0;
   gl_Position = toClip(c.xy + aCorner * vRadiusPx, c.z);
 }`;
 
@@ -57,6 +61,7 @@ precision highp float;
 uniform float uReach;
 uniform float uPxPerCanvasPx;
 in vec2 vAt;
+in vec3 vWedge;
 in vec3 vColour;
 in float vDepth;
 in float vRadius;
@@ -66,11 +71,21 @@ void main() {
   float d2 = dot(vAt, vAt);
   if (d2 > 1.0) discard;
   float t = length(vAt - vec2(-0.28, -0.40)) / 1.44;
-  vec3 light = mix(vColour, vec3(1.0), 0.65);
-  vec3 dark = mix(vColour, vec3(0.0), 0.35);
-  vec3 c = t < 0.55 ? mix(light, vColour, t / 0.55) : mix(vColour, dark, clamp((t - 0.55) / 0.45, 0.0, 1.0));
-  float rim = 1.0 - 2.0 / max(vRadiusPx, 2.0);   // an outline 2 px wide
-  if (d2 > rim * rim) c = dark;
+  float rim = 1.0 - 2.0 / max(vRadiusPx, 2.0);   // the outline: the outer 2 px
+  vec3 c;
+  if (vWedge.z > 0.5) {
+    // A wedge of a pie: only its part of the turn (clockwise from the top; y runs down on the canvas).
+    float turn = fract(atan(vAt.x, -vAt.y) / 6.283185307179586);
+    if (turn < vWedge.x || turn >= vWedge.y) discard;
+    // Flat colour under the SVG's pie shading: a highlight fading out by half way, a shadow growing to the rim.
+    c = t < 0.5 ? mix(vColour, vec3(1.0), 0.55 * (1.0 - t / 0.5)) : mix(vColour, vec3(0.0), 0.28 * clamp((t - 0.5) / 0.5, 0.0, 1.0));
+    if (d2 > rim * rim) c = vec3(0.29, 0.31, 0.333);   // the pie outline, #4a4f55
+  } else {
+    vec3 light = mix(vColour, vec3(1.0), 0.65);
+    vec3 dark = mix(vColour, vec3(0.0), 0.35);
+    c = t < 0.55 ? mix(light, vColour, t / 0.55) : mix(vColour, dark, clamp((t - 0.55) / 0.45, 0.0, 1.0));
+    if (d2 > rim * rim) c = dark;
+  }
   colour = vec4(c, 1.0);
   // The true surface of the sphere: nearer the viewer in the middle of the disc.
   float depth = vDepth + sqrt(1.0 - d2) * vRadius;
@@ -167,6 +182,7 @@ function init(offscreen: OffscreenCanvas): void {
   sphereBuffer = gl.createBuffer()!;
   instanced(sphereBuffer, 1, 4, SPHERE_STRIDE, 0);
   instanced(sphereBuffer, 2, 3, SPHERE_STRIDE, 4);
+  instanced(sphereBuffer, 3, 3, SPHERE_STRIDE, 7);
   lineVao = gl.createVertexArray();
   gl.bindVertexArray(lineVao);
   gl.bindBuffer(gl.ARRAY_BUFFER, quad([0, -1, 1, -1, 0, 1, 1, 1]));

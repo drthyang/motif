@@ -16,27 +16,47 @@ describe("the GPU preview is given the same structure and places it with the sam
   const scene = buildScene(structure("olivine-FeMg_COD-1541262.cif"), { ...DEFAULT_SPEC, bonds: [{ centre: "Si", neighbour: "O", max: 1.8, complete: true }] });
   const data = buildPreviewData(scene);
 
-  it("one sphere per atom, with its position and radius; one line per bond and per cell edge", () => {
-    expect(data.spheres.length).toBe(scene.spheres.length * SPHERE_STRIDE);
+  it("one entry per plain sphere and one per wedge of a pie, at the atom's position and radius; one line per bond and cell edge", () => {
+    const wedges = scene.spheres.reduce((n, s) => n + (scene.styles[s.style]!.wedges?.length ?? 1), 0);
+    expect(data.spheres.length).toBe(wedges * SPHERE_STRIDE);
     expect(data.lines.length).toBe((scene.sticks.length + scene.cellEdges.length) * LINE_STRIDE);
-    scene.spheres.forEach((s, i) => {
-      const at = Array.from(data.spheres.slice(i * SPHERE_STRIDE, i * SPHERE_STRIDE + 4));
-      for (let k = 0; k < 3; k++) expect(at[k]).toBeCloseTo(s.centre[k]!, 4);
-      expect(at[3]).toBeCloseTo(scene.styles[s.style]!.radius, 6);
-    });
+    let entry = 0;
+    for (const s of scene.spheres) {
+      const style = scene.styles[s.style]!;
+      for (let k = 0; k < (style.wedges?.length ?? 1); k++, entry++) {
+        const at = Array.from(data.spheres.slice(entry * SPHERE_STRIDE, entry * SPHERE_STRIDE + 4));
+        for (let i = 0; i < 3; i++) expect(at[i]).toBeCloseTo(s.centre[i]!, 4);
+        expect(at[3]).toBeCloseTo(style.radius, 6);
+      }
+    }
     // A bond runs between the centres of its two atoms.
     const first = scene.sticks[0]!;
     const line = Array.from(data.lines.slice(0, 6));
     [...scene.spheres[first.i]!.centre, ...scene.spheres[first.j]!.centre].forEach((x, k) => expect(line[k]).toBeCloseTo(x, 4));
   });
 
-  it("a shared site is shown in the blend of its wedge colours, weighted by occupancy", () => {
-    const i = scene.spheres.findIndex((s) => s.species === "Fe/Mg");
-    const style = scene.styles[scene.spheres[i]!.style]!;
+  it("a pie sphere keeps its wedges: each in its colour, covering its share of the turn, in the SVG's order", () => {
+    let entry = 0;
     const channel = (hex: string, k: number): number => parseInt(hex.slice(1 + 2 * k, 3 + 2 * k), 16) / 255;
-    for (let k = 0; k < 3; k++) {
-      const expected = style.wedges!.reduce((sum, w) => sum + channel(w.colour, k) * w.fraction, 0);
-      expect(data.spheres[i * SPHERE_STRIDE + 4 + k]).toBeCloseTo(expected, 6);
+    for (const s of scene.spheres) {
+      const style = scene.styles[s.style]!;
+      if (!style.wedges) {
+        const e = Array.from(data.spheres.slice(entry * SPHERE_STRIDE, (entry + 1) * SPHERE_STRIDE));
+        expect(e.slice(7)).toEqual([0, 1, 0]); // the whole disc, not a pie
+        entry++;
+        continue;
+      }
+      let turn = 0;
+      for (const w of style.wedges) {
+        const e = Array.from(data.spheres.slice(entry * SPHERE_STRIDE, (entry + 1) * SPHERE_STRIDE));
+        for (let k = 0; k < 3; k++) expect(e[4 + k]).toBeCloseTo(channel(w.colour, k), 6);
+        expect(e[7]).toBeCloseTo(turn, 6);
+        expect(e[8]).toBeCloseTo(turn + w.fraction, 6);
+        expect(e[9]).toBe(1);
+        turn += w.fraction;
+        entry++;
+      }
+      expect(turn).toBeCloseTo(1, 6);
     }
   });
 
