@@ -24,7 +24,7 @@ It must end with `all browser checks passed`. It relies on the `data-testid`s, `
 ## What MOTIF is now
 
 Browser-only tool for publication-quality vector figures of crystal structures from CIF/mCIF (tagline
-"Publication-quality crystal structure figures"). SVG is the source of truth; PNG is drawn from the same SVG.
+"Crystal Structure Visualizer", under the name in the header). SVG is the source of truth; PNG is drawn from the same SVG.
 Three parts: `src/structure` (file to atoms), `src/scene` (what is shown, plain data), `src/render`
 (scene + view to SVG), plus `src/preview` (GPU drawing while a large structure moves) and `src/ui`.
 README.md lists every convention.

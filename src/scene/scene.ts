@@ -244,6 +244,9 @@ export function cellAxes(structure: Structure): Axis[] {
 }
 
 /** What the user has chosen to show. Plain data: it can be saved and loaded again. */
+/** How arrows are drawn: as magnetic moments or as atomic displacements. */
+export type ArrowStyle = "moment" | "displacement";
+
 export interface SceneSpec {
   readonly range: Range;
   readonly bonds: readonly BondRule[];
@@ -260,6 +263,11 @@ export interface SceneSpec {
   readonly angles: readonly AngleRule[];
   /** Draw the magnetic moments as arrows. */
   readonly showMoments: boolean;
+  /**
+   * How the file's vectors are drawn: as moments (through the atom, centred) or as displacements (from the atom's
+   * centre, in the displacement colour and thickness). Absent: as the file's own kind.
+   */
+  readonly arrowStyle?: ArrowStyle;
   /** Draw the displacements of a distortion (an ISODISTORT file) as arrows from the atoms' centres. */
   readonly showDisplacements?: boolean;
   /** Length in angstrom of the arrow of the largest displacement; the others are in proportion. */
@@ -490,36 +498,40 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     const displacement = atom.displacement ? displacementToCartesian(structure, atom.displacement) : undefined;
     return { style: key, species: atom.species, label: atom.label, frac: atom.frac, centre: atom.cart, ...(atom.added ? { added: true } : {}), ...(moment ? { moment } : {}), ...(displacement ? { displacement } : {}) };
   });
-  // Arrow length in proportion to the moment; the largest moment of the whole structure (not only of the
-  // atoms shown) sets the scale, so changing the range never changes an arrow's length.
+  // Arrows. A file gives one kind of vector: moments (an mCIF) or displacements (an ISODISTORT file). Either is
+  // drawn in the style chosen: as a moment (through the atom, centred on it) or as a displacement (from the atom's
+  // centre, in its own colour and thickness). The style starts as the file's own kind and can be changed.
+  // Length in proportion to the vector; the largest of the whole structure (not only of the atoms shown) gets the
+  // style's chosen length, so changing the range never changes an arrow's length.
   const arrows: Arrow[] = [];
-  const largest = largestMoment(structure);
   let hidden = 0;
-  if (spec.showMoments && largest > 0) {
+  const largestM = largestMoment(structure);
+  const largestD = largestDisplacement(structure);
+  const source: ArrowStyle | null = largestM > 0 ? "moment" : largestD > 0 ? "displacement" : null;
+  const show = source === "moment" ? spec.showMoments : (spec.showDisplacements ?? true);
+  if (source && show) {
+    const style = spec.arrowStyle ?? source;
+    const largest = source === "moment" ? largestM : largestD;
+    const k = (style === "moment" ? spec.momentLength : (spec.displacementLength ?? DEFAULT_DISPLACEMENT_LENGTH)) / largest;
     spheres.forEach((s, index) => {
-      if (!s.moment) return;
-      const k = spec.momentLength / largest;
-      const vector: Vec3 = [s.moment[0] * k, s.moment[1] * k, s.moment[2] * k];
-      if (Math.hypot(vector[0], vector[1], vector[2]) / 2 <= styles[s.style]!.radius) hidden++;
-      arrows.push({ sphere: index, vector });
-    });
-  }
-  // Displacements: from the atom's centre, the largest of the file at the chosen length.
-  const largestShift = largestDisplacement(structure);
-  if ((spec.showDisplacements ?? true) && largestShift > 0) {
-    const k = (spec.displacementLength ?? DEFAULT_DISPLACEMENT_LENGTH) / largestShift;
-    spheres.forEach((s, index) => {
-      if (!s.displacement) return;
-      const vector: Vec3 = [s.displacement[0] * k, s.displacement[1] * k, s.displacement[2] * k];
-      if (Math.hypot(vector[0], vector[1], vector[2]) <= styles[s.style]!.radius) hidden++;
-      arrows.push({
-        sphere: index,
-        vector,
-        start: "centre",
-        colour: spec.displacementColour ?? DEFAULT_DISPLACEMENT_COLOUR,
-        thickness: spec.displacementThickness ?? DEFAULT_DISPLACEMENT_THICKNESS,
-        headScale: DISPLACEMENT_HEAD_SCALE,
-      });
+      const v = source === "moment" ? s.moment : s.displacement;
+      if (!v) return;
+      const vector: Vec3 = [v[0] * k, v[1] * k, v[2] * k];
+      const size = Math.hypot(vector[0], vector[1], vector[2]);
+      if (style === "moment") {
+        if (size / 2 <= styles[s.style]!.radius) hidden++;
+        arrows.push({ sphere: index, vector });
+      } else {
+        if (size <= styles[s.style]!.radius) hidden++;
+        arrows.push({
+          sphere: index,
+          vector,
+          start: "centre",
+          colour: spec.displacementColour ?? DEFAULT_DISPLACEMENT_COLOUR,
+          thickness: spec.displacementThickness ?? DEFAULT_DISPLACEMENT_THICKNESS,
+          headScale: DISPLACEMENT_HEAD_SCALE,
+        });
+      }
     });
   }
   const arrowNote = hidden > 0 ? [`${hidden} arrow${hidden > 1 ? "s are" : " is"} shorter than the atom and cannot be seen. Increase the arrow length or reduce the atom's radius.`] : [];

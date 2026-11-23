@@ -1,6 +1,6 @@
 # MOTIF
 
-Publication-quality figures of crystal structures.
+Crystal Structure Visualizer.
 
 Clean vector figures of crystal structures, made in the browser from a CIF or mCIF file.
 
@@ -223,6 +223,9 @@ writes the reference atom lists in `tests/reference/`.
   together) can each be set as a multiple of the usual size.
 - The legend can follow the size of the structure: its largest sphere as large as that atom is
   drawn, letters in proportion (within limits), so it scales with the zoom.
+- A file's vectors (moments of an mCIF, displacements of an ISODISTORT file) can be drawn in either style,
+  as moments (through the atom, centred) or as displacements (from the atom's centre, their own colour and
+  thickness): Structure tab, Arrows (the user's choice, 2026-11-23). Each file starts in its own kind.
 - Arrows (the user's rule, for step 6 and later): a magnetic moment is drawn as an arrow passing
   through its atom, centred on it. An atomic displacement (a distortion mode) is drawn as an arrow
   starting at the centre of its atom.

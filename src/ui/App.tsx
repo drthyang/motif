@@ -13,7 +13,7 @@ import {
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, type Look, type Scene } from "../scene/scene";
+import { type ArrowStyle, AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
@@ -336,6 +336,11 @@ export function App() {
   const [displacementLengthText, setDisplacementLengthText] = useState(String(DEFAULT_DISPLACEMENT_LENGTH));
   const displacementLength = Number(displacementLengthText) > 0 && Number(displacementLengthText) <= 20 ? Number(displacementLengthText) : DEFAULT_DISPLACEMENT_LENGTH;
   const [modesOn, setModesOn] = useState<boolean[]>([]);
+  // How the file's arrows are drawn (null: as the file's own kind); back to that for each new file.
+  const [arrowStyleChoice, setArrowStyleChoice] = useState<ArrowStyle | null>(null);
+  useEffect(() => setArrowStyleChoice(null), [structure]);
+  const arrowSource: ArrowStyle | null = !structure ? null : largestMoment(structure) > 0 ? "moment" : largestDisplacement(structure) > 0 ? "displacement" : null;
+  const arrowStyle: ArrowStyle | null = arrowSource ? (arrowStyleChoice ?? arrowSource) : null;
   const [displacementColour, setDisplacementColour] = useState(DEFAULT_DISPLACEMENT_COLOUR);
   const [displacementThicknessText, setDisplacementThicknessText] = useState(String(DEFAULT_DISPLACEMENT_THICKNESS));
   const displacementThickness = Number(displacementThicknessText) >= 0.02 && Number(displacementThicknessText) <= 2 ? Number(displacementThicknessText) : DEFAULT_DISPLACEMENT_THICKNESS;
@@ -433,11 +438,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(drawnStructure ?? structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, showDisplacements, displacementLength, displacementColour, displacementThickness, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(drawnStructure ?? structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, showDisplacements, displacementLength, displacementColour, displacementThickness, ...(arrowStyle ? { arrowStyle } : {}), momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [drawnStructure, showDisplacements, displacementLength, displacementColour, displacementThickness, structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
+  }, [drawnStructure, showDisplacements, displacementLength, displacementColour, displacementThickness, arrowStyle, structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -817,7 +822,7 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="mark">MOTIF</span>
-          <span className="tagline">Publication-quality crystal structure figures</span>
+          <span className="tagline">Crystal Structure Visualizer</span>
         </div>
         <div className="actions">
           <label className="button primary">
@@ -1325,10 +1330,6 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             </Section>
             {structure.distortion && drawnStructure && (
               <Section tab="structure" title="Distortion modes" hint="From an ISODISTORT file: the atoms are the distorted structure, and each arrow starts at an atom's centre and shows its displacement from the parent structure, summed over the modes ticked. The amplitudes are in Å, as ISODISTORT gives them; the arrow of the largest displacement has the length set under Visual, the others in proportion.">
-                <label className="row">
-                  <input type="checkbox" data-testid="show-displacements" checked={showDisplacements} onChange={(e) => setShowDisplacements(e.target.checked)} />
-                  Displacement arrows
-                </label>
                 {structure.distortion.modes.map((m, j) => {
                   const name = modeName(m.label);
                   return (
@@ -1351,13 +1352,28 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 </p>
               </Section>
             )}
-            {largestMoment(structure) > 0 && (
-              <Section tab="structure" title="Magnetic moments" hint="A moment is drawn as an arrow through its atom, centred on it; the arrow of the largest moment has the length set under Visual, the others in proportion.">
+            {arrowSource && (
+              <Section tab="structure" title="Arrows" hint="The file gives a vector on some atoms: magnetic moments (an mCIF) or displacements (an ISODISTORT file). Either can be drawn as moments, through the atom and centred on it, or as displacements, starting at the atom's centre in their own colour and thickness. The arrow of the largest vector has the length set under Visual, the others in proportion.">
                 <label className="row">
-                  <input type="checkbox" data-testid="show-moments" checked={showMoments} onChange={(e) => setShowMoments(e.target.checked)} />
-                  Arrows through the atoms
+                  <input
+                    type="checkbox"
+                    data-testid="show-arrows"
+                    checked={arrowSource === "moment" ? showMoments : showDisplacements}
+                    onChange={(e) => (arrowSource === "moment" ? setShowMoments(e.target.checked) : setShowDisplacements(e.target.checked))}
+                  />
+                  Draw arrows
                 </label>
-                <p className="sub">Largest moment in the file: {largestMoment(structure).toFixed(2)} μB.</p>
+                {(["moment", "displacement"] as const).map((style) => (
+                  <label className="row" key={style}>
+                    <input type="radio" name="arrow-style" data-testid={`arrow-style-${style}`} checked={arrowStyle === style} onChange={() => setArrowStyleChoice(style)} />
+                    {style === "moment" ? "as moments: through the atom, centred" : "as displacements: from the atom's centre"}
+                  </label>
+                ))}
+                <p className="sub" data-testid="arrow-source">
+                  {arrowSource === "moment"
+                    ? `The file gives magnetic moments; the largest is ${largestMoment(structure).toFixed(2)} μB.`
+                    : `The file gives displacements; the largest is ${largestDisplacement(drawnStructure ?? structure).toFixed(3)} Å.`}
+                </p>
               </Section>
             )}
             <Section tab="visual" title="Shading and outlines" hint="How the atoms, bonds and arrows are shaded, and which are outlined. A quick style sets the shading, outlines, lettering weight and legend size together; each can still be changed afterwards. All shading is vector gradients, so the figure stays an editable SVG.">
@@ -1397,10 +1413,10 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 <input type="checkbox" data-testid="bond-outline" checked={bondOutline} onChange={(e) => setBondOutline(e.target.checked)} />
                 bonds
               </label>
-              {largestMoment(structure) > 0 && (
+              {arrowSource && (
                 <label className="row">
                   <input type="checkbox" data-testid="moment-outline" checked={momentOutline} onChange={(e) => setMomentOutline(e.target.checked)} />
-                  moment arrows
+                  arrows on atoms
                 </label>
               )}
               <label className="row">
@@ -1583,7 +1599,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 ))}
               </Section>
             )}
-            {largestMoment(structure) > 0 && (
+            {arrowStyle === "moment" && (
               <Section tab="visual" title="Moment arrows" hint="The arrow of the largest moment in the file has the length given here; the others are in proportion. The cone at the tip keeps its proportion to the rod; head scales it further (also for displacement arrows).">
                 <div className="row">
                   <input type="color" title="Colour of the moment arrows" value={momentColour} onChange={(e) => setMomentColour(e.target.value)} />
@@ -1603,7 +1619,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 </div>
               </Section>
             )}
-            {structure.distortion && (
+            {arrowStyle === "displacement" && (
               <Section tab="visual" title="Displacement arrows" hint="Drawn apart from moment arrows: green and thicker by default. The arrow of the largest displacement has the length given here, measured from the atom's centre; the others are in proportion. The cone at the tip keeps its proportion to the rod.">
                 <div className="row">
                   <input type="color" title="Colour of the displacement arrows" data-testid="displacement-colour" value={displacementColour} onChange={(e) => setDisplacementColour(e.target.value)} />
@@ -1616,7 +1632,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   <input type="number" step={0.02} min={0.02} max={2} data-testid="displacement-thickness" title="Thickness of the rod. The cone at the tip keeps its proportion to it." value={displacementThicknessText} onChange={(e) => setDisplacementThicknessText(e.target.value)} />
                   <span className="unit">Å</span>
                 </div>
-                {largestMoment(structure) === 0 && (
+                {arrowStyle === "displacement" && (
                   <div className="row">
                     <span className="lab">head</span>
                     <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />
