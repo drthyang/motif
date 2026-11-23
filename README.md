@@ -23,12 +23,13 @@ In crystallography the *motif* is the group of atoms repeated at every lattice p
   reversal; ISODISTORT CIFs, with distortion modes drawn as displacement arrows; RMCProfile `.rmc6f`
   configurations, as the whole supercell or folded into one averaged cell.
 - **Figures sized for a journal:** the size on paper (a Nature single column, 89 mm, 4:3, by default), text
-  in pt, an SVG that opens at exactly that size in Illustrator or Keynote, and a PNG at any dpi drawn from
-  the same SVG.
+  in pt, an SVG that opens at exactly that size in Illustrator or Keynote, and a PNG at the dpi you choose,
+  drawn from the same SVG.
 - **Shows the chemistry:** cells or a slab, bonds by distance, bond angles, chains and filled polygons, shared
   sites as pie spheres, and s, p, d and f orbitals as schematic isosurfaces.
 - **Styled your way:** soft, flat, glossy, metal or glass surfaces; bonds in atom colours, dashed or dotted;
-  preset views (clinographic, isometric, along [uvw]); your settings saved and reused.
+  preset views (clinographic, isometric) or a view along any [uvw] or normal to any (hkl); your settings
+  saved and reused.
 - **Checked, not just drawn:** symmetry expansion against gemmi, moment directions against pymatgen,
   displacements against published coordinates, orbitals for orthogonality, each in the test suite.
 
@@ -40,7 +41,7 @@ press **Save SVG** or **Save PNG**.
 
 ## Status
 
-Beta, version 0.1. Every planned step is done ([conventions and status](docs/CONVENTIONS.md#steps-of-the-first-version)).
+Beta. Every planned step is done ([conventions and status](docs/CONVENTIONS.md#steps-of-the-first-version)).
 
 ## Documentation
 
@@ -53,7 +54,7 @@ Beta, version 0.1. Every planned step is done ([conventions and status](docs/CON
 Copyright (C) 2026 Tsung-Han Yang. MOTIF is free software under the GNU Affero General Public License,
 version 3 or later ([LICENSE](LICENSE)). The licence covers the program, not the figures you make with it.
 
-Parts of the CIF reader and the symmetry code are adapted from [MATERIA](https://github.com/drthyang/materia-platform),
+Parts of the CIF reader, the symmetry code and the element data are adapted from [MATERIA](https://github.com/drthyang/materia-platform),
 and the RMCProfile reader from [RMCProfile Workbench](https://github.com/drthyang/rmc-toolkits), both by the same
 author; those files say so in their header. The page's font, IBM Plex Sans, is under the SIL Open Font License
 1.1. Example structures marked COD are from the Crystallography Open Database (public domain).

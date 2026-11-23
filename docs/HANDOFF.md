@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 269 tests, about two seconds
+npx tsc -b && npx vitest run    # 282 tests, about two seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -29,6 +29,11 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
 
 - Reads CIF, magnetic CIF, ISODISTORT CIFs (distortion modes) and RMCProfile `.rmc6f` configurations
   (whole supercell as P1, or folded into one cell with each site the plain average of its copies).
+- Orbitals (s, p, d, f) on the atoms of a chosen species, as smooth see-through isosurfaces. Since commit
+  9e32821 orbitals and atoms cut through one another as true 3D solids: where a lobe passes in front of an
+  atom's surface, the edge is traced from the exact orbital (not its mesh) and drawn as a smooth curve. While
+  the view moves the edge is found on a coarser grid (a draft); once the view is still, and in every saved
+  figure, it is drawn in full. Details and checks in docs/CONVENTIONS.md, "Orbitals".
 - SVG is the source of truth; PNG is drawn from the same SVG. Three parts: `src/structure` (file to
   atoms), `src/scene` (what is shown, plain data), `src/render` (scene + view to SVG), plus `src/preview`
   (GPU drawing while a large structure moves) and `src/ui`.
@@ -38,13 +43,32 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   axes in proportion to it; displacement arrows green, 1.5 A; moment arrows with the tail 80 % of the head
   side; up to 100,000 atoms.
 
+## Documentation
+
+- `README.md` is short (commit f50385c): what MOTIF does, a link to the app, one figure (`docs/media/mnf2.svg`,
+  MOTIF's own output), status and licence. No installation section, by the user's wish.
+- `docs/CONVENTIONS.md` holds what the long README used to: every convention with its date, grouped by topic,
+  how each part is checked, the table of steps, and how to build and test. Record a new convention there.
+- Since 2026-11-23 writing and building are done by separate sessions: the writing session owns `README.md`,
+  `docs/CONVENTIONS.md`, `docs/HANDOFF.md` and `examples/README.md`; the building session owns the code and
+  the example data, and may add a line to `docs/CONVENTIONS.md` when it records a convention.
+- Planned by the building session, not yet on `main`: five feature examples (normal structure, magnetic,
+  distortion mode, orbitals, RMC configuration with folding), listed in `examples/features.json`. When they
+  land, `examples/README.md` and the README describe them.
+
 ## Open questions for the user (none blocking)
 
+- The app link in the README, `https://drthyang.github.io/motif/`, does not work yet: the repo is private and
+  GitHub Pages is not set up. How the link is to be handled is the user's call.
+- Version: the page footer shows "MOTIF 0.1" (`VERSION` in `src/ui/App.tsx`) while `package.json` says
+  0.0.0, and no release has been made. The shared rules want one version source and a dev suffix on `main`
+  (`0.1.0-dev.0`). The README no longer states a number.
 - A subtitle for the header was tried and removed; "Science, with an eye for design" and similar were
   offered. The browser tab still says "MOTIF · Crystal Structure Visualizer".
 - Proposed, not started: click an atom or bond in the figure to edit it; undo/redo; symmetrize a folded RMC
   cell with a space group (RMCProfile Workbench has the method).
-- Firefox not yet tested; the browser check not run since the latest changes.
+- Firefox not yet tested; the browser check not run since the latest changes (orbitals cut against atoms
+  included).
 
 ## Rules that are easy to break
 
