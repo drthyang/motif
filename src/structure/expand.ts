@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Tsung-Han Yang
 
-import { orthogonalizationMatrix, mulVec } from "./cell";
+import { orthogonalizationMatrix, mulVec, planeSpacings } from "./cell";
 import { applyOperation, wrapFractional } from "./symmetry";
 import type { SymmetryOperation } from "./types";
 import type { CellAtom, Structure, Vec3 } from "./types";
@@ -70,6 +70,7 @@ export function expandToUnitCell(structure: Structure): Expansion {
   };
   const edges: Vec3 = [structure.cell.a, structure.cell.b, structure.cell.c];
   interface Place {
+    order: number;
     moment?: Vec3;
     displacement?: Vec3;
     siteIndex: number;
@@ -78,6 +79,34 @@ export function expandToUnitCell(structure: Structure): Expansion {
     frac: Vec3;
   }
   const places: Place[] = [];
+  // Places sorted into a grid of the cell, so that finding an earlier atom at a place looks only at the
+  // neighbouring boxes, not at every atom (an RMC supercell has thousands). A box is at least
+  // SAME_ATOM_DISTANCE across between its planes, so two points that close are in the same or adjacent boxes.
+  const boxes = planeSpacings(structure.cell).map((s) => Math.max(1, Math.min(256, Math.floor(s / SAME_ATOM_DISTANCE))));
+  const grid = new Map<number, Place[]>();
+  const boxOf = (frac: Vec3): [number, number, number] => [0, 1, 2].map((i) => ((Math.floor(frac[i]! * boxes[i]!) % boxes[i]!) + boxes[i]!) % boxes[i]!) as unknown as [number, number, number];
+  const gridKey = (i: number, j: number, k: number): number => (i * 257 + j) * 257 + k;
+  const addPlace = (p: Place): void => {
+    places.push(p);
+    const [i, j, k] = boxOf(p.frac);
+    const key = gridKey(i, j, k);
+    const list = grid.get(key);
+    if (list) list.push(p);
+    else grid.set(key, [p]);
+  };
+  /** The earliest place of another site within SAME_ATOM_DISTANCE of `frac`, if any. */
+  const placeNear = (frac: Vec3, siteIndex: number): Place | undefined => {
+    const [i, j, k] = boxOf(frac);
+    const steps = (n: number): number[] => (n >= 3 ? [-1, 0, 1] : n === 2 ? [0, 1] : [0]);
+    let best: Place | undefined;
+    for (const di of steps(boxes[0]!)) for (const dj of steps(boxes[1]!)) for (const dk of steps(boxes[2]!)) {
+      const key = gridKey((i + di + boxes[0]!) % boxes[0]!, (j + dj + boxes[1]!) % boxes[1]!, (k + dk + boxes[2]!) % boxes[2]!);
+      for (const q of grid.get(key) ?? []) {
+        if (q.siteIndex !== siteIndex && (!best || q.order < best.order) && separation(q.frac, frac) < SAME_ATOM_DISTANCE) best = q;
+      }
+    }
+    return best;
+  };
   const differing = new Set<string>();
   const warnings: string[] = [];
   structure.sites.forEach((site, siteIndex) => {
@@ -126,9 +155,9 @@ export function expandToUnitCell(structure: Structure): Expansion {
       const moment = moments[n];
       const displacement = shifts[n];
       // An earlier site already at this place: the two share it.
-      const shared = places.find((q) => q.siteIndex !== siteIndex && separation(q.frac, frac) < SAME_ATOM_DISTANCE);
+      const shared = placeNear(frac, siteIndex);
       if (!shared) {
-        places.push({ siteIndex, labels: [site.label], components: [{ element: site.element, occupancy: site.occupancy }], frac, ...(moment ? { moment } : {}), ...(displacement ? { displacement } : {}) });
+        addPlace({ order: places.length, siteIndex, labels: [site.label], components: [{ element: site.element, occupancy: site.occupancy }], frac, ...(moment ? { moment } : {}), ...(displacement ? { displacement } : {}) });
         return;
       }
       // Elements sharing a place: the place shows the first moment given; differing moments are reported.

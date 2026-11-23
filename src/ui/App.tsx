@@ -20,6 +20,7 @@ import { suggestBonds } from "../scene/autoBonds";
 import { pairDistances, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readCif } from "../structure/readCif";
+import { isRmc6f, readRmc6f } from "../structure/readRmc6f";
 import { withDisplacements } from "../structure/distortion";
 import {
   apply as applySettings,
@@ -355,7 +356,7 @@ export function App() {
   keepViewRef.current = keepView;
   const load = useCallback((text: string, name: string) => {
     try {
-      const read = readCif(text);
+      const read = isRmc6f(text, name) ? readRmc6f(text, name) : readCif(text);
       buildScene(read); // fail here, with a message, rather than while drawing
       lastScene.current = null;
       setStructure(read);
@@ -813,7 +814,7 @@ export function App() {
             Open file…
             <input
               type="file"
-              accept=".cif,.mcif"
+              accept=".cif,.mcif,.rmc6f"
               data-testid="file"
               hidden
               onChange={(e) => {
@@ -1037,7 +1038,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             </>
           ) : (
             <div className="empty">
-              <p className="empty-title">Drop a CIF or mCIF file here</p>
+              <p className="empty-title">Drop a CIF, mCIF or RMCProfile (.rmc6f) file here</p>
               <p>or use <b>Open file…</b> above, or start from an example:</p>
               <div className="examples">
                 {EXAMPLES.map((x) => (

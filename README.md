@@ -32,6 +32,13 @@ writes the reference atom lists in `tests/reference/`.
 - Cartesian axes: *a* along x, *b* in the xy plane, *c*\* along z (as in gemmi and the PDB).
 - The view is a proper rotation, never a reflection, so a structure is never drawn mirrored.
   Screen x is right, y is up, z is towards the viewer; the projection is orthographic.
+- RMCProfile configurations (`.rmc6f`) are read as P1: the identity is the only operation and every atom of
+  the supercell is its own site. Fractional coordinates are along the file's lattice vectors; the cell is
+  rebuilt from their lengths and angles (the file's "Cell" line, which must agree with them), so the crystal
+  is the same, turned rigidly into MOTIF's axes. Left-handed lattice vectors are refused (they would be
+  drawn mirrored), and so is a file with an unreadable atom line, a non-finite coordinate or a wrong atom
+  count, rather than drawn with atoms missing. Vacancies (`Va`) are left out and counted. The atom-line
+  grammar is adapted from the author's RMCProfile Workbench.
 - The symmetry operations are taken from the file and checked to form a complete group.
   A file that gives only a space-group symbol is refused, not guessed.
 - What is shown is a range of fractional coordinates along *a*, *b*, *c*. By default an atom on the
@@ -234,6 +241,6 @@ MOTIF is free software under the GNU Affero General Public License, version 3 or
 (AGPL-3.0-or-later); the full text is in `LICENSE`. The licence covers the program, not the figures
 made with it.
 
-Parts of the CIF reader and the symmetry code are adapted from MATERIA, by the same author; those
-files say so in their header. The page's font, IBM Plex Sans, is under the SIL Open Font License 1.1.
+Parts of the CIF reader and the symmetry code are adapted from MATERIA, and the RMCProfile reader from
+RMCProfile Workbench, both by the same author; those files say so in their header. The page's font, IBM Plex Sans, is under the SIL Open Font License 1.1.
 The example structures marked COD are from the Crystallography Open Database (public domain).
