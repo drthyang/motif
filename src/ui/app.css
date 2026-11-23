@@ -182,3 +182,5 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
   .tab-body { overflow: visible; }
   .tagline { display: none; }
 }
+/* A small dot of an element's colour, beside its name where the colour cannot be changed. */
+.swatch { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15); flex: none; }

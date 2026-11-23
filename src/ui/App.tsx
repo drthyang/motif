@@ -93,7 +93,7 @@ export function App() {
   const [transparent, setTransparent] = useState(true);
   const [pngWidth, setPngWidth] = useState(2880);
   const [over, setOver] = useState(false);
-  const [tab, setTab] = useState<TabId>("crystal");
+  const [tab, setTab] = useState<TabId>("structure");
   const [showHelp, setShowHelp] = useState(true);
   // What the hands are doing now, so the control strip under the figure can light up the matching control.
   const [held, setHeld] = useState({ alt: false, shift: false, zoomKey: false });
@@ -906,7 +906,7 @@ Reset
             </div>
             <TabContext.Provider value={tab}>
             <div className="tab-body">
-            <Section tab="crystal" title="File" hint="What the file says. Nothing here changes the figure.">
+            <Section tab="info" title="File" hint="What the file says. Nothing here changes the figure.">
               <table data-testid="info">
                 <tbody>
                   <tr><td>Name</td><td>{structure.name}</td></tr>
@@ -922,7 +922,7 @@ Reset
                 </tbody>
               </table>
             </Section>
-            <Section tab="crystal" title="Shown" hint="The part of the crystal that is drawn: a range along each cell axis, in units of the cell edge. Whole numbers give whole cells; a narrow range gives a slab. An atom within 0.001 of a limit counts as on it.">
+            <Section tab="structure" title="Cells shown" hint="The part of the crystal that is drawn: a range along each cell axis, in units of the cell edge. Whole numbers give whole cells; a narrow range gives a slab. An atom within 0.001 of a limit counts as on it.">
               {AXES.map((axis, i) => (
                 <div className="row" key={axis}>
                   <i className="axis">{axis}</i> from
@@ -958,108 +958,29 @@ Reset
               </p>
               {rangeError && <p className="error" data-testid="range-error">{rangeError}</p>}
             </Section>
-            <Section tab="crystal" title="Unit cell" hint="The outline is drawn for every whole cell inside the range shown (none for a slab). Near and far: the edges in front of the middle of the structure are solid, those behind it paler and dashed, so the box reads as a solid.">
-              <label className="row">
-                <input type="checkbox" data-testid="show-cell" checked={showCell} onChange={(e) => setShowCell(e.target.checked)} />
-                Outline of the unit cell
-              </label>
-              {showCell && (
-                <div className="row" title="Near and far: the edges in front of the middle of the structure are solid, those behind it paler and dashed, so the box reads as a solid. Or all dashed, or all solid.">
-                  cell lines
-                  <select data-testid="cell-style" value={cellStyle} onChange={(e) => setCellStyle(e.target.value as CellStyle)}>
-                    <option value="depth">near solid, far dashed</option>
-                    <option value="dashed">all dashed</option>
-                    <option value="solid">all solid</option>
-                  </select>
-                  <input type="number" step={0.5} min={0.5} max={12} data-testid="cell-width" title="Line width in px of the figure" value={cellWidthText} onChange={(e) => setCellWidthText(e.target.value)} />
-                  px
-                </div>
-              )}
-            </Section>
-            <Section tab="content" title="Atoms" hint="Colour and size of each element. A site shared by several elements is drawn as a pie whose wedges are the occupancies. Untick an element to leave it out.">
+            <Section tab="structure" title="Elements shown" hint="Untick an element to leave out its atoms, its bonds and any neighbours added for it. A site shared by several elements is one atom, drawn as a pie.">
               {contents.elements.map((element) => {
                 const pure = contents.species.find((x) => x.key === element);
-                return (
-                  <div className="row" key={element} data-testid={`look-${element}`}>
-                    <input
-                      type="color"
-                      title={`Colour of ${element}`}
-                      value={elementColour(element, sceneLooks)}
-                      onChange={(e) => setLook(element, { colour: e.target.value })}
-                    />
+                return pure ? (
+                  <label className="row" key={element}>
+                    <input type="checkbox" title={`Show ${element}`} data-testid={`show-${element}`} checked={!looks[element]?.hidden} onChange={(e) => setLook(element, { hidden: !e.target.checked })} />
+                    <span className="swatch" style={{ background: elementColour(element, sceneLooks) }} />
                     <b className="symbol">{element}</b>
-                    {pure && (
-                      <>
-                        <input
-                          type="checkbox"
-                          title={`Show ${element}`}
-                          data-testid={`show-${element}`}
-                          checked={!looks[element]?.hidden}
-                          onChange={(e) => setLook(element, { hidden: !e.target.checked })}
-                        />
-                        radius
-                        <input
-                          type="number"
-                          step={0.05}
-                          min={0.05}
-                          max={5}
-                          data-testid={`radius-${element}`}
-                          value={looks[element]?.radiusText ?? speciesRadius(element, pure.components, {}).toFixed(2)}
-                          onChange={(e) => setLook(element, { radiusText: e.target.value })}
-                        />
-                        Å
-                      </>
-                    )}
-                  </div>
-                );
+                  </label>
+                ) : null;
               })}
               {contents.species.filter((x) => x.components.length > 1).map((x) => (
-                <div className="rule" key={x.key} data-testid={`look-${x.key}`}>
-                  <p className="sub">
-                    Shared site: {x.components.map((c) => `${c.element} ${c.occupancy}`).join(", ")}
+                <label className="row" key={x.key}>
+                  <input type="checkbox" title="Show this site" checked={!looks[x.key]?.hidden} onChange={(e) => setLook(x.key, { hidden: !e.target.checked })} />
+                  <b>{looks[x.key]?.name ?? x.key}</b>
+                  <span className="sub">
+                    shared site: {x.components.map((c) => `${c.element} ${c.occupancy}`).join(", ")}
                     {x.varied && " (and other proportions)"}
-                  </p>
-                  <div className="row">
-                    <input type="checkbox" title="Show this site" checked={!looks[x.key]?.hidden} onChange={(e) => setLook(x.key, { hidden: !e.target.checked })} />
-                    name
-                    <input type="text" className="name" value={looks[x.key]?.name ?? x.key} onChange={(e) => setLook(x.key, { name: e.target.value })} />
-                  </div>
-                  <div className="row">
-                    wedges
-                    <input
-                      type="text"
-                      className="name"
-                      title="Order of the wedges, clockwise from the top: element symbols separated by spaces"
-                      data-testid={`order-${x.key}`}
-                      value={looks[x.key]?.orderText ?? x.components.map((c) => c.element).join(" ")}
-                      onChange={(e) => setLook(x.key, { orderText: e.target.value })}
-                    />
-                  </div>
-                  <div className="row">
-                    radius
-                    <input
-                      type="number"
-                      step={0.05}
-                      min={0.05}
-                      max={5}
-                      value={looks[x.key]?.radiusText ?? speciesRadius(x.key, x.components, {}).toFixed(2)}
-                      onChange={(e) => setLook(x.key, { radiusText: e.target.value })}
-                    />
-                    Å
-                  </div>
-                </div>
-              ))}
-              <More label="More options">
-                <label className="row">
-                  <input type="checkbox" data-testid="show-vacancy" checked={showVacancy} onChange={(e) => setShowVacancy(e.target.checked)} />
-                  Show a vacant share as an empty wedge
+                  </span>
                 </label>
-                <div className="row">
-                  <button data-testid="reset-looks" onClick={() => setLooks({})}>Reset colours and sizes</button>
-                </div>
-              </More>
+              ))}
             </Section>
-            <Section tab="content" title="Bonds" hint="A bond joins every pair of the two chosen atoms that are no further apart than the distance given. The list shows the distances found in the structure, shortest first.">
+            <Section tab="structure" title="Bonds" hint="A bond joins every pair of the two chosen atoms that are no further apart than the distance given. The list shows the distances found in the structure, shortest first. Colour, thickness and highlights are under Visual.">
               {autoNote && bondRules.length > 0 && (
                 <p className="sub" data-testid="auto-note">
                   Added when the file was opened: {autoNote}. Change or remove them as you like.
@@ -1106,57 +1027,16 @@ Reset
                     />
                     Add {nameOf(r.neighbour)} outside the range bonded to {nameOf(r.centre)} inside
                   </label>
-                  <More label="More options">
-                    <div className="row">
-                      <input type="color" title="Colour of these bonds" value={r.colour ?? DEFAULT_STICK.colour} onChange={(e) => changeRule(index, { colour: e.target.value })} />
-                      thickness
-                      <input
-                        type="number"
-                        step={0.02}
-                        min={0.02}
-                        max={2}
-                        data-testid={`bond-width-${index}`}
-                        value={r.widthText ?? String(DEFAULT_STICK.width)}
-                        onChange={(e) => changeRule(index, { widthText: e.target.value })}
-                      />
-                      Å
-                    </div>
+                  <label className="row">
+                    <input type="checkbox" data-testid={`bond-unbonded-${index}`} checked={r.hideUnbonded ?? false} onChange={(e) => changeRule(index, { hideUnbonded: e.target.checked })} />
+                    Hide {nameOf(r.neighbour)} with no such bond
+                  </label>
+                  {r.centre === r.neighbour && (
                     <label className="row">
-                      <input type="checkbox" data-testid={`bond-band-${index}`} checked={r.band ?? false} onChange={(e) => changeRule(index, { band: e.target.checked })} />
-                      Highlight band behind these bonds
+                      <input type="checkbox" data-testid={`bond-triangles-${index}`} checked={r.onlyTriangles ?? false} onChange={(e) => changeRule(index, { onlyTriangles: e.target.checked })} />
+                      Keep only atoms and bonds of complete triangles
                     </label>
-                    {r.band && (scene?.ruleInfo[sceneRule(index)]?.groups ?? 0) > 1 && (
-                      <div className="row">
-                        highlight
-                        <select
-                          data-testid={`bond-chain-${index}`}
-                          value={r.chain ?? "all"}
-                          onChange={(e) => changeRule(index, { chain: e.target.value === "all" ? null : Number(e.target.value) })}
-                        >
-                          <option value="all">all chains</option>
-                          {Array.from({ length: Math.min(scene?.ruleInfo[sceneRule(index)]?.groups ?? 0, 60) }, (_, g) => (
-                            <option key={g} value={g}>
-                              chain {g + 1} only
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                    <label className="row">
-                      <input type="checkbox" data-testid={`bond-fill-${index}`} checked={r.fill ?? false} onChange={(e) => changeRule(index, { fill: e.target.checked })} />
-                      Fill triangles
-                    </label>
-                    <label className="row">
-                      <input type="checkbox" data-testid={`bond-unbonded-${index}`} checked={r.hideUnbonded ?? false} onChange={(e) => changeRule(index, { hideUnbonded: e.target.checked })} />
-                      Hide {nameOf(r.neighbour)} with no such bond
-                    </label>
-                    {r.centre === r.neighbour && (
-                      <label className="row">
-                        <input type="checkbox" data-testid={`bond-triangles-${index}`} checked={r.onlyTriangles ?? false} onChange={(e) => changeRule(index, { onlyTriangles: e.target.checked })} />
-                        Keep only atoms and bonds of complete triangles
-                      </label>
-                    )}
-                  </More>
+                  )}
                   <p className="sub" data-testid={`bond-count-${index}`}>
                     {r.max > 0.1 && r.max <= 10
                       ? `${bondCount(index)} bonds drawn, in ${scene?.ruleInfo[sceneRule(index)]?.groups ?? 0} connected group(s); ${scene?.ruleInfo[sceneRule(index)]?.triangles ?? 0} triangles`
@@ -1176,7 +1056,7 @@ Reset
                 <button data-testid="add-bond" disabled={!newPair} onClick={addBond}>Add</button>
               </div>
             </Section>
-            <Section tab="content" title="Angles" hint="Marks the angle between two drawn bonds that meet at an atom, so add the bonds first. The list shows the kinds of angle found and their sizes. Every angle of the chosen kind whose size lies in the range is marked.">
+            <Section tab="structure" title="Angles" hint="Marks the angle between two drawn bonds that meet at an atom, so add the bonds first. The list shows the kinds of angle found and their sizes. Every angle of the chosen kind whose size lies in the range is marked. Colour, size and labels are under Visual.">
               {angleRules.map((r, index) => (
                 <div key={index} className="rule" data-testid={`angle-${index}`}>
                   <div className="row">
@@ -1212,20 +1092,6 @@ Reset
                       </>
                     );
                   })()}
-                  <More label="Look">
-                    <div className="row">
-                      <input type="color" title="Colour of the mark" value={r.colour ?? DEFAULT_ANGLE_LOOK.colour} onChange={(e) => changeAngle(index, { colour: e.target.value })} />
-                      opacity
-                      <input type="number" step={0.05} min={0.05} max={1} value={r.opacityText} onChange={(e) => changeAngle(index, { opacityText: e.target.value })} />
-                      size
-                      <input type="number" step={0.1} min={0.1} max={5} value={r.radiusText} onChange={(e) => changeAngle(index, { radiusText: e.target.value })} />
-                      Å
-                    </div>
-                    <label className="row">
-                      <input type="checkbox" data-testid={`angle-label-${index}`} checked={r.label ?? DEFAULT_ANGLE_LOOK.label} onChange={(e) => changeAngle(index, { label: e.target.checked })} />
-                      Write the angle beside it
-                    </label>
-                  </More>
                   <p className="sub" data-testid={`angle-count-${index}`}>{scene.sectors.filter((x) => x.rule === index).length} angles marked</p>
                 </div>
               ))}
@@ -1268,29 +1134,313 @@ Reset
               )}
             </Section>
             {largestMoment(structure) > 0 && (
-              <Section tab="content" title="Magnetic moments" hint="A moment is drawn as an arrow through its atom, centred on it. The arrow of the largest moment in the file has the length given here; the others are in proportion.">
+              <Section tab="structure" title="Magnetic moments" hint="A moment is drawn as an arrow through its atom, centred on it; the arrow of the largest moment has the length set under Visual, the others in proportion.">
                 <label className="row">
                   <input type="checkbox" data-testid="show-moments" checked={showMoments} onChange={(e) => setShowMoments(e.target.checked)} />
                   Arrows through the atoms
                 </label>
+                <p className="sub">Largest moment in the file: {largestMoment(structure).toFixed(2)} μB.</p>
+              </Section>
+            )}
+            <Section tab="visual" title="Look" hint="A preset sets the surfaces, outlines, lettering weight and legend sizes together; each can still be changed afterwards. The surfaces are vector shading only, so the figure stays an editable SVG.">
+              <div className="row">
+                preset
+                <select data-testid="style-preset" value="" onChange={(e) => applyPreset(e.target.value)}>
+                  <option value="">choose…</option>
+                  {Object.keys(PRESETS).map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="row">
+                atoms
+                {materialChoice("atom-material", atomMaterial, setAtomMaterial)}
+              </div>
+              <div className="row" title="Bonds are drawn as round rods that meet the atoms as a real rod would. Above 1,500 bonds they are drawn as plain strokes, which is much faster.">
+                bonds
+                {materialChoice("bond-material", bondMaterial, setBondMaterial)}
+              </div>
+              <div className="row">
+                arrows
+                {materialChoice("arrow-material", arrowMaterial, setArrowMaterial)}
+                <span className="sub">moment and axis arrows</span>
+              </div>
+              {[atomMaterial, bondMaterial, arrowMaterial].includes("glass") && (
+                <div className="row slider" title="How solid the glass is: to the left clearer, to the right less see-through. One setting for every glass surface.">
+                  glass
+                  <input type="range" min={0.05} max={1} step={0.05} data-testid="glass-solid" value={glassOpacity} onChange={(e) => setGlassOpacity(Number(e.target.value))} />
+                  <span className="sub">{Math.round(glassOpacity * 100)}% solid</span>
+                </div>
+              )}
+              <p className="sub">Outline</p>
+              <label className="row">
+                <input type="checkbox" data-testid="bond-outline" checked={bondOutline} onChange={(e) => setBondOutline(e.target.checked)} />
+                bonds
+              </label>
+              {largestMoment(structure) > 0 && (
+                <label className="row">
+                  <input type="checkbox" data-testid="moment-outline" checked={momentOutline} onChange={(e) => setMomentOutline(e.target.checked)} />
+                  moment arrows
+                </label>
+              )}
+              <label className="row">
+                <input type="checkbox" data-testid="axes-outline" checked={axesOutline} onChange={(e) => setAxesOutline(e.target.checked)} />
+                axis arrows
+              </label>
+            </Section>
+            <Section tab="visual" title="Atoms" hint="Colour and size of each element. A site shared by several elements is drawn as a pie whose wedges are the occupancies, clockwise from the top in the order given.">
+              {contents.elements.map((element) => {
+                const pure = contents.species.find((x) => x.key === element);
+                return (
+                  <div className="row" key={element} data-testid={`look-${element}`}>
+                    <input type="color" title={`Colour of ${element}`} value={elementColour(element, sceneLooks)} onChange={(e) => setLook(element, { colour: e.target.value })} />
+                    <b className="symbol">{element}</b>
+                    {pure && (
+                      <>
+                        radius
+                        <input
+                          type="number"
+                          step={0.05}
+                          min={0.05}
+                          max={5}
+                          data-testid={`radius-${element}`}
+                          value={looks[element]?.radiusText ?? speciesRadius(element, pure.components, {}).toFixed(2)}
+                          onChange={(e) => setLook(element, { radiusText: e.target.value })}
+                        />
+                        Å
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+              {contents.species.filter((x) => x.components.length > 1).map((x) => (
+                <div className="rule" key={x.key} data-testid={`look-${x.key}`}>
+                  <div className="row">
+                    name
+                    <input type="text" className="name" value={looks[x.key]?.name ?? x.key} onChange={(e) => setLook(x.key, { name: e.target.value })} />
+                  </div>
+                  <div className="row">
+                    wedges
+                    <input
+                      type="text"
+                      className="name"
+                      title="Order of the wedges, clockwise from the top: element symbols separated by spaces"
+                      data-testid={`order-${x.key}`}
+                      value={looks[x.key]?.orderText ?? x.components.map((c) => c.element).join(" ")}
+                      onChange={(e) => setLook(x.key, { orderText: e.target.value })}
+                    />
+                  </div>
+                  <div className="row">
+                    radius
+                    <input
+                      type="number"
+                      step={0.05}
+                      min={0.05}
+                      max={5}
+                      value={looks[x.key]?.radiusText ?? speciesRadius(x.key, x.components, {}).toFixed(2)}
+                      onChange={(e) => setLook(x.key, { radiusText: e.target.value })}
+                    />
+                    Å
+                  </div>
+                </div>
+              ))}
+              <label className="row">
+                <input type="checkbox" data-testid="show-vacancy" checked={showVacancy} onChange={(e) => setShowVacancy(e.target.checked)} />
+                Show a vacant share as an empty wedge
+              </label>
+              <div className="row">
+                <button data-testid="reset-looks" onClick={() => setLooks({})}>Reset colours and sizes</button>
+              </div>
+            </Section>
+            {bondRules.length > 0 && (
+              <Section tab="visual" title="Bonds" hint="Colour and thickness of each kind of bond. A highlight is a wide translucent band behind a connected group of bonds (a chain, a net); with one group chosen, the rule's other atoms and bonds are drawn pale. Fill triangles fills every three mutually bonded atoms.">
+                {bondRules.map((r, index) => (
+                  <div key={index} className="rule" data-testid={`bond-look-${index}`}>
+                    <div className="row">
+                      <input type="color" title="Colour of these bonds" value={r.colour ?? DEFAULT_STICK.colour} onChange={(e) => changeRule(index, { colour: e.target.value })} />
+                      <b>{nameOf(r.centre)}–{nameOf(r.neighbour)}</b>
+                      thickness
+                      <input
+                        type="number"
+                        step={0.02}
+                        min={0.02}
+                        max={2}
+                        data-testid={`bond-width-${index}`}
+                        value={r.widthText ?? String(DEFAULT_STICK.width)}
+                        onChange={(e) => changeRule(index, { widthText: e.target.value })}
+                      />
+                      Å
+                    </div>
+                    <label className="row">
+                      <input type="checkbox" data-testid={`bond-band-${index}`} checked={r.band ?? false} onChange={(e) => changeRule(index, { band: e.target.checked })} />
+                      Highlight band behind these bonds
+                    </label>
+                    {r.band && (scene?.ruleInfo[sceneRule(index)]?.groups ?? 0) > 1 && (
+                      <div className="row">
+                        highlight
+                        <select
+                          data-testid={`bond-chain-${index}`}
+                          value={r.chain ?? "all"}
+                          onChange={(e) => changeRule(index, { chain: e.target.value === "all" ? null : Number(e.target.value) })}
+                        >
+                          <option value="all">all chains</option>
+                          {Array.from({ length: Math.min(scene?.ruleInfo[sceneRule(index)]?.groups ?? 0, 60) }, (_, g) => (
+                            <option key={g} value={g}>
+                              chain {g + 1} only
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                    <label className="row">
+                      <input type="checkbox" data-testid={`bond-fill-${index}`} checked={r.fill ?? false} onChange={(e) => changeRule(index, { fill: e.target.checked })} />
+                      Fill triangles
+                    </label>
+                  </div>
+                ))}
+              </Section>
+            )}
+            {angleRules.length > 0 && (
+              <Section tab="visual" title="Angles" hint="The mark of each kind of angle: a translucent sector in the plane of the two bonds, from the apex atom's surface out to the size given, and optionally its value.">
+                {angleRules.map((r, index) => (
+                  <div key={index} className="rule" data-testid={`angle-look-${index}`}>
+                    <div className="row">
+                      <input type="color" title="Colour of the mark" value={r.colour ?? DEFAULT_ANGLE_LOOK.colour} onChange={(e) => changeAngle(index, { colour: e.target.value })} />
+                      <b>{nameOf(r.ends[0])}–{nameOf(r.centre)}–{nameOf(r.ends[1])}</b>
+                    </div>
+                    <div className="row">
+                      opacity
+                      <input type="number" step={0.05} min={0.05} max={1} value={r.opacityText} onChange={(e) => changeAngle(index, { opacityText: e.target.value })} />
+                      size
+                      <input type="number" step={0.1} min={0.1} max={5} value={r.radiusText} onChange={(e) => changeAngle(index, { radiusText: e.target.value })} />
+                      Å
+                    </div>
+                    <label className="row">
+                      <input type="checkbox" data-testid={`angle-label-${index}`} checked={r.label ?? DEFAULT_ANGLE_LOOK.label} onChange={(e) => changeAngle(index, { label: e.target.checked })} />
+                      Write the angle beside it
+                    </label>
+                  </div>
+                ))}
+              </Section>
+            )}
+            {largestMoment(structure) > 0 && (
+              <Section tab="visual" title="Moment arrows" hint="The arrow of the largest moment in the file has the length given here; the others are in proportion. The cone at the tip keeps its proportion to the rod; head scales it further.">
                 <div className="row">
                   <input type="color" title="Colour of the arrows" value={momentColour} onChange={(e) => setMomentColour(e.target.value)} />
                   length
                   <input type="number" step={0.25} min={0.25} max={20} data-testid="moment-length" value={momentLengthText} onChange={(e) => setMomentLengthText(e.target.value)} />
                   Å
                 </div>
-                <More label="More options">
-                  <div className="row">
-                    thickness
-                    <input type="number" step={0.02} min={0.02} max={2} data-testid="moment-thickness" title="Thickness of the rod. The cone at the tip keeps its proportion to it." value={momentThicknessText} onChange={(e) => setMomentThicknessText(e.target.value)} />
-                    Å
-                    head
-                    <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
-                  </div>
-                </More>
+                <div className="row">
+                  thickness
+                  <input type="number" step={0.02} min={0.02} max={2} data-testid="moment-thickness" title="Thickness of the rod. The cone at the tip keeps its proportion to it." value={momentThicknessText} onChange={(e) => setMomentThicknessText(e.target.value)} />
+                  Å
+                  head
+                  <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
+                </div>
               </Section>
             )}
-            <Section tab="style" title="Canvas" hint="Fit the frame: the figure is 1440 px wide and as high as the frame on the page makes it. Size on paper: the width and height you give, in cm or in; the SVG states that size, so a drawing program places it at exactly that size, and the PNG is that size at the dpi given under Save. Lines, spheres and the legend keep their proportions to the figure; text given in pt under Lettering keeps its size.">
+            <Section tab="visual" title="Unit cell" hint="The outline is drawn for every whole cell inside the range shown (none for a slab). Near and far: the edges in front of the middle of the structure are solid, those behind it paler and dashed, so the box reads as a solid.">
+              <label className="row">
+                <input type="checkbox" data-testid="show-cell" checked={showCell} onChange={(e) => setShowCell(e.target.checked)} />
+                Outline of the unit cell
+              </label>
+              {showCell && (
+                <div className="row" title="Near and far: the edges in front of the middle of the structure are solid, those behind it paler and dashed, so the box reads as a solid. Or all dashed, or all solid.">
+                  cell lines
+                  <select data-testid="cell-style" value={cellStyle} onChange={(e) => setCellStyle(e.target.value as CellStyle)}>
+                    <option value="depth">near solid, far dashed</option>
+                    <option value="dashed">all dashed</option>
+                    <option value="solid">all solid</option>
+                  </select>
+                  <input type="number" step={0.5} min={0.5} max={12} data-testid="cell-width" title="Line width in px of the figure" value={cellWidthText} onChange={(e) => setCellWidthText(e.target.value)} />
+                  px
+                </div>
+              )}
+            </Section>
+            <Section tab="visual" title="Legend" hint="The elements with a sphere of each colour, in the band under the structure.">
+              <label className="row">
+                <input type="checkbox" data-testid="show-legend" checked={showLegend} onChange={(e) => setShowLegend(e.target.checked)} />
+                Legend
+              </label>
+              <label className="row" title="The legend's spheres are drawn at the size of the atoms in the figure, and its letters in proportion, so the legend grows and shrinks with the zoom.">
+                <input type="checkbox" data-testid="legend-follows" checked={legendFollows} onChange={(e) => setLegendFollows(e.target.checked)} />
+                Legend follows the size of the structure
+              </label>
+              <div className="row" title="Size of the legend as a multiple of the usual size.">
+                size
+                <input type="number" step={0.1} min={0.2} max={4} data-testid="legend-size" value={legendSizeText} onChange={(e) => setLegendSizeText(e.target.value)} />×
+              </div>
+            </Section>
+            <Section tab="visual" title="Axes" hint="The arrows are the directions of the cell edges a, b, c. An arrow tilted out of the screen is drawn shorter.">
+              <label className="row">
+                <input type="checkbox" data-testid="show-axes" checked={showAxes} onChange={(e) => setShowAxes(e.target.checked)} />
+                Axes a, b, c
+              </label>
+              <div className="row" title="Size of the axis arrows with their letters, and of their cones, as multiples of the usual size.">
+                size
+                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-size" value={axesSizeText} onChange={(e) => setAxesSizeText(e.target.value)} />×
+                head
+                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-head" value={axesHeadText} onChange={(e) => setAxesHeadText(e.target.value)} />×
+              </div>
+              <label className="row" title="An axis that points mostly into or out of the page projects to a short stub. With this on it is drawn at least 0.45 of the full length, in its true direction on screen; with it off every arrow is the exact projection.">
+                <input type="checkbox" data-testid="axes-readable" checked={axesReadable} onChange={(e) => setAxesReadable(e.target.checked)} />
+                Keep short axis arrows readable
+              </label>
+            </Section>
+            <Section tab="visual" title="Lettering" hint="A text size in pt is exact in the saved figure: with a size on paper, 9 pt is 9 pt there; with Fit the frame, 1 px of the figure counts as 1 pt (as Keynote and Illustrator place an SVG). The font must be a font of this computer: the PNG is drawn from the SVG alone, which cannot use a font loaded by the page. Text stays live text in the SVG.">
+              <div className="row">
+                font
+                <select
+                  data-testid="font-family"
+                  value={customFont ? "other" : fontFamily}
+                  onChange={(e) => {
+                    setCustomFont(e.target.value === "other");
+                    if (e.target.value !== "other") setFontFamily(e.target.value);
+                  }}
+                >
+                  {FONT_GROUPS.map((g) => (
+                    <optgroup key={g.label} label={g.label}>
+                      {g.fonts.map((f) => (
+                        <option key={f} value={f}>
+                          {fontInstalled(f) ? f : `${f} (not installed)`}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                  <option value="other">Other…</option>
+                </select>
+                {customFont && (
+                  <input type="text" className="name" data-testid="font-custom" placeholder="Font name" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} />
+                )}
+              </div>
+              {!fontInstalled(fontFamily) && (
+                <p className="sub" data-testid="font-missing">
+                  “{fontFamily}” is not installed on this computer, so another font is shown here and in the PNG. The SVG keeps the name. Free fonts can be installed from fonts.google.com or github.com/IBM/plex; then reload this page.
+                </p>
+              )}
+              <div className="row">
+                weight
+                <select data-testid="letter-weight" value={letterWeight} onChange={(e) => setLetterWeight(Number(e.target.value))}>
+                  <option value={400}>regular</option>
+                  <option value={500}>medium</option>
+                  <option value={800}>heavy</option>
+                </select>
+              </div>
+              <p className="sub">Text size in pt (empty: in proportion to the legend or axes size; now {autoPt.legend}, {autoPt.axes}, {autoPt.angle} pt)</p>
+              <div className="row">
+                legend
+                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-legend" placeholder={`${autoPt.legend}`} value={fontPtText.legend} onChange={(e) => setFontPtText((t) => ({ ...t, legend: e.target.value }))} />
+                axes
+                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-axes" placeholder={`${autoPt.axes}`} value={fontPtText.axes} onChange={(e) => setFontPtText((t) => ({ ...t, axes: e.target.value }))} />
+                angles
+                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-angle" placeholder={`${autoPt.angle}`} value={fontPtText.angle} onChange={(e) => setFontPtText((t) => ({ ...t, angle: e.target.value }))} />
+                pt
+              </div>
+            </Section>
+            <Section tab="layout" title="Canvas" hint="Fit the frame: the figure is 1440 px wide and as high as the frame on the page makes it. Size on paper: the width and height you give, in cm or in; the SVG states that size, so a drawing program places it at exactly that size, and the PNG is that size at the dpi given under Save. Lines, spheres and the legend keep their proportions to the figure; text given in pt under Lettering keeps its size.">
               <div className="row">
                 size
                 <select
@@ -1370,135 +1520,7 @@ Reset
                 </p>
               )}
             </Section>
-            <Section tab="style" title="Look" hint="A preset sets the surfaces, outlines, lettering weight and legend sizes together; each can still be changed afterwards. The surfaces are vector shading only, so the figure stays an editable SVG.">
-              <div className="row">
-                preset
-                <select data-testid="style-preset" value="" onChange={(e) => applyPreset(e.target.value)}>
-                  <option value="">choose…</option>
-                  {Object.keys(PRESETS).map((name) => (
-                    <option key={name} value={name}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="row">
-                atoms
-                {materialChoice("atom-material", atomMaterial, setAtomMaterial)}
-              </div>
-              <div className="row" title="Bonds are drawn as round rods that meet the atoms as a real rod would. Above 1,500 bonds they are drawn as plain strokes, which is much faster.">
-                bonds
-                {materialChoice("bond-material", bondMaterial, setBondMaterial)}
-              </div>
-              <div className="row">
-                arrows
-                {materialChoice("arrow-material", arrowMaterial, setArrowMaterial)}
-                <span className="sub">moment and axis arrows</span>
-              </div>
-              {[atomMaterial, bondMaterial, arrowMaterial].includes("glass") && (
-                <div className="row slider" title="How solid the glass is: to the left clearer, to the right less see-through. One setting for every glass surface.">
-                  glass
-                  <input type="range" min={0.05} max={1} step={0.05} data-testid="glass-solid" value={glassOpacity} onChange={(e) => setGlassOpacity(Number(e.target.value))} />
-                  <span className="sub">{Math.round(glassOpacity * 100)}% solid</span>
-                </div>
-              )}
-              <p className="sub">Outline</p>
-              <label className="row">
-                <input type="checkbox" data-testid="bond-outline" checked={bondOutline} onChange={(e) => setBondOutline(e.target.checked)} />
-                bonds
-              </label>
-              {largestMoment(structure) > 0 && (
-                <label className="row">
-                  <input type="checkbox" data-testid="moment-outline" checked={momentOutline} onChange={(e) => setMomentOutline(e.target.checked)} />
-                  moment arrows
-                </label>
-              )}
-              <label className="row">
-                <input type="checkbox" data-testid="axes-outline" checked={axesOutline} onChange={(e) => setAxesOutline(e.target.checked)} />
-                axis arrows
-              </label>
-            </Section>
-            <Section tab="style" title="Legend" hint="The elements with a sphere of each colour, in the band under the structure.">
-              <label className="row">
-                <input type="checkbox" data-testid="show-legend" checked={showLegend} onChange={(e) => setShowLegend(e.target.checked)} />
-                Legend
-              </label>
-              <label className="row" title="The legend's spheres are drawn at the size of the atoms in the figure, and its letters in proportion, so the legend grows and shrinks with the zoom.">
-                <input type="checkbox" data-testid="legend-follows" checked={legendFollows} onChange={(e) => setLegendFollows(e.target.checked)} />
-                Legend follows the size of the structure
-              </label>
-              <div className="row" title="Size of the legend as a multiple of the usual size.">
-                size
-                <input type="number" step={0.1} min={0.2} max={4} data-testid="legend-size" value={legendSizeText} onChange={(e) => setLegendSizeText(e.target.value)} />×
-              </div>
-            </Section>
-            <Section tab="style" title="Axes" hint="The arrows are the directions of the cell edges a, b, c. An arrow tilted out of the screen is drawn shorter.">
-              <label className="row">
-                <input type="checkbox" data-testid="show-axes" checked={showAxes} onChange={(e) => setShowAxes(e.target.checked)} />
-                Axes a, b, c
-              </label>
-              <div className="row" title="Size of the axis arrows with their letters, and of their cones, as multiples of the usual size.">
-                size
-                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-size" value={axesSizeText} onChange={(e) => setAxesSizeText(e.target.value)} />×
-                head
-                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-head" value={axesHeadText} onChange={(e) => setAxesHeadText(e.target.value)} />×
-              </div>
-              <label className="row" title="An axis that points mostly into or out of the page projects to a short stub. With this on it is drawn at least 0.45 of the full length, in its true direction on screen; with it off every arrow is the exact projection.">
-                <input type="checkbox" data-testid="axes-readable" checked={axesReadable} onChange={(e) => setAxesReadable(e.target.checked)} />
-                Keep short axis arrows readable
-              </label>
-            </Section>
-            <Section tab="style" title="Lettering" hint="A text size in pt is exact in the saved figure: with a size on paper, 9 pt is 9 pt there; with Fit the frame, 1 px of the figure counts as 1 pt (as Keynote and Illustrator place an SVG). The font must be a font of this computer: the PNG is drawn from the SVG alone, which cannot use a font loaded by the page. Text stays live text in the SVG.">
-              <div className="row">
-                font
-                <select
-                  data-testid="font-family"
-                  value={customFont ? "other" : fontFamily}
-                  onChange={(e) => {
-                    setCustomFont(e.target.value === "other");
-                    if (e.target.value !== "other") setFontFamily(e.target.value);
-                  }}
-                >
-                  {FONT_GROUPS.map((g) => (
-                    <optgroup key={g.label} label={g.label}>
-                      {g.fonts.map((f) => (
-                        <option key={f} value={f}>
-                          {fontInstalled(f) ? f : `${f} (not installed)`}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                  <option value="other">Other…</option>
-                </select>
-                {customFont && (
-                  <input type="text" className="name" data-testid="font-custom" placeholder="Font name" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} />
-                )}
-              </div>
-              {!fontInstalled(fontFamily) && (
-                <p className="sub" data-testid="font-missing">
-                  “{fontFamily}” is not installed on this computer, so another font is shown here and in the PNG. The SVG keeps the name. Free fonts can be installed from fonts.google.com or github.com/IBM/plex; then reload this page.
-                </p>
-              )}
-              <div className="row">
-                weight
-                <select data-testid="letter-weight" value={letterWeight} onChange={(e) => setLetterWeight(Number(e.target.value))}>
-                  <option value={400}>regular</option>
-                  <option value={500}>medium</option>
-                  <option value={800}>heavy</option>
-                </select>
-              </div>
-              <p className="sub">Text size in pt (empty: in proportion to the legend or axes size; now {autoPt.legend}, {autoPt.axes}, {autoPt.angle} pt)</p>
-              <div className="row">
-                legend
-                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-legend" placeholder={`${autoPt.legend}`} value={fontPtText.legend} onChange={(e) => setFontPtText((t) => ({ ...t, legend: e.target.value }))} />
-                axes
-                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-axes" placeholder={`${autoPt.axes}`} value={fontPtText.axes} onChange={(e) => setFontPtText((t) => ({ ...t, axes: e.target.value }))} />
-                angles
-                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-angle" placeholder={`${autoPt.angle}`} value={fontPtText.angle} onChange={(e) => setFontPtText((t) => ({ ...t, angle: e.target.value }))} />
-                pt
-              </div>
-            </Section>
-            <Section tab="view" title="Direction" hint="The view is four numbers: the cell axis that is up, turn about it, tilt (from above when positive) and roll about the line of sight. The line under the figure always shows them, and the nearest low-index direction. A direction given here points at you.">
+            <Section tab="layout" title="Direction" hint="The view is four numbers: the cell axis that is up, turn about it, tilt (from above when positive) and roll about the line of sight. The line under the figure always shows them, and the nearest low-index direction. A direction given here points at you.">
               <div className="row">
                 up
                 <select data-testid="view-up" value={upAxis} onChange={(e) => applyNumbers({ ...numbers, up: Number(e.target.value) as Axis, turn: Number(numberText.turn), tilt: Number(numberText.tilt), roll: Number(numberText.roll) })}>
@@ -1542,24 +1564,7 @@ Reset
               </div>
               {viewNote && <p className="sub">{viewNote}</p>}
               </Section>
-            <Section tab="view" closed title="Dragging" hint="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the axes of the screen, any way round. Alt + drag rolls the picture in both.">
-              <div className="row">
-                drag
-                <select data-testid="drag-mode" value={dragMode} onChange={(e) => setDragMode(e.target.value as "turntable" | "free")} title="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the screen's axes, any way round.">
-                  <option value="turntable">turntable (up axis stays up)</option>
-                  <option value="free">free</option>
-                </select>
-              </div>
-              <label className="row" title={`Releasing a drag within ${SNAP_DEGREES} degrees of a low-index direction ([u v w] or a plane normal, indices up to 2) clicks the view onto it.`}>
-                <input type="checkbox" data-testid="snap" checked={snap} onChange={(e) => setSnap(e.target.checked)} />
-                Snap to low-index directions on release
-              </label>
-              <label className="row" title="A short turn on screen when the view changes by a click, so you can follow the axes. It is never part of the saved figure.">
-                <input type="checkbox" data-testid="animate" checked={animate} onChange={(e) => setAnimate(e.target.checked)} />
-                Animate a change of view
-              </label>
-              </Section>
-            <Section tab="view" closed title="Scale" hint="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure of a series.">
+            <Section tab="layout" closed title="Scale" hint="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure of a series.">
               <div className="row">
                 scale
                 <select data-testid="scale-mode" value={scaleMode} onChange={(e) => setScaleMode(e.target.value as "outline" | "steady" | "fixed")} title="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure.">
@@ -1575,7 +1580,7 @@ Reset
                 )}
               </div>
               </Section>
-            <Section tab="view" closed title="Saved views" hint="Kept in this browser. A view is its four numbers (axis up, turn, tilt, roll), so it means the same axes in another structure. Paste a line copied from under the figure to use a view again.">
+            <Section tab="layout" closed title="Saved views" hint="Kept in this browser. A view is its four numbers (axis up, turn, tilt, roll), so it means the same axes in another structure. Paste a line copied from under the figure to use a view again.">
                 
                 {savedViews.map((v, k) => (
                   <div className="row" key={`${v.name}-${k}`}>
@@ -1617,7 +1622,24 @@ Reset
                   Keep the view when another file is loaded
                 </label>
               </Section>
-            <Section tab="view" closed title="Large structures" hint="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
+            <Section tab="layout" closed title="Dragging" hint="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the axes of the screen, any way round. Alt + drag rolls the picture in both.">
+              <div className="row">
+                drag
+                <select data-testid="drag-mode" value={dragMode} onChange={(e) => setDragMode(e.target.value as "turntable" | "free")} title="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the screen's axes, any way round.">
+                  <option value="turntable">turntable (up axis stays up)</option>
+                  <option value="free">free</option>
+                </select>
+              </div>
+              <label className="row" title={`Releasing a drag within ${SNAP_DEGREES} degrees of a low-index direction ([u v w] or a plane normal, indices up to 2) clicks the view onto it.`}>
+                <input type="checkbox" data-testid="snap" checked={snap} onChange={(e) => setSnap(e.target.checked)} />
+                Snap to low-index directions on release
+              </label>
+              <label className="row" title="A short turn on screen when the view changes by a click, so you can follow the axes. It is never part of the saved figure.">
+                <input type="checkbox" data-testid="animate" checked={animate} onChange={(e) => setAnimate(e.target.checked)} />
+                Animate a change of view
+              </label>
+              </Section>
+            <Section tab="layout" closed title="Large structures" hint="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
               <label className="row" title="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
                 <input type="checkbox" data-testid="smooth" checked={smooth} onChange={(e) => setSmooth(e.target.checked)} />
                 Smooth movement for large structures
@@ -1750,24 +1772,15 @@ function Controls({ active, turntable, snap }: { active: ControlId | null; turnt
 }
 
 /** A card of the side column that can be folded away. The "?" holds the longer explanation. */
-/** Controls that are needed less often, folded away under one line. */
-function More({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <details className="more">
-      <summary>{label}</summary>
-      {children}
-    </details>
-  );
-}
 
-type TabId = "crystal" | "content" | "view" | "style";
+type TabId = "info" | "structure" | "visual" | "layout";
 const TABS: { id: TabId; label: string }[] = [
-  { id: "crystal", label: "Crystal" },
-  { id: "content", label: "Content" },
-  { id: "view", label: "View" },
-  { id: "style", label: "Style" },
+  { id: "info", label: "Info" },
+  { id: "structure", label: "Structure" },
+  { id: "visual", label: "Visual" },
+  { id: "layout", label: "Layout" },
 ];
-const TabContext = createContext<TabId>("crystal");
+const TabContext = createContext<TabId>("structure");
 
 /**
  * A group of controls in the side column, shown when its tab is the open one. It can be folded away, and
