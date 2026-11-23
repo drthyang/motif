@@ -23,7 +23,7 @@
   --gap: 20px;
   --inset: 2px;
   --edge: 24px;
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-family: "MOTIF UI", system-ui, sans-serif;
   font-size: var(--fz-body);
   color: var(--ink);
   /* Old names still used by the markup. */

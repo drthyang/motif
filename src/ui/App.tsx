@@ -1427,10 +1427,14 @@ Reset
                     if (e.target.value !== "other") setFontFamily(e.target.value);
                   }}
                 >
-                  {FONTS.map((f) => (
-                    <option key={f} value={f}>
-                      {f}
-                    </option>
+                  {FONT_GROUPS.map((g) => (
+                    <optgroup key={g.label} label={g.label}>
+                      {g.fonts.map((f) => (
+                        <option key={f} value={f}>
+                          {fontInstalled(f) ? f : `${f} (not installed)`}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                   <option value="other">Other…</option>
                 </select>
@@ -1440,7 +1444,7 @@ Reset
               </div>
               {!fontInstalled(fontFamily) && (
                 <p className="sub" data-testid="font-missing">
-                  “{fontFamily}” is not installed on this computer, so another font is shown here and in the PNG. The SVG keeps the name.
+                  “{fontFamily}” is not installed on this computer, so another font is shown here and in the PNG. The SVG keeps the name. Free fonts can be installed from fonts.google.com or github.com/IBM/plex; then reload this page.
                 </p>
               )}
               <div className="row">
@@ -1653,7 +1657,16 @@ const PREVIEW_LIMIT = QUERY.get("preview") === "all" ? 0 : PREVIEW_FROM;
 const SETTLE_MS = Number(QUERY.get("settle")) > 0 ? Number(QUERY.get("settle")) : 180;
 
 /** Fonts offered for the lettering. All are fonts of the computer, not of the page: the PNG is drawn from the SVG alone. */
-const FONTS = ["Avenir", "Avenir Next", "Helvetica Neue", "Helvetica", "Arial", "Gill Sans", "Futura", "Optima", "Verdana", "DejaVu Sans", "DejaVu Sans Condensed", "Times New Roman", "Georgia", "Palatino", "Menlo"];
+/**
+ * Fonts offered for the lettering, in groups. Each must be installed on the computer to be seen (the PNG is
+ * drawn from the SVG alone); the free ones can be had from Google Fonts or IBM's Plex repository.
+ */
+const FONT_GROUPS: { label: string; fonts: string[] }[] = [
+  { label: "macOS", fonts: ["Avenir", "Avenir Next", "Helvetica Neue", "Helvetica", "Arial", "Gill Sans", "Futura", "Optima", "Verdana", "Times New Roman", "Georgia", "Palatino", "Menlo"] },
+  { label: "Google Fonts (free)", fonts: ["Open Sans", "Roboto", "Lato", "Source Sans 3", "Noto Sans", "Inter", "Montserrat"] },
+  { label: "IBM Plex (free)", fonts: ["IBM Plex Sans", "IBM Plex Sans Condensed", "IBM Plex Serif", "IBM Plex Mono"] },
+  { label: "DejaVu (free)", fonts: ["DejaVu Sans", "DejaVu Sans Condensed"] },
+];
 
 /**
  * Whether this computer has a font of that name: text set in it is measured against the same text in two

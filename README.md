@@ -22,7 +22,8 @@ npm run build    # a static site in dist/
 ```
 
 Built with TypeScript, Vite and React; the page's font (IBM Plex Sans, OFL licence) is part of the
-build, so the page makes no request to any other site. The CIF reader and symmetry code are MOTIF's own
+build, so the page makes no request to any other site. The page loads it under a private name, so that
+it does not count as installed when it is chosen for the figure. The CIF reader and symmetry code are MOTIF's own
 (adapted from the author's MATERIA) and are checked against gemmi: `scripts/gemmi_reference.py`
 writes the reference atom lists in `tests/reference/`.
 
@@ -86,7 +87,8 @@ writes the reference atom lists in `tests/reference/`.
 - Legend and axes share a band under the structure. The axis arrows are the directions of the cell
   edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
   no letter. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). The font can be chosen
-  from a list or typed by name; it must be a font of the computer (the PNG is drawn from the SVG
+  from a list (macOS fonts, and free ones from Google Fonts, IBM Plex and DejaVu; those not installed
+  are marked) or typed by name; it must be a font of the computer (the PNG is drawn from the SVG
   alone, which cannot use a font loaded by the page), and the page says when it is missing. Text stays live
   text in the SVG; on a system without Avenir the letters look different, the drawing does not.
 - Magnetic CIF (reading approved by the user, 2026-11-22): the magnetic group is every product of an operation and a centring translation,
