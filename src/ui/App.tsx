@@ -68,6 +68,16 @@ export function App() {
   const lastPhysical = useRef<PhysicalSize>({ width: 8.5, height: 6.5, unit: "cm" });
   if (canvasSizeOk) lastPhysical.current = { width: canvasSize[0], height: canvasSize[1], unit: canvasUnit };
   const physical: PhysicalSize | null = canvasFixed ? lastPhysical.current : null;
+  // The shape of the canvas: free (the frame's shape, or the width and height as typed) or a chosen
+  // width : height, turned upright with "portrait".
+  const [aspect, setAspect] = useState("free");
+  const [portrait, setPortrait] = useState(false);
+  const ratioOf = (key: string, upright: boolean): number | null => {
+    const r = ASPECTS.find((a) => a.key === key)?.ratio ?? null;
+    return r === null ? null : upright ? 1 / r : r;
+  };
+  const ratio = ratioOf(aspect, portrait);
+  const short = (x: number): string => `${+x.toFixed(3)}`;
   // Text sizes in pt; empty = automatic.
   const [fontPtText, setFontPtText] = useState<{ legend: string; axes: string; angle: string }>({ legend: "", axes: "", angle: "" });
   const fontPt = (text: string): number | null => {
@@ -466,7 +476,9 @@ export function App() {
       const width = DEFAULT_CANVAS.width;
       const height = physical
         ? Number(((width * physical.height) / physical.width).toFixed(2))
-        : Math.max(CANVAS_MIN_HEIGHT, Math.min(CANVAS_MAX_HEIGHT, Math.round((width * el.clientHeight) / el.clientWidth)));
+        : ratio !== null
+          ? Number((width / ratio).toFixed(2))
+          : Math.max(CANVAS_MIN_HEIGHT, Math.min(CANVAS_MAX_HEIGHT, Math.round((width * el.clientHeight) / el.clientWidth)));
       setCanvas((c) =>
         c.width === width && c.height === height && c.physical === (physical ?? undefined) ? c : { ...c, width, height, physical: physical ?? undefined },
       );
@@ -478,7 +490,7 @@ export function App() {
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [scene !== null, physical]);
+  }, [scene !== null, physical, ratio]);
   // The preview is shown once the worker has drawn a frame of this movement; until then the last full figure stays.
   const previewLive = previewing && firstFrame > 0 && preview.drawn >= firstFrame;
   // The page shows the figure as two layers: the structure, and on top of it the legend and axes. While the
@@ -1257,7 +1269,7 @@ Reset
                     // Start from a single-column width with the shape the figure has now.
                     if (fixed && !canvasFixed) {
                       const w = canvasUnit === "cm" ? 8.5 : 3.35;
-                      setCanvasSizeText([`${w}`, `${+((w * canvas.height) / canvas.width).toFixed(2)}`]);
+                      setCanvasSizeText([`${w}`, short(ratio !== null ? w / ratio : (w * canvas.height) / canvas.width)]);
                     }
                     setCanvasFixed(fixed);
                   }}
@@ -1267,11 +1279,43 @@ Reset
                 </select>
                 {!canvasFixed && <span className="sub">{canvas.width} × {canvas.height} px</span>}
               </div>
+              <div className="row">
+                shape
+                <select
+                  data-testid="canvas-aspect"
+                  value={aspect}
+                  title="Width : height of the figure. Free: the frame's shape, or the width and height as typed."
+                  onChange={(e) => {
+                    const r = ratioOf(e.target.value, portrait);
+                    if (canvasFixed && r !== null) setCanvasSizeText((t) => [t[0], short(Number(t[0]) / r)]);
+                    setAspect(e.target.value);
+                  }}
+                >
+                  {ASPECTS.map((a) => (
+                    <option key={a.key} value={a.key}>
+                      {a.label}
+                    </option>
+                  ))}
+                </select>
+                {(aspect !== "free" || canvasFixed) && (
+                  <button
+                    data-testid="canvas-swap"
+                    className={portrait ? "on" : ""}
+                    title="Landscape or portrait: swap width and height"
+                    onClick={() => {
+                      setPortrait((p) => !p);
+                      if (canvasFixed) setCanvasSizeText((t) => [t[1], t[0]]);
+                    }}
+                  >
+                    ⇄ {portrait ? "portrait" : "landscape"}
+                  </button>
+                )}
+              </div>
               {canvasFixed && (
                 <div className="row">
-                  <input type="number" step={0.1} min={sideMin} max={sideMax} data-testid="canvas-width" title="Width of the figure" value={canvasSizeText[0]} onChange={(e) => setCanvasSizeText((t) => [e.target.value, t[1]])} />
+                  <input type="number" step={0.1} min={sideMin} max={sideMax} data-testid="canvas-width" title="Width of the figure" value={canvasSizeText[0]} onChange={(e) => { const v = e.target.value; setCanvasSizeText((t) => [v, ratio !== null && Number(v) > 0 ? short(Number(v) / ratio) : t[1]]); }} />
                   ×
-                  <input type="number" step={0.1} min={sideMin} max={sideMax} data-testid="canvas-height" title="Height of the figure" value={canvasSizeText[1]} onChange={(e) => setCanvasSizeText((t) => [t[0], e.target.value])} />
+                  <input type="number" step={0.1} min={sideMin} max={sideMax} data-testid="canvas-height" title="Height of the figure" value={canvasSizeText[1]} onChange={(e) => { const v = e.target.value; setCanvasSizeText((t) => [ratio !== null && Number(v) > 0 ? short(Number(v) * ratio) : t[0], v]); }} />
                   <select
                     data-testid="canvas-unit"
                     value={canvasUnit}
@@ -1286,9 +1330,6 @@ Reset
                     <option value="cm">cm</option>
                     <option value="in">in</option>
                   </select>
-                  <button title="Swap width and height" data-testid="canvas-swap" onClick={() => setCanvasSizeText((t) => [t[1], t[0]])}>
-                    ⇄
-                  </button>
                 </div>
               )}
               {canvasFixed && !canvasSizeOk && (
@@ -1582,6 +1623,19 @@ const PRESETS: Record<string, { atoms: Material; bonds: Material; arrows: Materi
   Metal: { atoms: "metal", bonds: "metal", arrows: "metal", outlines: true, bondOutline: false, weight: 500, legendSize: 1, axesSize: 1 },
   Glass: { atoms: "glass", bonds: "soft", arrows: "soft", outlines: false, bondOutline: false, weight: 400, legendSize: 1, axesSize: 1 },
 };
+/** Shapes of the canvas, width : height (landscape; "portrait" turns them upright). */
+const ASPECTS: { key: string; label: string; ratio: number | null }[] = [
+  { key: "free", label: "free", ratio: null },
+  { key: "1:1", label: "1 : 1", ratio: 1 },
+  { key: "5:4", label: "5 : 4", ratio: 5 / 4 },
+  { key: "4:3", label: "4 : 3", ratio: 4 / 3 },
+  { key: "3:2", label: "3 : 2", ratio: 3 / 2 },
+  { key: "A", label: "√2 : 1 (A4 paper)", ratio: Math.SQRT2 },
+  { key: "16:10", label: "16 : 10", ratio: 16 / 10 },
+  { key: "16:9", label: "16 : 9 (slide)", ratio: 16 / 9 },
+  { key: "2:1", label: "2 : 1", ratio: 2 },
+];
+
 /** Limits of the canvas height (its width is 1440): a very flat or very tall window still gives a usable figure. */
 const CANVAS_MIN_HEIGHT = 620;
 const CANVAS_MAX_HEIGHT = 2600;

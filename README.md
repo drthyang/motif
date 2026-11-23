@@ -56,7 +56,9 @@ writes the reference atom lists in `tests/reference/`.
   2026-11-23): the drawing is then 1440 units wide with that shape, the SVG states the size
   (`width="8.5cm"`), so a drawing program places it at exactly that size, and the PNG is that size at
   a chosen dpi (300 by default), with the dpi written in the file. The page shows the whole canvas,
-  as large as the frame allows.
+  as large as the frame allows. A shape can be chosen in either case (1:1, 5:4, 4:3, 3:2, √2:1, 16:10,
+  16:9, 2:1, landscape or portrait); with a size on paper the height then follows the width and the
+  width the height.
 - Text sizes (legend names, axis letters, angle labels) can each be given in pt, and are then exact
   in the saved figure, whatever the legend or axes size and the paper size. Left empty, a text size
   follows the legend or axes size as before. Without a size on paper, 1 px of the figure counts as
