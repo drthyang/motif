@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 import { expandToUnitCell } from "../src/structure/expand";
 import { fractionalToCartesian } from "../src/structure/cell";
 import { isRmc6f, readRmc6f } from "../src/structure/readRmc6f";
+import { atomsInRange } from "../src/scene/select";
+import { parseSymmetryOperation } from "../src/structure/symmetry";
 import type { Structure } from "../src/structure/types";
 
 /**
@@ -171,5 +173,24 @@ describe("folding an RMC configuration into one cell", () => {
     const s = readRmc6f(folded(), "f.rmc6f");
     expect(s.sites.length).toBe(8);
     expect(s.rmc).toMatchObject({ folded: false });
+  });
+});
+
+describe("edges of a folded cell", () => {
+  it("an averaged site within 0.01 of a cell edge is drawn on both edges, at its measured position; elsewhere 0.001 holds", () => {
+    const site = { label: "Sn1", element: "Sn", frac: [0.995, 0.995, 0.9988] as [number, number, number], occupancy: 1 };
+    const base: Structure = {
+      name: "t",
+      cell: { a: 5, b: 5, c: 4, alpha: 90, beta: 90, gamma: 120 },
+      operations: [parseSymmetryOperation("x,y,z")],
+      sites: [site],
+      magnetic: false,
+    };
+    const range = { from: [0, 0, 0] as [number, number, number], to: [1, 1, 1] as [number, number, number], boundary: "both" as const };
+    const folded = atomsInRange({ ...base, rmc: { supercell: [10, 10, 12], folded: true } }, range).atoms;
+    expect(folded.length).toBe(8); // all eight corners
+    // Positions are the measured average and its images, not snapped to the edge.
+    expect(new Set(folded.map((a) => a.frac[2]!.toFixed(4)))).toEqual(new Set(["0.9988", "-0.0012"]));
+    expect(atomsInRange(base, range).atoms.length).toBe(1); // an ordinary structure keeps 0.001
   });
 });
