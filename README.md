@@ -69,6 +69,9 @@ writes the reference atom lists in `tests/reference/`.
   as large as the frame allows. A shape can be chosen in either case (1:1, 5:4, 4:3, 3:2, √2:1, 16:10,
   16:9, 2:1, landscape or portrait); with a size on paper the height then follows the width and the
   width the height.
+- When a text size is given in pt, the legend's spheres and gaps and the axis arrows follow it, keeping the
+  proportions they were designed with (legend sphere radius 44 to letters 92; axis 140 to letters 76), and the
+  band under the structure shrinks or grows with them; the size settings scale them relative to the text.
 - Text sizes (legend names, axis letters, angle labels) can each be given in pt, and are then exact
   in the saved figure, whatever the legend or axes size and the paper size. Left empty, a text size
   follows the legend or axes size as before. Without a size on paper, 1 px of the figure counts as

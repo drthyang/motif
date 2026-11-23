@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { crc32 as zlibCrc32 } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { crc32, withResolution } from "../src/render/png";
-import { DEFAULT_CANVAS, ptPerUnit, renderSvg, type Canvas } from "../src/render/svg";
+import { AXES_FONT, AXIS_LENGTH, axisArrows, BAND, bandHeight, DEFAULT_CANVAS, LEGEND_FONT, legendLayout, ptPerUnit, renderSvg, structureHeight, type Canvas } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
 import { buildScene, DEFAULT_SPEC } from "../src/scene/scene";
 import { readCif } from "../src/structure/readCif";
@@ -58,6 +58,30 @@ describe("size on paper", () => {
     const svg = renderSvg(buildScene(halite), DEFAULT_VIEW, DEFAULT_CANVAS);
     expect(sizes(svg, "legend")).toEqual([92, 92]);
     expect(new Set(axisSizes(svg))).toEqual(new Set([76]));
+  });
+});
+
+describe("legend and axes follow their text size in pt", () => {
+  it("at 7 pt the largest legend sphere keeps its designed ratio to the text (44 : 92), and the axes theirs (140 : 76)", () => {
+    const scene = buildScene(halite, { ...DEFAULT_SPEC, legendFontPt: 7, axesFontPt: 7 });
+    const items = legendLayout(scene, paper, 1e9);
+    const largest = Math.max(...items.map((i) => i.r));
+    expect(items[0]!.fontSize * unitPt).toBeCloseTo(7, 9);
+    expect(largest / items[0]!.fontSize).toBeCloseTo(44 / LEGEND_FONT, 9);
+    // An axis lying in the screen plane: its full length relative to the letters.
+    const fontUnits = 7 / unitPt;
+    const longest = Math.max(...axisArrows(scene, DEFAULT_VIEW, paper).map((a) => Math.hypot(a.dx, a.dy)));
+    expect(longest).toBeLessThanOrEqual((AXIS_LENGTH * fontUnits) / AXES_FONT + 1e-9);
+    expect(longest).toBeGreaterThan(0.5 * (AXIS_LENGTH * fontUnits) / AXES_FONT);
+  });
+
+  it("the band under the structure shrinks with them, and the structure gets the room", () => {
+    const usual = buildScene(halite);
+    const small = buildScene(halite, { ...DEFAULT_SPEC, legendFontPt: 7, axesFontPt: 7 });
+    expect(bandHeight(usual, paper)).toBe(BAND);
+    const k = Math.max(7 / unitPt / LEGEND_FONT, 7 / unitPt / AXES_FONT);
+    expect(bandHeight(small, paper)).toBeCloseTo(BAND * k, 9);
+    expect(structureHeight(small, paper)).toBeGreaterThan(structureHeight(usual, paper));
   });
 });
 

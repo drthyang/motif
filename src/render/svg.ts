@@ -261,9 +261,29 @@ export const AXIS_COLOUR = "#5c6b74";
 /** Height in px of the band under the structure that holds the legend and the axes. */
 export const BAND = 200;
 
+/**
+ * The scale of the legend (spheres, gaps, letters) and of the axes (arrows and letters), 1 being their usual size
+ * on a 1440-unit canvas. When a text size is given in pt, everything else follows the text, so the proportions
+ * the legend and axes were designed with hold at any text size; the size setting then scales them relative to it.
+ */
+export function legendScale(scene: Scene, canvas: Canvas): number {
+  const k = scene.legendSize ?? 1;
+  return scene.legendFontPt ? (textSize(scene.legendFontPt, LEGEND_FONT, canvas) / LEGEND_FONT) * k : k;
+}
+export function axesScale(scene: Scene, canvas: Canvas): number {
+  const k = scene.axesSize ?? 1;
+  return scene.axesFontPt ? (textSize(scene.axesFontPt, AXES_FONT, canvas) / AXES_FONT) * k : k;
+}
+
+/** Height of the band under the structure: its usual height, scaled with the larger of the legend and the axes. */
+export function bandHeight(scene: Scene, canvas: Canvas): number {
+  const scales = [...(scene.legend.length > 0 ? [legendScale(scene, canvas)] : []), ...(scene.axes.length > 0 ? [axesScale(scene, canvas)] : [])];
+  return scales.length ? BAND * Math.min(1.5, Math.max(...scales)) : 0;
+}
+
 /** Height of the part of the canvas the structure is fitted into: all of it, less the band when there is a legend or axes. */
 export function structureHeight(scene: Scene, canvas: Canvas): number {
-  return canvas.height - (scene.legend.length > 0 || scene.axes.length > 0 ? BAND : 0);
+  return canvas.height - bandHeight(scene, canvas);
 }
 
 /** How the structure is placed on the canvas: px per angstrom, and where the scene's centre lands, in px. */
@@ -769,7 +789,7 @@ export function legendLayout(scene: Scene, canvas: Canvas, available: number, px
   const largest = Math.max(...scene.legend.map((e) => scene.styles[e.style]!.radius));
   // Following the structure: the largest legend sphere is as large as that atom is drawn (within what the
   // band can hold), and everything else in the legend is in proportion to it.
-  const follow = (scene.legendSize ?? 1) * (pxPerAngstrom === undefined ? 1 : Math.max(LEGEND_FOLLOW_MIN, Math.min(LEGEND_FOLLOW_MAX, (largest * pxPerAngstrom) / 44)));
+  const follow = legendScale(scene, canvas) * (pxPerAngstrom === undefined ? 1 : Math.max(LEGEND_FOLLOW_MIN, Math.min(LEGEND_FOLLOW_MAX, (largest * pxPerAngstrom) / 44)));
   const place = (shrink: number): { items: LegendItem[]; end: number } => {
     const k = shrink * follow;
     const items: LegendItem[] = [];
@@ -779,7 +799,7 @@ export function legendLayout(scene: Scene, canvas: Canvas, available: number, px
       // A text size given in pt is kept exactly; only the spheres and gaps shrink if the row does not fit.
       const fontSize = textSize(scene.legendFontPt, LEGEND_FONT * k, canvas);
       const textX = x + 2 * r + 22 * k;
-      items.push({ style: e.style, name: e.name, x: x + r, y: canvas.height - 92, r, textX, fontSize });
+      items.push({ style: e.style, name: e.name, x: x + r, y: canvas.height - 92 * Math.min(1.5, legendScale(scene, canvas)), r, textX, fontSize });
       x = textX + textWidth(e.name, fontSize) + 70 * k;
     }
     return { items, end: x - 70 * k };
@@ -806,10 +826,10 @@ export interface AxisArrow {
 export const AXIS_LENGTH = 140;
 
 /** The three axis arrows as seen in this view, relative to their common origin. */
-export function axisArrows(scene: Scene, view: View): AxisArrow[] {
+export function axisArrows(scene: Scene, view: View, canvas: Canvas = DEFAULT_CANVAS): AxisArrow[] {
   return scene.axes.map((axis) => {
     const p = mulVec(view, axis.direction);
-    const length = AXIS_LENGTH * (scene.axesSize ?? 1);
+    const length = AXIS_LENGTH * axesScale(scene, canvas);
     return { name: axis.name, dx: p[0] * length, dy: -p[1] * length, depth: p[2] };
   });
 }
@@ -831,19 +851,19 @@ const AXIS_HEAD_WIDTH = 29;
  * shapes with gradients.
  */
 function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs: string; left: number } {
-  const exact = axisArrows(scene, view);
+  const exact = axisArrows(scene, view, canvas);
   if (exact.length === 0) return { svg: "", defs: "", left: canvas.width };
   // An arrow that points mostly into or out of the page projects to a stub that is hard to read. Unless that
   // is switched off, such an arrow is drawn at least AXIS_MIN_LENGTH of the full length, in its true
   // direction on screen. (An arrow seen exactly end on has no direction on screen and stays a point.)
-  const full = AXIS_LENGTH * (scene.axesSize ?? 1);
+  const full = AXIS_LENGTH * axesScale(scene, canvas);
   const arrows = exact.map((a) => {
     const n = Math.hypot(a.dx, a.dy);
     if (scene.axesKeepReadable === false || n < 0.12 * full || n >= AXIS_MIN_LENGTH * full) return a;
     return { ...a, dx: (a.dx / n) * AXIS_MIN_LENGTH * full, dy: (a.dy / n) * AXIS_MIN_LENGTH * full };
   });
   // Every size of the triad follows the chosen size: arrow length and thickness, head, letters.
-  const k = scene.axesSize ?? 1;
+  const k = axesScale(scene, canvas);
   const headSize = k * (scene.axesHeadSize ?? 1);
   const [lengthPx, shaftPx, headPx, headWidthPx] = [AXIS_LENGTH * k, AXIS_SHAFT * k, AXIS_HEAD * headSize, AXIS_HEAD_WIDTH * headSize];
   const fontSize = textSize(scene.axesFontPt, AXES_FONT * k, canvas);
