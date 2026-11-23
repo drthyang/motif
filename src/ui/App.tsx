@@ -826,7 +826,6 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="mark">MOTIF</span>
-          <span className="tagline">Crystal Structure Visualizer</span>
         </div>
         <div className="actions">
           <label className="button primary">

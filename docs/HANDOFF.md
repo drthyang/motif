@@ -1,7 +1,7 @@
-# MOTIF handoff (2026-11-23)
+# MOTIF handoff (2026-11-23, evening)
 
 For the next session, on any computer. Read `CLAUDE.md` first: it has the working rules and the decisions
-already taken by the user. This note is the state of play.
+already taken by the user. This note is the state of play. README.md lists every convention.
 
 ## Start
 
@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play.
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 243 tests, about one second
+npx tsc -b && npx vitest run    # 269 tests, about two seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -20,46 +20,37 @@ PLAYWRIGHT=/path/to/node_modules/playwright-core node scripts/browser_check.cjs
 
 It must end with `all browser checks passed`. It relies on the `data-testid`s, `.figure-wrap`,
 `[data-testid=layer-structure]`, `[data-testid=layer-band]` and the tabs `tab-info|structure|visual|layout`.
+It was not run on 2026-11-23 (no Playwright on that computer).
 
 ## What MOTIF is now
 
-Browser-only tool for publication-quality vector figures of crystal structures from CIF/mCIF (tagline
-"Crystal Structure Visualizer", under the name in the header). SVG is the source of truth; PNG is drawn from the same SVG.
-Three parts: `src/structure` (file to atoms), `src/scene` (what is shown, plain data), `src/render`
-(scene + view to SVG), plus `src/preview` (GPU drawing while a large structure moves) and `src/ui`.
-README.md lists every convention.
+A browser-only tool for vector figures of crystal structures. The user said on 2026-11-23 that the app is
+in good shape. Every step of the README's table is done.
 
-Built and pushed: the seven planned steps; magnetic moments (verified against pymatgen and Bilbao);
-bond angles; camera (turntable, views along [uvw]/(hkl), snapping, saved views); zoom; GPU preview;
-surfaces (soft, flat, glossy, metal, glass; glass 75 % solid by default); rods through spheres;
-auto bonds on load; style presets; distortion modes from ISODISTORT CIFs; figure size on paper and
-text in pt; canvas aspect ratios; font list.
-
-Latest changes (2026-11-23):
-- Axis arrows a, b, c in their own colours (muted red, green, blue), pickers per axis, a grey option
-  (Visual tab, Axes).
-- Colour of filled bond triangles can be chosen (Visual tab, Bonds, after "Fill triangles").
-- Displacement arrows: the largest is 2.5 Å long by default (the user's choice).
-- Page style: the user asked for the manner of the MFA Boston website, then "a bit more soft touch".
-  Now in `src/ui/app.css`: bold tight lettering (IBM Plex Sans, self-hosted as "MOTIF UI"), warm
-  near-black ink `#1b1a18`, one dark rule under the header, light hairlines elsewhere, rounded corners
-  (6 px), outlined buttons with grey hover, one soft yellow `#fff27a` for Open file, ▶ section markers.
-  The user has not yet said whether this blend is right: show it and ask.
+- Reads CIF, magnetic CIF, ISODISTORT CIFs (distortion modes) and RMCProfile `.rmc6f` configurations
+  (whole supercell as P1, or folded into one cell with each site the plain average of its copies).
+- SVG is the source of truth; PNG is drawn from the same SVG. Three parts: `src/structure` (file to
+  atoms), `src/scene` (what is shown, plain data), `src/render` (scene + view to SVG), plus `src/preview`
+  (GPU drawing while a large structure moves) and `src/ui`.
+- The page: header with the name MOTIF only; four tabs: Info, Structure (what is drawn), Visual (how it
+  looks), Layout (canvas, view, saved settings); one text scale (12/13/14/15 px); labels in one column.
+- Defaults (the user's): a Nature single column, 89 mm, 4:3; Open Sans; text 7 pt, with the legend and
+  axes in proportion to it; displacement arrows green, 1.5 A; moment arrows with the tail 80 % of the head
+  side; up to 100,000 atoms.
 
 ## Open questions for the user (none blocking)
 
-- Is the softened museum style right, or more/less soft?
-- Camera defaults never confirmed hands-on (tilt limit ±90°, snapping, animation, scale "fit each view").
-- Should cell lines stop at the surface of glass atoms? Should the Paper preset keep bond outlines?
-- Proposed, not started: click an atom or bond in the figure to edit it; undo/redo; save and reload a
-  figure set-up.
-- Firefox not yet tested.
+- A subtitle for the header was tried and removed; "Science, with an eye for design" and similar were
+  offered. The browser tab still says "MOTIF · Crystal Structure Visualizer".
+- Proposed, not started: click an atom or bond in the figure to edit it; undo/redo; symmetrize a folded RMC
+  cell with a space group (RMCProfile Workbench has the method).
+- Firefox not yet tested; the browser check not run since the latest changes.
 
 ## Rules that are easy to break
 
-- Data rule (strict): the user's unpublished structures and the two reference slide figures stay on the
-  user's computer only. Never copy them in, never commit them, never name those compounds in the repo.
-  The user's own mCIF used to check moment directions is local only too.
+- Data rule (strict): the user's unpublished structures, their RMC configurations and the reference slide
+  figures stay on the user's computer only (`local/`, git-ignored). Never copy them in, never commit them,
+  never name those compounds in the repo, commit messages included.
 - No mCIF from MAGNDATA or any database in the repo before the user agrees the licence.
 - Commit and push to `main` (repo is private); no tags or releases; no paid API calls; do not edit other repos.
 - The user is the only author of every commit: no `Co-Authored-By` trailer and no "Generated with" line
@@ -70,4 +61,4 @@ Latest changes (2026-11-23):
 - Others also push to `main`: `git pull --rebase` before pushing.
 - Architecture or physics questions go to the user as an explicit question with a recommendation.
 - The user gives short visual feedback, often with a screenshot. Check each change in a screenshot
-  before reporting it.
+  before reporting it, at more than one window width.

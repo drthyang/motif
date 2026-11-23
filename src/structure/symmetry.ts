@@ -162,13 +162,3 @@ export function applyOperation(op: SymmetryOperation, pos: Vec3): Vec3 {
     rotated[2] + op.translation[2],
   ];
 }
-
-/** Whether two fractional positions are one point of the lattice, coordinate by coordinate, within `tol`. */
-export function almostEqualFractional(a: Vec3, b: Vec3, tol = 1e-5): boolean {
-  for (let i = 0; i < 3; i++) {
-    let diff = Math.abs(a[i]! - b[i]!);
-    diff = Math.min(diff, 1 - diff); // periodic distance
-    if (diff > tol) return false;
-  }
-  return true;
-}

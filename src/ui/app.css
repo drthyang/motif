@@ -46,14 +46,12 @@ body { margin: 0; background: var(--page); }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--gap); flex-wrap: nowrap; padding: 12px var(--edge); border-bottom: 1px solid var(--rule); }
 .brand { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
 .mark { font-weight: 700; font-size: 26px; line-height: 1; letter-spacing: -0.045em; }
-.tagline { color: var(--secondary); font-weight: 500; font-size: 13px; letter-spacing: 0; line-height: 1; white-space: nowrap; }
 .actions { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; }
 .actions > select { width: 170px; flex: 0 1 170px; min-width: 110px; }
 .actions .unit { white-space: nowrap; }
 /* Nothing in the header wraps its own words: a button or label keeps its width, only the Examples menu shrinks. */
 .actions > *:not(select) { flex: none; }
 button, .button { white-space: nowrap; }
-.divider { width: 1px; align-self: stretch; background: var(--line); margin: 0 6px; }
 .joined { display: inline-flex; align-items: center; gap: 6px; }
 .unit { color: var(--faint); font-size: var(--fz-small); }
 .check { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-size: var(--fz-small); }
@@ -121,7 +119,6 @@ kbd { font: inherit; font-size: 11px; line-height: 1.45; padding: 0 5px; color: 
 .examples { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; margin: 22px 0; }
 .examples button { padding: 6px 14px; height: 36px; text-transform: none; }
 .examples button:hover { background: var(--accent); }
-.faint { color: var(--faint); font-size: var(--fz-small); }
 
 /* The side column: tabs as bold words with a black bar under the open one; sections divided by thin rules. */
 .side { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); }
@@ -169,13 +166,6 @@ label.row input { margin-top: 3px; flex: none; }
 .axis { width: 12px; font-weight: 600; font-style: italic; color: var(--ink); }
 .symbol { width: 26px; }
 .rule { border: 0; background: var(--muted); border-radius: 8px; padding: 8px 12px; margin: 10px 0; }
-.more { margin: 8px 0 2px; }
-.more > summary { cursor: pointer; color: var(--ink); font-weight: 600; font-size: var(--fz-small); list-style: none; padding: 2px 0; }
-.more > summary:hover { text-decoration: underline; text-underline-offset: 3px; }
-.more > summary::-webkit-details-marker { display: none; }
-.more > summary::before { content: "▶"; display: inline-block; font-size: 8px; margin-right: 7px; vertical-align: 1px; transition: transform 0.15s; }
-.more[open] > summary::before { transform: rotate(90deg); }
-.more[open] > summary { margin-bottom: 6px; }
 
 /* Controls: square, black outline, bold words. A button turns black under the pointer. */
 button, .button, select, input[type="number"], input[type="text"] { font: inherit; font-size: var(--fz-control); padding: 4px 9px; height: 30px; border: 1px solid var(--control); border-radius: var(--radius); background: var(--surface); color: var(--ink); }

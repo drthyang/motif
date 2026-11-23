@@ -253,12 +253,17 @@ writes the reference atom lists in `tests/reference/`.
 | 2 | Choose what is shown: how many cells, or a slab | done |
 | 3 | Bonds by distance for chosen element pairs; the unit cell | done |
 | 4 | Colour and size per element; pie spheres for mixed sites | done |
-| 5 | Legend and axis triad | built, awaiting the user's check |
-| 6 | mCIF: magnetic moments as arrows | built, awaiting the user's check |
-| 7 | Highlights: a band along a chain, filled polygons | built, awaiting the user's check |
-| 10 | Camera: view as numbers, turntable drag, crystal directions, snapping, saved views, steady scale, animated turn | built, awaiting the user's check |
-| 8 | Interface pass: bring the page in line with MATERIA's look, and improve on it | second pass built (tabs, toolbar over the figure, example buttons), awaiting the user's check |
-| 9 | Bond angles: a translucent sector between two bonds, with the angle written beside it | built, awaiting the user's check |
+| 5 | Legend and axis triad | done (reviewed in use by the user, 2026-11-23) |
+| 6 | mCIF: magnetic moments as arrows | done (reviewed in use, 2026-11-23) |
+| 7 | Highlights: a band along a chain, filled polygons | done (reviewed in use, 2026-11-23) |
+| 8 | Interface: four tabs (Info, Structure, Visual, Layout), toolbar over the figure, one text scale | done (reviewed in use, 2026-11-23) |
+| 9 | Bond angles: a translucent sector between two bonds, with the angle written beside it | done (reviewed in use, 2026-11-23) |
+| 10 | Camera: view as numbers, turntable drag, crystal directions, snapping, saved and preset views | done (reviewed in use, 2026-11-23) |
+| 11 | Distortion modes from ISODISTORT CIFs; arrows drawn as moments or displacements | done (2026-11-23) |
+| 12 | RMCProfile configurations (.rmc6f): the whole supercell as P1, or folded into one averaged cell | done (2026-11-23) |
+| 13 | Figure size on paper, aspect ratios, text in pt (defaults: Nature single column, 4:3, 7 pt) | done (2026-11-23) |
+| 14 | Saved settings: named, kept in the browser, exported and imported as a file | done (2026-11-23) |
+| 15 | Bond styles: atom colours, dashed and dotted; filled triangles cut to the gap | done (2026-11-23) |
 
 Each step is checked against an independent reference before the next one starts.
 
