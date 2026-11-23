@@ -39,6 +39,12 @@ writes the reference atom lists in `tests/reference/`.
   drawn mirrored), and so is a file with an unreadable atom line, a non-finite coordinate or a wrong atom
   count, rather than drawn with atoms missing. Vacancies (`Va`) are left out and counted. The atom-line
   grammar is adapted from the author's RMCProfile Workbench.
+  A configuration can also be folded into one cell (Structure tab), as RMCProfile Workbench does: each atom is
+  moved into one cell (supercell fraction x N, its fractional part), the copies of a site are grouped by the
+  file's site numbers (by distance, 0.5 A, in a file without them), and the site is drawn at their average:
+  the circular mean per axis as a centre (so a site on a cell edge is found), plus the mean offset of the
+  copies from it. Each element's share of the copies is its occupancy (vacancies count), so a site shared by
+  two elements is a pie sphere. The Info tab gives the largest rms spread of a site's copies.
 - The symmetry operations are taken from the file and checked to form a complete group.
   A file that gives only a space-group symbol is refused, not guessed.
 - What is shown is a range of fractional coordinates along *a*, *b*, *c*. By default an atom on the

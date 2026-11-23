@@ -73,6 +73,9 @@ function rangeFromText(text: readonly string[], boundary: BoundaryRule): Range |
 
 export function App() {
   const [structure, setStructure] = useState<Structure | null>(null);
+  // The file as last opened, so an RMC configuration can be read again folded or whole.
+  const lastFile = useRef<{ text: string; name: string } | null>(null);
+  const foldRmc = useRef(false);
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
   const [view, setView] = useState<View>(DEFAULT_VIEW);
@@ -359,8 +362,9 @@ export function App() {
   const keepViewRef = useRef(false);
   keepViewRef.current = keepView;
   const load = useCallback((text: string, name: string) => {
+    lastFile.current = { text, name };
     try {
-      const read = isRmc6f(text, name) ? readRmc6f(text, name) : readCif(text);
+      const read = isRmc6f(text, name) ? readRmc6f(text, name, { fold: foldRmc.current }) : readCif(text);
       buildScene(read); // fail here, with a message, rather than while drawing
       lastScene.current = null;
       setStructure(read);
@@ -1079,6 +1083,9 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   {largestMoment(structure) > 0 && (
                     <tr><td>Largest moment</td><td data-testid="largest-moment">{largestMoment(structure).toFixed(2)} μB</td></tr>
                   )}
+                  {structure.rmc?.folded && (
+                    <tr><td>Folded from</td><td data-testid="rmc-info">{structure.rmc.supercell.join(" × ")} cells; copies found by {structure.rmc.grouping}; largest rms spread of a site {structure.rmc.largestSpread?.toFixed(3)} Å</td></tr>
+                  )}
                   {structure.distortion && (
                     <tr><td>Distortion</td><td data-testid="distortion-info">{[...new Set(structure.distortion.modes.map((m) => modeName(m.label).irrep))].join(", ")} of the parent; largest displacement {largestDisplacement(structure).toFixed(3)} Å</td></tr>
                   )}
@@ -1086,6 +1093,25 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 </tbody>
               </table>
             </Section>
+            {structure.rmc && (
+              <Section tab="structure" title="RMC configuration" hint="An RMCProfile configuration is a supercell with every atom listed. Whole supercell: every atom as it is, with no symmetry (P1). Folded into one cell: each atom moved into one cell, and each site drawn at the average position of its copies (grouped by the file's site numbers), with each element's share of the copies as its occupancy, so a site shared by two elements is a pie sphere. The average is that of RMCProfile Workbench.">
+                {(["whole", "folded"] as const).map((mode) => (
+                  <label className="row" key={mode}>
+                    <input
+                      type="radio"
+                      name="rmc-fold"
+                      data-testid={`rmc-${mode}`}
+                      checked={structure.rmc!.folded === (mode === "folded")}
+                      onChange={() => {
+                        foldRmc.current = mode === "folded";
+                        if (lastFile.current) load(lastFile.current.text, lastFile.current.name);
+                      }}
+                    />
+                    {mode === "whole" ? `Whole supercell (${structure.rmc!.supercell.join(" × ")} cells, P1)` : "Folded into one cell, each site averaged"}
+                  </label>
+                ))}
+              </Section>
+            )}
             <Section tab="structure" title="Cells shown" hint="The part of the crystal that is drawn: a range along each cell axis, in units of the cell edge. Whole numbers give whole cells; a narrow range gives a slab. An atom within 0.001 of a limit counts as on it.">
               {AXES.map((axis, i) => (
                 <div className="row" key={axis}>

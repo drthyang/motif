@@ -85,6 +85,15 @@ export interface Structure {
   readonly magnetic: boolean;
   /** Present for an ISODISTORT file with displacive modes. */
   readonly distortion?: Distortion;
+  /** Present for an RMCProfile configuration: its supercell, and whether it was folded into one cell. */
+  readonly rmc?: {
+    readonly supercell: readonly [number, number, number];
+    readonly folded: boolean;
+    /** How the copies of a site were found when folding: by the file's site numbers, or by distance. */
+    readonly grouping?: "site numbers" | "distance";
+    /** Largest rms spread of a site's copies about their average, in angstrom (folded only). */
+    readonly largestSpread?: number;
+  };
 }
 
 export interface Component {

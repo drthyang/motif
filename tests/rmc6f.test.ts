@@ -111,3 +111,65 @@ describe("RMCProfile configuration (.rmc6f), read as P1", () => {
     expect(s.spaceGroupName).toMatch(/1 vacancy left out/);
   });
 });
+
+describe("folding an RMC configuration into one cell", () => {
+  /**
+   * A 2 x 2 x 1 supercell (a = 8 A, c = 4 A) of a two-site cell: site 1 at the corner (0, 0, 0), site 2 at
+   * (1/2, 1/2, 1/2). Each copy of site 1 is moved by +-0.01 of the small cell along x and y, so some copies sit
+   * just below 1 (that is, near 0 from the other side); the copies of site 2 move by +-0.02 along z. Site 2 holds
+   * Na in three copies and K in one.
+   */
+  function folded(withSites = true): string {
+    const lines: string[] = [];
+    let n = 0;
+    const shifts = [[0.01, 0.01, 0], [-0.01, 0.01, 0], [0.01, -0.01, 0], [-0.01, -0.01, 0]];
+    let k = 0;
+    for (const i of [0, 1]) for (const j of [0, 1]) {
+      const s = shifts[k]!;
+      const corner = [(i + s[0]! + 1) % 2, (j + s[1]! + 1) % 2, 0].map((x, axis) => (axis < 2 ? x / 2 : x));
+      n += 1;
+      lines.push(`${n} Cl [1] ${corner.map((x) => x.toFixed(6)).join(" ")}${withSites ? ` 1 ${i} ${j} 0` : ""}`);
+      const element = k === 3 ? "K" : "Na";
+      const centre = [(i + 0.5) / 2, (j + 0.5) / 2, 0.5 + (k % 2 ? 0.02 : -0.02)];
+      n += 1;
+      lines.push(`${n} ${element} [2] ${centre.map((x) => x.toFixed(6)).join(" ")}${withSites ? ` 2 ${i} ${j} 0` : ""}`);
+      k += 1;
+    }
+    return ["(Version 6f format configuration file)", `Number of atoms: ${n}`, "Supercell dimensions: 2 2 1", "Lattice vectors (Ang):", " 8 0 0", " 0 8 0", " 0 0 4", "Atoms:", ...lines].join("\n");
+  }
+
+  it("each site is the average of its copies, a corner site lands at 0 (not 1/2), and shares become occupancies", () => {
+    const s = readRmc6f(folded(), "f.rmc6f", { fold: true });
+    expect([s.cell.a, s.cell.b, s.cell.c]).toEqual([4, 4, 4]);
+    expect(s.rmc).toMatchObject({ folded: true, grouping: "site numbers", supercell: [2, 2, 1] });
+    const cl = s.sites.find((x) => x.element === "Cl")!;
+    // The +-0.01 shifts cancel: the corner, whichever side of 0 its copies sit.
+    for (const v of cl.frac) expect(Math.min(v, 1 - v)).toBeCloseTo(0, 9);
+    expect(cl.occupancy).toBe(1);
+    const na = s.sites.find((x) => x.element === "Na")!;
+    const kk = s.sites.find((x) => x.element === "K")!;
+    expect(na.frac.map((v) => +v.toFixed(9))).toEqual([0.5, 0.5, 0.5]);
+    expect(kk.frac).toEqual(na.frac);
+    expect([na.occupancy, kk.occupancy]).toEqual([0.75, 0.25]);
+    // The shared site is one atom with two components (a pie sphere).
+    const atoms = expandToUnitCell(s).atoms;
+    expect(atoms.length).toBe(2);
+    expect(atoms.find((a) => a.components.length === 2)!.species).toBe("Na/K");
+    // Spread: the corner copies are 0.01 x 4 x sqrt(2) = 0.0566 A from the average, the others 0.02 x 4 = 0.08 A.
+    expect(s.rmc!.largestSpread).toBeCloseTo(0.08, 6);
+  });
+
+  it("without site numbers the copies are grouped by distance, with the same result", () => {
+    const bySite = readRmc6f(folded(true), "f.rmc6f", { fold: true });
+    const byDistance = readRmc6f(folded(false), "f.rmc6f", { fold: true });
+    expect(byDistance.rmc!.grouping).toBe("distance");
+    const key = (s: Structure) => s.sites.map((x) => `${x.element} ${x.frac.map((v) => Math.min(v, 1 - v).toFixed(6)).join(",")} ${x.occupancy}`).sort();
+    expect(key(byDistance)).toEqual(key(bySite));
+  });
+
+  it("the whole supercell is still read as P1 when not folded", () => {
+    const s = readRmc6f(folded(), "f.rmc6f");
+    expect(s.sites.length).toBe(8);
+    expect(s.rmc).toMatchObject({ folded: false });
+  });
+});

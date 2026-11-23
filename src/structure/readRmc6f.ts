@@ -16,6 +16,7 @@
  */
 
 import { elementFromLetters } from "./elements";
+import { orthogonalizationMatrix } from "./cell";
 import { parseSymmetryOperation } from "./symmetry";
 import type { Cell, Site, Structure } from "./types";
 
@@ -40,7 +41,7 @@ export function isRmc6f(text: string, fileName = ""): boolean {
   return /\.rmc6f$/i.test(fileName) || /\(Version 6f format configuration file\)/i.test(text.slice(0, 200));
 }
 
-type AtomLine = { kind: "atom"; element: string; frac: [number, number, number] } | { kind: "nonFinite" } | { kind: "invalid" };
+type AtomLine = { kind: "atom"; element: string; frac: [number, number, number]; site: number | null } | { kind: "nonFinite" } | { kind: "invalid" };
 
 /** One atom line: `id element [label] x y z [ref i j k]` (the grammar of RMCProfile Workbench). */
 function atomLine(parts: string[], supercell: readonly number[] | null): AtomLine {
@@ -65,8 +66,10 @@ function atomLine(parts: string[], supercell: readonly number[] | null): AtomLin
   if (data.length !== 3 && data.length !== 7) return invalid;
   const coords = data.slice(0, 3).map(fortranNumber);
   if (coords.some((v) => v === null)) return invalid;
+  let site: number | null = null;
   if (data.length === 7) {
     const ints = data.slice(3).map((t) => (INTEGER_RE.test(t) ? Number(t) : null));
+    site = ints[0] ?? null;
     if (ints[0] === null || ints[0]! < 1) return invalid;
     for (let axis = 0; axis < 3; axis++) {
       const c = ints[axis + 1];
@@ -74,11 +77,17 @@ function atomLine(parts: string[], supercell: readonly number[] | null): AtomLin
     }
   }
   if (!coords.every((v) => Number.isFinite(v))) return { kind: "nonFinite" };
-  return { kind: "atom", element, frac: coords as [number, number, number] };
+  return { kind: "atom", element, frac: coords as [number, number, number], site };
 }
 
-/** Read an RMCProfile configuration. `fileName` names the structure when the file's title is blank. */
-export function readRmc6f(text: string, fileName = "configuration"): Structure {
+/** Copies of one site closer than this (angstrom, in the folded cell) are grouped when the file gives no site numbers. */
+export const FOLD_DISTANCE = 0.5;
+
+/**
+ * Read an RMCProfile configuration. `fileName` names the structure when the file's title is blank. With `fold`,
+ * the supercell is folded into one cell and each site is the average of its copies (see foldSites).
+ */
+export function readRmc6f(text: string, fileName = "configuration", options: { fold?: boolean } = {}): Structure {
   const lines = text.split(LINE_BREAK);
   let declared: number | null = null;
   let supercell: number[] | null = null;
@@ -135,6 +144,7 @@ export function readRmc6f(text: string, fileName = "configuration"): Structure {
   }
 
   const sites: Site[] = [];
+  const parsedAtoms: { element: string; frac: [number, number, number]; site: number | null }[] = [];
   let vacancies = 0;
   let invalid = 0;
   let nonFinite = 0;
@@ -151,11 +161,13 @@ export function readRmc6f(text: string, fileName = "configuration"): Structure {
     }
     if (parsed.element === "Va") {
       vacancies++;
+      parsedAtoms.push({ element: "Va", frac: parsed.frac, site: parsed.site });
       continue;
     }
     const element = elementFromLetters(parsed.element);
     if (element === undefined || element.length !== parsed.element.length) throw new Error(`"${parsed.element}" (atom ${parts[0]}) is not an element symbol.`);
     sites.push({ label: `${element}${parts[0]}`, element, frac: parsed.frac, occupancy: 1 });
+    parsedAtoms.push({ element, frac: parsed.frac, site: parsed.site });
   }
   if (invalid > 0 || nonFinite > 0) {
     throw new Error(
@@ -167,6 +179,22 @@ export function readRmc6f(text: string, fileName = "configuration"): Structure {
   }
   if (sites.length === 0) throw new Error("The configuration holds no atoms.");
   const name = title || fileName.replace(/\.rmc6f$/i, "");
+  const n = supercell as [number, number, number];
+  if (options.fold) {
+    // One cell: the supercell's edges divided by its dimensions (rounded to 10 figures, so 52.6983 / 10 reads 5.26983).
+    const tidy = (x: number): number => Number(x.toPrecision(10));
+    const unit: Cell = { ...cell, a: tidy(cell.a / n[0]), b: tidy(cell.b / n[1]), c: tidy(cell.c / n[2]) };
+    const folded = foldSites(parsedAtoms, n, unit);
+    return {
+      name,
+      cell: unit,
+      spaceGroupName: `P1 (RMC configuration folded from ${n.join(" × ")} cells, the average of each site)`,
+      operations: [parseSymmetryOperation("x,y,z")],
+      sites: folded.sites,
+      magnetic: false,
+      rmc: { supercell: n, folded: true, grouping: folded.grouping, largestSpread: folded.largestSpread },
+    };
+  }
   return {
     name,
     cell,
@@ -174,5 +202,75 @@ export function readRmc6f(text: string, fileName = "configuration"): Structure {
     operations: [parseSymmetryOperation("x,y,z")],
     sites,
     magnetic: false,
+    rmc: { supercell: n, folded: false },
   };
+}
+
+/**
+ * The supercell folded into one cell, as in RMCProfile Workbench (structureFromRmc6f). Each atom's position in
+ * one cell is the fractional part of (supercell fraction x N). The copies of a site are the atoms with the same
+ * site number in the file (or, in a file without site numbers, the atoms within FOLD_DISTANCE of one another in
+ * the folded cell). A site's position is the average of its copies: their circular mean per axis gives a centre
+ * (so a site on a cell edge, near 0 and 1 at once, lands in the right place), and the plain mean of each copy's
+ * offset from that centre, taken to the nearest image, is added. Each element at a site gets the share of the
+ * copies it holds as its occupancy; vacancies (Va) count in the total, so they leave a vacant share.
+ */
+export function foldSites(
+  atoms: readonly { element: string; frac: readonly number[]; site: number | null }[],
+  supercell: readonly [number, number, number],
+  unit: Cell,
+): { sites: Site[]; grouping: "site numbers" | "distance"; largestSpread: number } {
+  const inCell = (f: readonly number[]): [number, number, number] =>
+    [0, 1, 2].map((i) => (((f[i]! * supercell[i]!) % 1) + 1) % 1) as [number, number, number];
+  const m = orthogonalizationMatrix(unit);
+  const toCart = (d: readonly number[]): [number, number, number] => [0, 1, 2].map((r) => m[r]![0]! * d[0]! + m[r]![1]! * d[1]! + m[r]![2]! * d[2]!) as [number, number, number];
+  const wrapped = (d: number): number => d - Math.round(d);
+  const bySiteNumber = atoms.every((a) => a.site !== null);
+  const groups = new Map<number, { members: [number, number, number][]; elements: Map<string, number> }>();
+  const add = (key: number, element: string, f: [number, number, number]): void => {
+    let g = groups.get(key);
+    if (!g) groups.set(key, (g = { members: [], elements: new Map() }));
+    g.members.push(f);
+    g.elements.set(element, (g.elements.get(element) ?? 0) + 1);
+  };
+  if (bySiteNumber) {
+    for (const a of atoms) add(a.site!, a.element, inCell(a.frac));
+  } else {
+    // No site numbers: a copy joins the first group whose first member is within FOLD_DISTANCE (nearest image).
+    const firsts: [number, number, number][] = [];
+    for (const a of atoms) {
+      const f = inCell(a.frac);
+      let key = firsts.findIndex((p) => Math.hypot(...toCart([wrapped(f[0] - p[0]), wrapped(f[1] - p[1]), wrapped(f[2] - p[2])])) < FOLD_DISTANCE);
+      if (key < 0) {
+        key = firsts.length;
+        firsts.push(f);
+      }
+      add(key, a.element, f);
+    }
+  }
+  const sites: Site[] = [];
+  let largestSpread = 0;
+  for (const [key, g] of [...groups.entries()].sort(([p], [q]) => p - q)) {
+    const centre = [0, 1, 2].map((i) => {
+      const [c, s] = g.members.reduce(([c, s], f) => [c + Math.cos(2 * Math.PI * f[i]!), s + Math.sin(2 * Math.PI * f[i]!)], [0, 0]);
+      const t = Math.atan2(s, c) / (2 * Math.PI);
+      return t - Math.floor(t);
+    });
+    const offsets = g.members.map((f) => [0, 1, 2].map((i) => wrapped(f[i]! - centre[i]!)));
+    const meanOffset = [0, 1, 2].map((i) => offsets.reduce((sum, d) => sum + d[i]!, 0) / offsets.length);
+    const mean = centre.map((c, i) => {
+      const x = c + meanOffset[i]!;
+      return x - Math.floor(x);
+    }) as [number, number, number];
+    // rms distance of the copies from their average, in angstrom.
+    const spread = Math.sqrt(offsets.reduce((sum, d) => sum + Math.hypot(...toCart(d.map((x, i) => x - meanOffset[i]!))) ** 2, 0) / offsets.length);
+    largestSpread = Math.max(largestSpread, spread);
+    const total = g.members.length;
+    for (const [element, count] of [...g.elements.entries()].sort(([, p], [, q]) => q - p)) {
+      if (element === "Va") continue;
+      sites.push({ label: `${element}${bySiteNumber ? key : key + 1}`, element, frac: mean, occupancy: count / total });
+    }
+  }
+  if (sites.length === 0) throw new Error("The folded configuration holds no atoms.");
+  return { sites, grouping: bySiteNumber ? "site numbers" : "distance", largestSpread };
 }
