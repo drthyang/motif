@@ -13,8 +13,8 @@ import {
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { type ArrowStyle, AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, DEFAULT_MOMENT_TAIL, DEFAULT_ORBITAL_COLOURS, DEFAULT_ORBITAL_SIZE, type Look, type OrbitalRule, type Scene } from "../scene/scene";
-import { ORBITALS } from "../scene/orbitals";
+import { type ArrowStyle, AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, DEFAULT_MOMENT_TAIL, DEFAULT_ORBITAL_COLOURS, DEFAULT_ORBITAL_OPACITY, DEFAULT_ORBITAL_SIZE, ORBITAL_SCHEMES, ORBITAL_TEXTURES, type OrbitalTexture, type Look, type OrbitalRule, type Scene } from "../scene/scene";
+import { DEFAULT_ISO, ORBITALS } from "../scene/orbitals";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
@@ -310,7 +310,7 @@ export function App() {
   const [angleHover, setAngleHover] = useState<{ rule: number; range: [number, number] } | null>(null);
   const changeAngle = (index: number, change: Partial<(typeof angleRules)[number]>) => setAngleRules((all) => all.map((x, i) => (i === index ? { ...x, ...change } : x)));
   // Orbitals on the atoms of chosen species (see scene/orbitals.ts); reset for each new file.
-  const [orbitalRules, setOrbitalRules] = useState<{ species: string; orbitals: string[]; sizeText: string; colours: [string, string]; opacityText: string; zText: string; xText: string }[]>([]);
+  const [orbitalRules, setOrbitalRules] = useState<{ species: string; orbitals: string[]; sizeText: string; colours: [string, string]; opacityText: string; iso: number; texture: OrbitalTexture; zText: string; xText: string }[]>([]);
   const [newOrbitalSpecies, setNewOrbitalSpecies] = useState("");
   const changeOrbitalRule = (index: number, change: Partial<(typeof orbitalRules)[number]>) => setOrbitalRules((all) => all.map((r, i) => (i === index ? { ...r, ...change } : r)));
   const sceneOrbitals = useMemo((): OrbitalRule[] => {
@@ -323,7 +323,9 @@ export function App() {
       orbitals: r.orbitals,
       size: Number(r.sizeText) > 0 && Number(r.sizeText) <= 20 ? Number(r.sizeText) : DEFAULT_ORBITAL_SIZE,
       colours: r.colours,
-      opacity: Number(r.opacityText) >= 0.05 && Number(r.opacityText) <= 1 ? Number(r.opacityText) : 1,
+      opacity: Number(r.opacityText) >= 0.05 && Number(r.opacityText) <= 1 ? Number(r.opacityText) : DEFAULT_ORBITAL_OPACITY,
+      iso: r.iso,
+      texture: r.texture,
       z: indices(r.zText),
       x: indices(r.xText),
     }));
@@ -1356,7 +1358,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 </div>
               )}
             </Section>
-            <Section tab="structure" title="Orbitals" hint="The textbook angular picture of an atomic orbital: the surface r ∝ |Y|² of a real spherical harmonic, its lobes coloured by the sign of Y. The axes are MOTIF's (x along a, y in the a–b plane, z along c*), or a local frame: z along a crystal direction [u v w] you give (towards a ligand, say), x along a second one. Size and colours are under Visual.">
+            <Section tab="structure" title="Orbitals" hint="A schematic of each orbital: the isosurface of a hydrogen-like wavefunction of its kind (1s, 2p, 3d, 4f), its lobes coloured by the sign of the wavefunction; its isovalue, size and colours are under Visual. The axes are MOTIF's (x along a, y in the a–b plane, z along c*), or a local frame: z along a crystal direction [u v w] you give (towards a ligand, say), x along a second one. Size and colours are under Visual.">
               {orbitalRules.map((r, index) => (
                 <div key={index} className="rule" data-testid={`orbital-${index}`}>
                   <div className="row">
@@ -1407,7 +1409,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   data-testid="add-orbital"
                   disabled={!newOrbitalSpecies}
                   onClick={() => {
-                    setOrbitalRules((all) => [...all, { species: newOrbitalSpecies, orbitals: ["dz2"], sizeText: String(DEFAULT_ORBITAL_SIZE), colours: [...DEFAULT_ORBITAL_COLOURS] as [string, string], opacityText: "1", zText: "", xText: "" }]);
+                    setOrbitalRules((all) => [...all, { species: newOrbitalSpecies, orbitals: ["dz2"], sizeText: String(DEFAULT_ORBITAL_SIZE), colours: [...DEFAULT_ORBITAL_COLOURS] as [string, string], opacityText: String(DEFAULT_ORBITAL_OPACITY), iso: DEFAULT_ISO, texture: "soft", zText: "", xText: "" }]);
                     setNewOrbitalSpecies("");
                   }}
                 >
@@ -1712,7 +1714,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
               </Section>
             )}
             {orbitalRules.length > 0 && (
-              <Section tab="visual" title="Orbitals" hint="Size: how far the largest lobe reaches from the atom's centre. The two colours are the lobes where the orbital is positive and negative. Opacity below 1 lets atoms and bonds show through.">
+              <Section tab="visual" title="Orbitals" hint="Size: how far the orbital reaches from the atom's centre. Isovalue: where the surface is drawn, as a share of the largest |ψ|; low gives full, rounded lobes, high slim ones. The two colours are the lobes where the orbital is positive and negative. Opacity: below 1 the atoms and bonds show through (0.6 by default).">
                 {orbitalRules.map((r, index) => (
                   <div key={index} className="rule" data-testid={`orbital-look-${index}`}>
                     <div className="row">
@@ -1724,12 +1726,46 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                       <input type="number" step={0.1} min={0.1} max={20} data-testid={`orbital-size-${index}`} value={r.sizeText} onChange={(e) => changeOrbitalRule(index, { sizeText: e.target.value })} />
                       <span className="unit">Å</span>
                     </div>
+                    <div className="row" title="Soft: gentle light and shade. Flat: one colour per lobe. Glossy: a bright highlight. Mesh: a pale surface with its grid lines, as in a classic orbital plot.">
+                      <span className="lab">surface</span>
+                      <select data-testid={`orbital-texture-${index}`} value={r.texture} onChange={(e) => changeOrbitalRule(index, { texture: e.target.value as OrbitalTexture })}>
+                        {ORBITAL_TEXTURES.map((t) => (
+                          <option key={t} value={t}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="row" title="A ready-made pair for the positive and negative lobes; each can then be changed below.">
+                      <span className="lab">scheme</span>
+                      <select
+                        className="grow"
+                        data-testid={`orbital-scheme-${index}`}
+                        value={ORBITAL_SCHEMES.find((x) => x.colours[0] === r.colours[0] && x.colours[1] === r.colours[1])?.name ?? ""}
+                        onChange={(e) => {
+                          const scheme = ORBITAL_SCHEMES.find((x) => x.name === e.target.value);
+                          if (scheme) changeOrbitalRule(index, { colours: [...scheme.colours] as [string, string] });
+                        }}
+                      >
+                        <option value="">own colours</option>
+                        {ORBITAL_SCHEMES.map((x) => (
+                          <option key={x.name} value={x.name}>
+                            {x.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <div className="row">
                       <span className="lab">lobes</span>
                       <input type="color" title="Where the orbital is positive" value={r.colours[0]} onChange={(e) => changeOrbitalRule(index, { colours: [e.target.value, r.colours[1]] })} />
                       <span className="unit">+</span>
                       <input type="color" title="Where the orbital is negative" value={r.colours[1]} onChange={(e) => changeOrbitalRule(index, { colours: [r.colours[0], e.target.value] })} />
                       <span className="unit">−</span>
+                    </div>
+                    <div className="row slider" title="The isosurface |ψ| = value × the largest |ψ| of a schematic hydrogen-like orbital (1s, 2p, 3d, 4f): low gives full, rounded lobes, high slim ones. The size keeps the overall reach.">
+                      <span className="lab">isovalue</span>
+                      <input type="range" min={0.05} max={0.9} step={0.05} data-testid={`orbital-iso-${index}`} value={r.iso} onChange={(e) => changeOrbitalRule(index, { iso: Number(e.target.value) })} />
+                      <span className="sub">{r.iso.toFixed(2)}</span>
                     </div>
                     <div className="row">
                       <span className="lab">opacity</span>

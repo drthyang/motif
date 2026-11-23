@@ -2,11 +2,14 @@
 // Copyright (C) 2026 Tsung-Han Yang
 
 /**
- * Atomic orbitals as the textbook angular picture (the user's choices, 2026-11-23): the surface
- *   r(theta, phi) = size x Y(theta, phi)^2 / max Y^2
- * of a real spherical harmonic Y, its lobes coloured by the sign of Y. The harmonics are written as polynomials in
- * the unit vector (x, y, z); their constant factors do not matter, since each surface is scaled to its own largest
- * lobe. The f set is the general one (real combinations of Y_3m, m = -3..3).
+ * Atomic orbitals, schematic (the user's choices, 2026-11-23). An orbital is the isosurface |psi| = iso x max|psi| of
+ *   psi = R(r) Y(theta, phi),   R(r) = r^l exp(-r / n),   n = l + 1
+ * (the lowest shell of each kind: 1s, 2p, 3d, 4f, hydrogen-like, r in units of the Bohr radius), with Y a real
+ * spherical harmonic written as a polynomial in the unit vector (x, y, z); its constant factor does not matter.
+ * The isovalue `iso` (0 to 1) sets the shape: low gives full, rounded lobes, high slim ones. The surface is then
+ * scaled so its farthest point is at the chosen size from the atom's centre, and its lobes coloured by the sign of Y.
+ * A surface depends only on the orbital and the isovalue, so it is computed once and kept (orbitalUnitSurface).
+ * The f set is the general one (real combinations of Y_3m, m = -3..3).
  *
  * x, y, z are MOTIF's cartesian axes (x along a, y in the a-b plane, z along c*) unless an orbital rule gives a local
  * frame: z along a crystal direction [u v w], and x along a second one (its part perpendicular to z).
@@ -71,48 +74,100 @@ export function orbitalFrame(cell: Cell, z?: Vec3 | null, x?: Vec3 | null): Mat3
   return [xc, cross(zc, xc), zc];
 }
 
-/** One face of an orbital's surface: its four corners (cartesian, angstrom, about the atom) and the sign of Y there. */
+/** One face of an orbital's surface: its four corners (cartesian, angstrom, about the atom), the sign of Y there, and a
+ * direction out of the lobe there (away from the atom on its outer side, towards it on its inner side). */
 export interface OrbitalFace {
   readonly corners: readonly [Vec3, Vec3, Vec3, Vec3];
   readonly sign: 1 | -1;
+  readonly out: Vec3;
 }
 
 /** Steps in theta (pole to pole) and phi (round the axis) of the surface mesh. */
-export const MESH_THETA = 24;
-export const MESH_PHI = 48;
+export const MESH_THETA = 40;
+export const MESH_PHI = 80;
+/** The isovalue a new orbital starts with: lobes of the familiar shape. */
+export const DEFAULT_ISO = 0.3;
+
+const unitSurfaces = new Map<string, OrbitalFace[]>();
 
 /**
- * The surface r = size x Y^2 / max Y^2 as quadrilateral faces, in cartesian axes about the atom. `frame` holds the
- * orbital's x, y, z axes. Faces where the surface has shrunk to a point (on a node) are left out.
+ * The isosurface of one orbital at one isovalue, in its own axes, its farthest point at distance 1. Computed once
+ * and kept: atoms, rules and redraws share it. Along each direction (theta, phi) the radial part R(r) rises from the
+ * nucleus to its peak at r = l n and falls after it, so |psi| = c is met at most twice: on the lobe's inner side and on
+ * its outer side (an s orbital has no inner side). Where |Y| is too small for any r, there is no lobe; at the rim of a
+ * lobe both sides meet at the peak, which closes it.
  */
-export function orbitalSurface(kind: OrbitalKind, size: number, frame: Mat3): OrbitalFace[] {
+export function orbitalUnitSurface(kind: OrbitalKind, iso: number): OrbitalFace[] {
+  const key = `${kind.id}|${iso}`;
+  const kept = unitSurfaces.get(key);
+  if (kept) return kept;
+  const l = kind.l;
+  const n = l + 1;
+  const radial = (r: number): number => r ** l * Math.exp(-r / n);
+  const peak = l * n; // where R is largest (0 for s)
+  const rMax = radial(peak);
   const dir = (t: number, p: number): Vec3 => [Math.sin(t) * Math.cos(p), Math.sin(t) * Math.sin(p), Math.cos(t)];
-  // The largest Y^2 over the sphere, from a fine sampling (exact for s, p, d; within 0.1 % for f).
-  let max = 0;
+  let yMax = 0;
   for (let i = 0; i <= 90; i++) for (let j = 0; j < 180; j++) {
     const d = dir((Math.PI * i) / 90, (2 * Math.PI * j) / 180);
-    max = Math.max(max, kind.y(d[0], d[1], d[2]) ** 2);
+    yMax = Math.max(yMax, Math.abs(kind.y(d[0], d[1], d[2])));
   }
-  const [fx, fy, fz] = frame;
-  const point = (t: number, p: number): { at: Vec3; value: number } => {
+  const level = Math.min(0.999, Math.max(0.001, iso)) * rMax * yMax;
+  /** R(r) = target on the rising (inner) or falling (outer) side, by bisection. */
+  const solve = (target: number, outer: boolean): number => {
+    let [lo, hi] = outer ? [peak, peak + 60 * n] : [0, peak];
+    for (let k = 0; k < 60; k++) {
+      const mid = (lo + hi) / 2;
+      const above = radial(mid) > target;
+      if (outer === above) lo = mid;
+      else hi = mid;
+    }
+    return (lo + hi) / 2;
+  };
+  const corner = (t: number, p: number): { d: Vec3; rIn: number; rOut: number; value: number } => {
     const d = dir(t, p);
     const value = kind.y(d[0], d[1], d[2]);
-    const r = (size * value * value) / max;
-    // Local (x, y, z) -> cartesian: x fx + y fy + z fz.
-    const at: Vec3 = [0, 1, 2].map((k) => r * (d[0] * fx[k]! + d[1] * fy[k]! + d[2] * fz[k]!)) as unknown as Vec3;
-    return { at, value };
+    const a = Math.abs(value);
+    if (a * rMax <= level) return { d, rIn: peak, rOut: peak, value }; // no lobe here: the rim closes at the peak
+    const target = level / a;
+    return { d, rIn: l === 0 ? 0 : solve(target, false), rOut: solve(target, true), value };
   };
-  const faces: OrbitalFace[] = [];
+  const grid: ReturnType<typeof corner>[][] = [];
+  for (let i = 0; i <= MESH_THETA; i++) {
+    const row: ReturnType<typeof corner>[] = [];
+    for (let j = 0; j <= MESH_PHI; j++) row.push(corner((Math.PI * i) / MESH_THETA, (2 * Math.PI * j) / MESH_PHI));
+    grid.push(row);
+  }
+  const at = (c: ReturnType<typeof corner>, r: number): Vec3 => [c.d[0] * r, c.d[1] * r, c.d[2] * r];
+  const faces: { corners: [Vec3, Vec3, Vec3, Vec3]; sign: 1 | -1; out: Vec3 }[] = [];
+  let farthest = 0;
   for (let i = 0; i < MESH_THETA; i++) {
     for (let j = 0; j < MESH_PHI; j++) {
-      const [t0, t1] = [(Math.PI * i) / MESH_THETA, (Math.PI * (i + 1)) / MESH_THETA];
-      const [p0, p1] = [(2 * Math.PI * j) / MESH_PHI, (2 * Math.PI * (j + 1)) / MESH_PHI];
-      const q = [point(t0, p0), point(t0, p1), point(t1, p1), point(t1, p0)];
-      const middle = point((t0 + t1) / 2, (p0 + p1) / 2);
-      const extent = Math.max(...q.map((c) => Math.hypot(...c.at)));
-      if (extent < 1e-3 * size) continue;
-      faces.push({ corners: [q[0]!.at, q[1]!.at, q[2]!.at, q[3]!.at], sign: middle.value >= 0 ? 1 : -1 });
+      const q = [grid[i]![j]!, grid[i]![j + 1]!, grid[i + 1]![j + 1]!, grid[i + 1]![j]!];
+      // A face only where the lobe is: at least one corner on it.
+      if (q.every((c) => c.rOut === peak && c.rIn === peak)) continue;
+      const mid = corner((Math.PI * (i + 0.5)) / MESH_THETA, (2 * Math.PI * (j + 0.5)) / MESH_PHI);
+      const sign: 1 | -1 = mid.value >= 0 ? 1 : -1;
+      faces.push({ corners: [at(q[0]!, q[0]!.rOut), at(q[1]!, q[1]!.rOut), at(q[2]!, q[2]!.rOut), at(q[3]!, q[3]!.rOut)], sign, out: mid.d });
+      farthest = Math.max(farthest, ...q.map((c) => c.rOut));
+      if (l > 0) {
+        const inward: Vec3 = [-mid.d[0], -mid.d[1], -mid.d[2]];
+        faces.push({ corners: [at(q[0]!, q[0]!.rIn), at(q[1]!, q[1]!.rIn), at(q[2]!, q[2]!.rIn), at(q[3]!, q[3]!.rIn)], sign, out: inward });
+      }
     }
   }
-  return faces;
+  const scaled = faces.map((f) => ({ ...f, corners: f.corners.map((c) => [c[0] / farthest, c[1] / farthest, c[2] / farthest]) as unknown as [Vec3, Vec3, Vec3, Vec3] }));
+  unitSurfaces.set(key, scaled);
+  return scaled;
+}
+
+/** The surface at a given size (the farthest point's distance, angstrom) in a given frame (cartesian x, y, z axes). */
+export function orbitalSurface(kind: OrbitalKind, size: number, frame: Mat3, iso: number = DEFAULT_ISO): OrbitalFace[] {
+  const [fx, fy, fz] = frame;
+  const turn = (v: Vec3, k: number): Vec3 => [0, 1, 2].map((m) => k * (v[0] * fx[m]! + v[1] * fy[m]! + v[2] * fz[m]!)) as unknown as Vec3;
+  return orbitalUnitSurface(kind, iso).map((f) => ({
+    corners: f.corners.map((c) => turn(c, size)) as unknown as [Vec3, Vec3, Vec3, Vec3],
+    sign: f.sign,
+    out: turn(f.out, 1),
+  }));
 }

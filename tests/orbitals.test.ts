@@ -3,10 +3,10 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { renderSvg } from "../src/render/svg";
+import { orbitalShade, renderSvg } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
-import { ORBITALS, orbitalById, orbitalFrame, orbitalSurface } from "../src/scene/orbitals";
-import { buildScene, DEFAULT_ORBITAL_COLOURS, DEFAULT_SPEC } from "../src/scene/scene";
+import { ORBITALS, orbitalById, orbitalFrame, orbitalSurface, orbitalUnitSurface } from "../src/scene/orbitals";
+import { buildScene, DEFAULT_ORBITAL_COLOURS, DEFAULT_SPEC, ORBITAL_SCHEMES } from "../src/scene/scene";
 import { readCif } from "../src/structure/readCif";
 
 const I = [[1, 0, 0], [0, 1, 0], [0, 0, 1]] as const;
@@ -62,6 +62,19 @@ describe("orbitals: the real spherical harmonics", () => {
     expect(bottom.every((f) => f.sign === -1)).toBe(true);
   });
 
+  it("an s orbital is a sphere; a higher isovalue gives slimmer lobes; a surface is computed once per orbital and isovalue", () => {
+    for (const f of orbitalSurface(orbitalById("s")!, 1.2, I)) for (const c of f.corners) expect(Math.hypot(...c)).toBeCloseTo(1.2, 6);
+    // Width of a pz lobe (largest distance from the z axis) relative to its length (largest z): smaller at a higher isovalue.
+    const slim = (iso: number) => {
+      const faces = orbitalSurface(orbitalById("pz")!, 1, I, iso);
+      const pts = faces.flatMap((f) => f.corners);
+      return Math.max(...pts.map((c) => Math.hypot(c[0], c[1]))) / Math.max(...pts.map((c) => c[2]));
+    };
+    expect(slim(0.6)).toBeLessThan(slim(0.3));
+    expect(slim(0.3)).toBeLessThan(slim(0.1));
+    expect(orbitalUnitSurface(orbitalById("dz2")!, 0.3)).toBe(orbitalUnitSurface(orbitalById("dz2")!, 0.3));
+  });
+
   it("a local frame turns the orbital: with z along [1 1 0] of a cube, pz points along (1, 1, 0)/sqrt 2", () => {
     const frame = orbitalFrame({ a: 4, b: 4, c: 4, alpha: 90, beta: 90, gamma: 90 }, [1, 1, 0]);
     const faces = orbitalSurface(orbitalById("pz")!, 1, frame);
@@ -78,11 +91,26 @@ describe("orbitals: the real spherical harmonics", () => {
 
   it("drawn on the atoms of a species, in the figure", () => {
     const srtio3 = readCif(readFileSync("examples/perovskite-SrTiO3_COD-9006864.cif", "utf8"));
-    const scene = buildScene(srtio3, { ...DEFAULT_SPEC, orbitals: [{ species: "Ti", orbitals: ["dz2", "dxy"], size: 1.6, colours: DEFAULT_ORBITAL_COLOURS, opacity: 1 }] });
+    const scene = buildScene(srtio3, { ...DEFAULT_SPEC, orbitals: [{ species: "Ti", orbitals: ["dz2", "dxy"], size: 1.6, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6 }] });
     const ti = scene.spheres.filter((s) => s.species === "Ti").length;
     expect(scene.orbitals!.length).toBe(2 * ti);
     const svg = renderSvg(scene, DEFAULT_VIEW);
     expect((svg.match(/class="orbital"/g) ?? []).length).toBeGreaterThan(1000);
+    // Each orbital in at most two see-through groups (behind and in front of its atom).
+    const groups = (svg.match(/<g class="orbital-part" opacity="0.6">/g) ?? []).length;
+    expect(groups).toBeGreaterThan(0);
+    expect(groups).toBeLessThanOrEqual(2 * scene.orbitals!.length);
     expect(buildScene(srtio3).orbitals).toBeUndefined();
+  });
+
+  it("surfaces: flat keeps the lobe's colour, soft and glossy shade it, mesh draws darker grid lines; schemes are valid pairs", () => {
+    expect(orbitalShade("#3f7fd0", 0.1, "flat")).toBe("#3f7fd0");
+    expect(orbitalShade("#3f7fd0", 0.1, "soft")).not.toBe(orbitalShade("#3f7fd0", 0.9, "soft"));
+    expect(orbitalShade("#3f7fd0", 1, "glossy")).not.toBe(orbitalShade("#3f7fd0", 0.5, "glossy"));
+    for (const scheme of ORBITAL_SCHEMES) for (const c of scheme.colours) expect(c).toMatch(/^#[0-9a-f]{6}$/);
+    const srtio3 = readCif(readFileSync("examples/perovskite-SrTiO3_COD-9006864.cif", "utf8"));
+    const mesh = renderSvg(buildScene(srtio3, { ...DEFAULT_SPEC, orbitals: [{ species: "Ti", orbitals: ["pz"], size: 1.6, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6, texture: "mesh" }] }), DEFAULT_VIEW);
+    const face = /<polygon class="orbital"[^>]*fill="(#[0-9a-f]{6})" stroke="(#[0-9a-f]{6})"/.exec(mesh)!;
+    expect(face[1]).not.toBe(face[2]); // grid lines in their own, darker colour
   });
 });

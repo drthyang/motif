@@ -7,7 +7,7 @@
  */
 import { fractionalToCartesian, mulVec, orthogonalizationMatrix } from "../structure/cell";
 import type { CellAtom, Component, Mat3, Structure, Vec3 } from "../structure/types";
-import { orbitalById, orbitalFrame } from "./orbitals";
+import { DEFAULT_ISO, orbitalById, orbitalFrame } from "./orbitals";
 import { defaultColour, defaultRadius } from "./elementStyle";
 import { angleKinds, anglesOfRule, bondAngles, DEFAULT_ANGLE_LOOK, type AngleKind, type AngleRule } from "./angles";
 import { atomsAndBonds, type BondColouring, type BondLine, type BondRule } from "./bonds";
@@ -263,6 +263,10 @@ export interface OrbitalRule {
   readonly size: number;
   readonly colours: readonly [string, string];
   readonly opacity: number;
+  /** The isovalue, as a fraction of the largest |psi| (absent: DEFAULT_ISO): low for full lobes, high for slim ones. */
+  readonly iso?: number;
+  /** The surface (absent: soft). */
+  readonly texture?: OrbitalTexture;
   readonly z?: Vec3 | null;
   readonly x?: Vec3 | null;
 }
@@ -277,9 +281,30 @@ export interface DrawnOrbital {
   readonly size: number;
   readonly colours: readonly [string, string];
   readonly opacity: number;
+  readonly iso: number;
+  readonly texture: OrbitalTexture;
 }
 
+/**
+ * How an orbital's surface is shaded: soft (gentle light and shade), flat (one colour per lobe), glossy (a bright
+ * highlight), or mesh (a pale surface with its grid lines drawn, as in a classic orbital plot).
+ */
+export type OrbitalTexture = "soft" | "flat" | "glossy" | "mesh";
+export const ORBITAL_TEXTURES: readonly OrbitalTexture[] = ["soft", "flat", "glossy", "mesh"];
+
+/** Ready-made colour pairs for the positive and negative lobes. */
+export const ORBITAL_SCHEMES: readonly { readonly name: string; readonly colours: readonly [string, string] }[] = [
+  { name: "blue / red", colours: ["#3f7fd0", "#d9534f"] },
+  { name: "red / blue", colours: ["#d9534f", "#3f7fd0"] },
+  { name: "purple / orange", colours: ["#7b5ea7", "#e08a2e"] },
+  { name: "teal / coral", colours: ["#2a9d8f", "#e76f51"] },
+  { name: "green / gold", colours: ["#4c9a52", "#d9a520"] },
+  { name: "greys", colours: ["#8a929a", "#3d434a"] },
+];
+
 export const DEFAULT_ORBITAL_SIZE = 1.6;
+/** Orbitals are drawn see-through by default: they are a schematic over the structure. */
+export const DEFAULT_ORBITAL_OPACITY = 0.6;
 /** Positive and negative lobes: blue and red. */
 export const DEFAULT_ORBITAL_COLOURS: readonly [string, string] = ["#3f7fd0", "#d9534f"];
 
@@ -592,7 +617,7 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     const frame = orbitalFrame(structure.cell, rule.z, rule.x);
     spheres.forEach((sp, index) => {
       if (sp.species !== rule.species) return;
-      for (const kind of kinds) orbitals.push({ sphere: index, kind, rule: ruleIndex, frame, size: rule.size, colours: rule.colours, opacity: rule.opacity });
+      for (const kind of kinds) orbitals.push({ sphere: index, kind, rule: ruleIndex, frame, size: rule.size, colours: rule.colours, opacity: rule.opacity, iso: rule.iso ?? DEFAULT_ISO, texture: rule.texture ?? "soft" });
     });
   });
   const cellEdges = spec.showCell ? cellEdgesInRange(structure, spec.range) : [];

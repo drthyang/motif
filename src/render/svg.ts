@@ -7,7 +7,7 @@
  */
 import { mulVec } from "../structure/cell";
 import { mixHex } from "../scene/elementStyle";
-import type { Material, Scene, StickStyle, Wedge } from "../scene/scene";
+import type { Material, OrbitalTexture, Scene, StickStyle, Wedge } from "../scene/scene";
 import { orbitalById, orbitalSurface, type OrbitalFace } from "../scene/orbitals";
 import type { Vec3 } from "../structure/types";
 import type { View } from "./view";
@@ -235,6 +235,22 @@ export interface DrawnOrbitalFace {
 
 export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand | DrawnSector | DrawnOrbitalFace;
 
+/** The colour of an orbital face lit by `lit` (0 to 1, how squarely it faces the light), for each surface. */
+export function orbitalShade(base: string, lit: number, texture: OrbitalTexture): string {
+  switch (texture) {
+    case "flat":
+      return base;
+    case "glossy":
+      // Deeper shade, and a small bright highlight where the face looks straight at the light.
+      return lit > 0.9 ? mixHex(base, "#ffffff", Math.min(0.85, (lit - 0.9) * 8)) : mixHex(base, "#000000", (0.9 - lit) * 0.5);
+    case "mesh":
+      // A pale, gently shaded surface, so the grid lines carry the shape.
+      return mixHex(mixHex(base, "#ffffff", 0.55), "#000000", (1 - lit) * 0.18);
+    default:
+      return lit > 0.62 ? mixHex(base, "#ffffff", (lit - 0.62) * 0.8) : mixHex(base, "#000000", (0.62 - lit) * 0.45);
+  }
+}
+
 /** Light for orbital faces, in view axes (right, up, towards the viewer): from the upper left, in front. */
 const ORBITAL_LIGHT: Vec3 = (() => {
   const v = [-0.45, 0.55, 0.7];
@@ -405,33 +421,45 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const [x, y, depth] = project(s.centre);
     drawn.push({ kind: "sphere", x, y, depth, r: scene.styles[s.style]!.radius * scale, style: s.style, label: s.label });
   }
-  // Orbitals: each face of the surface a small polygon, shaded by how it faces the light and sorted by depth with
-  // everything else, so a lobe passes in front of or behind atoms and bonds as it should. A face inside the atom's
-  // sphere is put just behind the atom, which hides it. Atoms of one rule share one surface, moved to each atom.
+  // Orbitals: each face of the surface a small shaded polygon. An orbital is drawn as two groups, the faces
+  // behind its atom's centre and those in front, each placed just behind or just in front of the atom; inside a
+  // group the faces are drawn back to front, opaque, and the group as a whole takes the orbital's opacity, so a
+  // see-through lobe has no seams and its overlapping faces do not darken one another. Faces turned away from the
+  // viewer are hidden by the lobe's near side and are left out. Atoms of one rule share one surface.
   const surfaces = new Map<string, OrbitalFace[]>();
   for (const o of scene.orbitals ?? []) {
     const key = `${o.rule}|${o.kind}`;
     let faces = surfaces.get(key);
-    if (!faces) surfaces.set(key, (faces = orbitalSurface(orbitalById(o.kind)!, o.size, o.frame)));
+    if (!faces) surfaces.set(key, (faces = orbitalSurface(orbitalById(o.kind)!, o.size, o.frame, o.iso)));
     const sphere = scene.spheres[o.sphere]!;
-    const atomRadius = scene.styles[sphere.style]!.radius;
     const centreDepth = project(sphere.centre)[2];
+    const parts: { back: { depth: number; svg: string }[]; front: { depth: number; svg: string }[] } = { back: [], front: [] };
     for (const f of faces) {
-      const pts = f.corners.map((c) => project([sphere.centre[0] + c[0], sphere.centre[1] + c[1], sphere.centre[2] + c[2]]));
-      // Normal in view axes, from the two diagonals; either side may face the viewer, so take the one that does.
+      // Normal in view axes, turned to point out of the lobe; a face turned away is left out.
       const [a, b] = [mulVec(view, [f.corners[2][0] - f.corners[0][0], f.corners[2][1] - f.corners[0][1], f.corners[2][2] - f.corners[0][2]]), mulVec(view, [f.corners[3][0] - f.corners[1][0], f.corners[3][1] - f.corners[1][1], f.corners[3][2] - f.corners[1][2]])];
-      const n = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-      const len = Math.hypot(n[0]!, n[1]!, n[2]!) || 1;
-      const s = n[2]! < 0 ? -1 : 1;
-      const lit = Math.max(0, (s * (n[0]! * ORBITAL_LIGHT[0] + n[1]! * ORBITAL_LIGHT[1] + n[2]! * ORBITAL_LIGHT[2])) / len);
+      let nx = a[1] * b[2] - a[2] * b[1];
+      let ny = a[2] * b[0] - a[0] * b[2];
+      let nz = a[0] * b[1] - a[1] * b[0];
+      const len = Math.hypot(nx, ny, nz);
+      if (len < 1e-12) continue;
+      const out = mulVec(view, f.out);
+      if (nx * out[0] + ny * out[1] + nz * out[2] < 0) [nx, ny, nz] = [-nx, -ny, -nz];
+      if (nz < 0) continue;
+      const lit = Math.max(0, (nx * ORBITAL_LIGHT[0] + ny * ORBITAL_LIGHT[1] + nz * ORBITAL_LIGHT[2]) / len);
       const base = f.sign > 0 ? o.colours[0] : o.colours[1];
-      const fill = lit > 0.6 ? mixHex(base, "#ffffff", (lit - 0.6) * 0.9) : mixHex(base, "#000000", (0.6 - lit) * 0.55);
-      const inside = Math.max(...f.corners.map((c) => Math.hypot(c[0], c[1], c[2]))) < atomRadius;
-      const depth = inside ? Math.min(pts.reduce((sum, p) => sum + p[2], 0) / 4, centreDepth - 0.02) : pts.reduce((sum, p) => sum + p[2], 0) / 4;
+      const fill = orbitalShade(base, lit, o.texture);
+      const pts = f.corners.map((c) => project([sphere.centre[0] + c[0], sphere.centre[1] + c[1], sphere.centre[2] + c[2]]));
+      const depth = pts.reduce((sum, p) => sum + p[2], 0) / 4;
       const points = pts.map((p) => `${n1(p[0])},${n1(p[1])}`).join(" ");
-      // A hairline of the same colour closes the seams between neighbouring faces.
-      const opacity = o.opacity < 1 ? ` fill-opacity="${o.opacity}" stroke-opacity="${o.opacity}"` : "";
-      drawn.push({ kind: "orbital", depth, svg: `<polygon class="orbital" points="${points}" fill="${fill}" stroke="${fill}" stroke-width="0.6" stroke-linejoin="round"${opacity}/>` });
+      // A hairline of the face's own colour closes the seams; the mesh surface draws its grid lines in a darker tone.
+      const [line, lineWidth] = o.texture === "mesh" ? [mixHex(base, "#000000", 0.25), "0.7"] : [fill, "0.6"];
+      (depth < centreDepth ? parts.back : parts.front).push({ depth, svg: `<polygon class="orbital" points="${points}" fill="${fill}" stroke="${line}" stroke-width="${lineWidth}" stroke-linejoin="round"/>` });
+    }
+    const opacity = o.opacity < 1 ? ` opacity="${o.opacity}"` : "";
+    for (const [part, depth] of [[parts.back, centreDepth - 0.02], [parts.front, centreDepth + 0.02]] as const) {
+      if (part.length === 0) continue;
+      const svg = part.sort((p, q) => p.depth - q.depth).map((p) => p.svg).join("");
+      drawn.push({ kind: "orbital", depth, svg: `<g class="orbital-part"${opacity}>${svg}</g>` });
     }
   }
   // Bonds. With a surface chosen (and not too many of them) each bond is a round rod, drawn as the rods of the
