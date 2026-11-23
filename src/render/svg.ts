@@ -306,6 +306,15 @@ function orbitalLobes(
   // Segments of a ring are drawn solid, in two see-through groups (behind and in front of the atom), so they join
   // without seams and do not darken where they overlap.
   const ringParts = new Map<string, { depth: number; svg: string }[]>();
+  // Each ring's centre and reach on screen, from all its segments' points, for its one gradient.
+  const ringShade = new Map<number, [number, number, number]>();
+  const ringWritten = new Set<number>();
+  for (const lobe of lobes.values()) {
+    if (lobe.ring === undefined || ringShade.has(lobe.ring)) continue;
+    const all = [...lobes.values()].filter((x) => x.ring === lobe.ring).flatMap((x) => x.points);
+    const [gx, gy] = [0, 1].map((i) => all.reduce((sum, p) => sum + p[i]!, 0) / all.length) as [number, number];
+    ringShade.set(lobe.ring, [gx, gy, Math.max(...all.map((p) => Math.hypot(p[0] - gx, p[1] - gy)))]);
+  }
   for (const [k, lobe] of lobes) {
     const pts = lobe.points;
     const [cx, cy, cz] = [0, 1, 2].map((i) => pts.reduce((sum, p) => sum + p[i]!, 0) / pts.length) as [number, number, number];
@@ -326,8 +335,12 @@ function orbitalLobes(
     }
     d += " Z";
     const base = lobe.sign > 0 ? o.colours[0] : o.colours[1];
-    const gid = `${id}-${k}`;
-    const [hx, hy] = [cx - 0.35 * radius, cy - 0.4 * radius];
+    // A segment of a ring is shaded with one gradient for the whole ring (its centre and reach), so the ring reads
+    // as one smooth band, not as a patchwork of segments each lit on its own.
+    const shared = lobe.ring !== undefined ? ringShade.get(lobe.ring)! : null;
+    const gid = shared ? `${id}-ring${lobe.ring}` : `${id}-${k}`;
+    const [gx, gy, gr] = shared ?? [cx, cy, radius];
+    const [hx, hy] = [gx - 0.35 * gr, gy - 0.4 * gr];
     let fill: string;
     let defs = "";
     if (o.texture === "flat") fill = base;
@@ -336,7 +349,10 @@ function orbitalLobes(
         o.texture === "glossy"
           ? `<stop offset="0" stop-color="${mixHex(base, "#ffffff", 0.85)}"/><stop offset="0.18" stop-color="${mixHex(base, "#ffffff", 0.3)}"/><stop offset="0.6" stop-color="${base}"/><stop offset="1" stop-color="${mixHex(base, "#000000", 0.45)}"/>`
           : `<stop offset="0" stop-color="${mixHex(base, "#ffffff", 0.45)}"/><stop offset="0.5" stop-color="${base}"/><stop offset="1" stop-color="${mixHex(base, "#000000", 0.3)}"/>`;
-      defs = `<defs><radialGradient id="${gid}" gradientUnits="userSpaceOnUse" cx="${n1(hx)}" cy="${n1(hy)}" r="${n1(1.6 * radius)}">${stops}</radialGradient></defs>`;
+      // A ring's gradient is written once, with its first segment.
+      const write = !shared || !ringWritten.has(lobe.ring!);
+      if (shared) ringWritten.add(lobe.ring!);
+      defs = write ? `<defs><radialGradient id="${gid}" gradientUnits="userSpaceOnUse" cx="${n1(hx)}" cy="${n1(hy)}" r="${n1(1.6 * gr)}">${stops}</radialGradient></defs>` : "";
       fill = `url(#${gid})`;
     }
     const opacity = o.opacity < 1 ? ` opacity="${o.opacity}"` : "";
