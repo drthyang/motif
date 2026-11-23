@@ -1491,7 +1491,7 @@ const PREVIEW_LIMIT = QUERY.get("preview") === "all" ? 0 : PREVIEW_FROM;
 const SETTLE_MS = Number(QUERY.get("settle")) > 0 ? Number(QUERY.get("settle")) : 180;
 
 /** Fonts offered for the lettering. All are fonts of the computer, not of the page: the PNG is drawn from the SVG alone. */
-const FONTS = ["Avenir", "Avenir Next", "Helvetica Neue", "Helvetica", "Arial", "Gill Sans", "Futura", "Optima", "Verdana", "Times New Roman", "Georgia", "Palatino", "Menlo"];
+const FONTS = ["Avenir", "Avenir Next", "Helvetica Neue", "Helvetica", "Arial", "Gill Sans", "Futura", "Optima", "Verdana", "DejaVu Sans", "DejaVu Sans Condensed", "Times New Roman", "Georgia", "Palatino", "Menlo"];
 
 /**
  * Whether this computer has a font of that name: text set in it is measured against the same text in two
