@@ -43,6 +43,7 @@ import {
   type SavedSettings,
   type SettingField,
 } from "./settings";
+import { JOURNALS, journalSize, journalTextPt } from "./journals";
 import type { Structure } from "../structure/types";
 
 // Published structures shipped with the page (see examples/README.md).
@@ -87,6 +88,8 @@ export function App() {
   const [canvasFixed, setCanvasFixed] = useState(true);
   const [canvasUnit, setCanvasUnit] = useState<PhysicalSize["unit"]>("cm");
   const [canvasSizeText, setCanvasSizeText] = useState<[string, string]>(["8.9", "6.675"]);
+  // The journal template last chosen; it shows as chosen while the size on paper is still its width.
+  const [journalChoice, setJournalChoice] = useState("");
   const canvasSize: [number, number] = [Number(canvasSizeText[0]), Number(canvasSizeText[1])];
   const [sideMin, sideMax] = canvasUnit === "cm" ? [1, 100] : [0.4, 40];
   const canvasSizeOk =
@@ -640,7 +643,11 @@ export function App() {
     // The SVG is centred in the frame, with empty strips on two sides when the shapes differ.
     return [(clientX - r.left - (r.width - canvas.width / k) / 2) * k, (clientY - r.top - (r.height - canvas.height / k) / 2) * k];
   };
-  const resetZoom = () => setZoom(NO_ZOOM);
+  // "Fit" (double-click, the 0 key): the whole structure fitted again, as large as the canvas allows.
+  const resetZoom = () => {
+    setZoom(NO_ZOOM);
+    setTurnScale(null);
+  };
   const zoomAtCentre = (by: number) => setZoom((z) => zoomAbout(z, by, centre, centre));
 
   const onPointerDown = (e: PointerEvent) => {
@@ -2053,7 +2060,51 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
               </div>
               {settingsNote && <p className="sub" data-testid="settings-note">{settingsNote}</p>}
             </Section>
-            <Section tab="layout" title="Canvas" hint="Fit the frame: the figure is 1440 px wide and as high as the frame on the page makes it. Size on paper: the width and height you give, in cm or in; the SVG states that size, so a drawing program places it at exactly that size, and the PNG is that size at the dpi given under Save. Lines, spheres and the legend keep their proportions to the figure; text given in pt under Lettering keeps its size.">
+            <Section tab="layout" title="Canvas" hint="Fit the frame: the figure is 1440 px wide and as high as the frame on the page makes it. Size on paper: the width and height you give, in cm or in; the SVG states that size, so a drawing program places it at exactly that size, and the PNG is that size at the dpi given under Save. Lines, spheres and the legend keep their proportions to the figure; text given in pt under Lettering keeps its size. A journal template sets the width a journal asks for (keeping the shape) and the text size, from the journal's own author pages.">
+              {(() => {
+                const chosen = journalSize(journalChoice);
+                const current = chosen && canvasFixed && canvasUnit === chosen.unit && Number(canvasSizeText[0]) === chosen.width ? chosen : undefined;
+                return (
+                  <>
+                    <div className="row">
+                      <span className="lab">journal</span>
+                      <select
+                        className="grow"
+                        data-testid="canvas-journal"
+                        value={current ? current.id : ""}
+                        title="Set the width a journal asks for, and its text size"
+                        onChange={(e) => {
+                          const size = journalSize(e.target.value);
+                          if (!size) return;
+                          const height = ratio !== null ? size.width / ratio : (size.width * canvas.height) / canvas.width;
+                          setCanvasFixed(true);
+                          setCanvasUnit(size.unit);
+                          setCanvasSizeText([`${size.width}`, short(height)]);
+                          const pt = String(journalTextPt(size.of, capHeight(fontFamily)));
+                          setFontPtText({ legend: pt, axes: pt, angle: pt });
+                          setJournalChoice(size.id);
+                        }}
+                      >
+                        <option value="">{current ? "" : "Journal template…"}</option>
+                        {JOURNALS.map((j) => (
+                          <optgroup key={j.name} label={j.name}>
+                            {j.sizes.map((x) => (
+                              <option key={x.id} value={x.id}>
+                                {j.name}, {x.label}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                    {current && (
+                      <p className="sub" data-testid="journal-note">
+                        {current.of.note} Text set to {journalTextPt(current.of, capHeight(fontFamily))} pt{"capitalsMm" in current.of.text ? ` (capitals ${current.of.text.capitalsMm} mm in ${fontFamily})` : ""}.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
               <div className="row">
                 <span className="lab">size</span>
                 <select
@@ -2359,6 +2410,23 @@ const FONT_GROUPS: { label: string; fonts: string[] }[] = [
  * generic fonts; a missing font falls back to the generic one and measures the same as it both times.
  */
 const fontChecks = new Map<string, boolean>();
+/** Height of a capital letter as a fraction of the font size, measured in this browser (0.72 if it cannot be). */
+const capHeights = new Map<string, number>();
+function capHeight(family: string): number {
+  const name = family.replace(/[^A-Za-z0-9 \-]/g, "").trim();
+  const known = capHeights.get(name);
+  if (known !== undefined) return known;
+  const context = typeof document !== "undefined" ? document.createElement("canvas").getContext("2d") : null;
+  let h = 0.72;
+  if (context) {
+    context.font = `200px '${name}', sans-serif`;
+    const m = context.measureText("H");
+    if (m.actualBoundingBoxAscent > 0) h = m.actualBoundingBoxAscent / 200;
+  }
+  capHeights.set(name, h);
+  return h;
+}
+
 function fontInstalled(family: string): boolean {
   const name = family.replace(/[^A-Za-z0-9 \-]/g, "").trim();
   if (name === "") return true;
