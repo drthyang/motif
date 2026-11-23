@@ -235,8 +235,47 @@ export interface DrawnOrbitalFace {
 
 export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand | DrawnSector | DrawnOrbitalFace;
 
-/** Angle steps of a lobe's outline. */
-const LOBE_STEPS = 96;
+/** Points of a lobe's outline. */
+const LOBE_STEPS = 72;
+
+/** The convex hull of points in the plane, anticlockwise (Andrew's monotone chain). */
+export function convexHull(points: readonly (readonly [number, number])[]): [number, number][] {
+  const p = [...points].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  if (p.length < 3) return p.map((q) => [q[0], q[1]]);
+  const cross = (o: readonly number[], a: readonly number[], b: readonly number[]): number => (a[0]! - o[0]!) * (b[1]! - o[1]!) - (a[1]! - o[1]!) * (b[0]! - o[0]!);
+  const lower: (readonly [number, number])[] = [];
+  for (const q of p) {
+    while (lower.length >= 2 && cross(lower[lower.length - 2]!, lower[lower.length - 1]!, q) <= 0) lower.pop();
+    lower.push(q);
+  }
+  const upper: (readonly [number, number])[] = [];
+  for (let i = p.length - 1; i >= 0; i--) {
+    const q = p[i]!;
+    while (upper.length >= 2 && cross(upper[upper.length - 2]!, upper[upper.length - 1]!, q) <= 0) upper.pop();
+    upper.push(q);
+  }
+  return [...lower.slice(0, -1), ...upper.slice(0, -1)].map((q) => [q[0], q[1]]);
+}
+
+/** `count` points spaced evenly along a closed polygon. */
+function resampleClosed(poly: readonly (readonly [number, number])[], count: number): [number, number][] {
+  const seg = poly.map((a, i) => {
+    const b = poly[(i + 1) % poly.length]!;
+    return Math.hypot(b[0] - a[0], b[1] - a[1]);
+  });
+  const total = seg.reduce((sum, l) => sum + l, 0);
+  const out: [number, number][] = [];
+  let i = 0;
+  let travelled = 0;
+  for (let k = 0; k < count; k++) {
+    const target = (k * total) / count;
+    while (travelled + seg[i]! < target && i < poly.length - 1) travelled += seg[i++]!;
+    const [a, b] = [poly[i]!, poly[(i + 1) % poly.length]!];
+    const t = seg[i]! > 0 ? (target - travelled) / seg[i]! : 0;
+    out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+  }
+  return out;
+}
 
 /**
  * The lobes of one orbital as smooth shapes. A lobe's outline, seen from the viewer, is found from the projected
@@ -258,9 +297,10 @@ function orbitalLobes(
     if (f.lobe === undefined) continue;
     let lobe = lobes.get(f.lobe);
     if (!lobe) lobes.set(f.lobe, (lobe = { sign: f.sign, ...(f.ring !== undefined ? { ring: f.ring } : {}), points: [] }));
-    // Neighbouring faces share their corners: the first corner of each face covers the surface's points once.
-    const c = f.corners[0];
-    lobe.points.push(project([centre[0] + c[0], centre[1] + c[1], centre[2] + c[2]]));
+    // Neighbouring faces share their corners: the first corner of each face covers a large lobe's points once; a
+    // small one (a segment of a ring) takes all four, to have enough.
+    const corners = f.ring !== undefined ? f.corners : [f.corners[0]];
+    for (const c of corners) lobe.points.push(project([centre[0] + c[0], centre[1] + c[1], centre[2] + c[2]]));
   }
   const out: DrawnOrbitalFace[] = [];
   // Segments of a ring are drawn solid, in two see-through groups (behind and in front of the atom), so they join
@@ -269,31 +309,19 @@ function orbitalLobes(
   for (const [k, lobe] of lobes) {
     const pts = lobe.points;
     const [cx, cy, cz] = [0, 1, 2].map((i) => pts.reduce((sum, p) => sum + p[i]!, 0) / pts.length) as [number, number, number];
-    const reach = new Array<number>(LOBE_STEPS).fill(0);
-    for (const p of pts) {
-      const [dx, dy] = [p[0] - cx, p[1] - cy];
-      const r = Math.hypot(dx, dy);
-      const step = Math.floor(((Math.atan2(dy, dx) + Math.PI) / (2 * Math.PI)) * LOBE_STEPS) % LOBE_STEPS;
-      if (r > reach[step]!) reach[step] = r;
-    }
-    // Directions no point fell in take their neighbours' reach; then a light smoothing.
-    for (let pass = 0; pass < 2; pass++) {
-      for (let s = 0; s < LOBE_STEPS; s++) {
-        if (reach[s]! > 0) continue;
-        reach[s] = Math.max(reach[(s + LOBE_STEPS - 1) % LOBE_STEPS]!, reach[(s + 1) % LOBE_STEPS]!);
-      }
-    }
-    const smooth = reach.map((r, s) => (reach[(s + LOBE_STEPS - 1) % LOBE_STEPS]! + 2 * r + reach[(s + 1) % LOBE_STEPS]!) / 4);
-    const radius = Math.max(...smooth);
+    // The outline: the convex hull of the projected points (a lobe, or a segment of a ring, is nearly convex, so this
+    // is its outline up to a slight dent at the nucleus, and it cannot be ragged), resampled evenly along its length
+    // and drawn as a smooth closed curve.
+    const hull = convexHull(pts.map((p) => [p[0], p[1]] as const));
+    if (hull.length < 3) continue;
+    const xy = resampleClosed(hull, LOBE_STEPS);
+    const radius = Math.max(...xy.map((p) => Math.hypot(p[0] - cx, p[1] - cy)));
     if (!(radius > 0.3)) continue;
-    const xy = smooth.map((r, s) => {
-      const a = ((s + 0.5) / LOBE_STEPS) * 2 * Math.PI - Math.PI;
-      return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as const;
-    });
     // A closed curve through the points (Catmull-Rom as cubic Beziers).
+    const steps = xy.length;
     let d = `M${n1(xy[0]![0])},${n1(xy[0]![1])}`;
-    for (let s = 0; s < LOBE_STEPS; s++) {
-      const [p0, p1, p2, p3] = [xy[(s + LOBE_STEPS - 1) % LOBE_STEPS]!, xy[s]!, xy[(s + 1) % LOBE_STEPS]!, xy[(s + 2) % LOBE_STEPS]!];
+    for (let s = 0; s < steps; s++) {
+      const [p0, p1, p2, p3] = [xy[(s + steps - 1) % steps]!, xy[s]!, xy[(s + 1) % steps]!, xy[(s + 2) % steps]!];
       d += ` C${n1(p1[0] + (p2[0] - p0[0]) / 6)},${n1(p1[1] + (p2[1] - p0[1]) / 6)} ${n1(p2[0] - (p3[0] - p1[0]) / 6)},${n1(p2[1] - (p3[1] - p1[1]) / 6)} ${n1(p2[0])},${n1(p2[1])}`;
     }
     d += " Z";

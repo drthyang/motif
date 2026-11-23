@@ -192,8 +192,9 @@ writes the reference atom lists in `tests/reference/`.
   high one slim lobes (the small ring of dz² vanishes above 0.5, where its |ψ| never reaches). Each surface is
   computed once per orbital and isovalue and shared by every atom and redraw. Axes: MOTIF's (x along a, y in
   the a–b plane, z along c*), or a local frame with z along [u v w] and x along a second direction.
-  Each lobe is drawn as one smooth shape: its outline seen from the viewer (from the projected points of
-  its surface, the farthest in each direction round its centre, smoothed into curves), filled with a gradient
+  Each lobe is drawn as one smooth shape: its outline seen from the viewer (the convex hull of the projected points of its
+  surface, resampled evenly and drawn as a smooth curve; a lobe is nearly convex, so only a slight dent at the
+  nucleus is filled), filled with a gradient
   as atoms are, see-through (60 % by default), at the depth of its centre. A ring (the band of dz², the cones
   of fz³) is cut into 12 segments drawn in two see-through groups, behind and in front of the atom, so it
   has no seams. Surfaces are kept once placed, so turning the view only projects them (16 ms a frame for

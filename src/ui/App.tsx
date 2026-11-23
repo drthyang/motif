@@ -2265,7 +2265,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
       </main>
       <footer className="foot">
         <span>
-          MOTIF {VERSION} ·{" "}
+          MOTIF {VERSION} · © 2026 Tsung-Han Yang ·{" "}
           <a href={`${REPO_URL}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer">
             AGPL-3.0
           </a>

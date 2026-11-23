@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { orbitalShade, renderSvg } from "../src/render/svg";
+import { convexHull, orbitalShade, renderSvg } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
 import { ORBITALS, orbitalById, orbitalFrame, orbitalSurface, orbitalUnitSurface } from "../src/scene/orbitals";
 import { buildScene, DEFAULT_ORBITAL_COLOURS, DEFAULT_SPEC, ORBITAL_SCHEMES } from "../src/scene/scene";
@@ -113,6 +113,12 @@ describe("orbitals: the real spherical harmonics", () => {
     expect(lobes("dz2")).toBe(2 + 12);
     expect(lobes("dz2", 0.6)).toBe(2); // above 0.5 the ring has no surface
     expect(lobes("fxyz")).toBe(8);
+  });
+
+  it("a lobe's outline is the convex hull of its points: corners kept, inner points and dents dropped", () => {
+    const square = convexHull([[0, 0], [2, 0], [2, 2], [0, 2], [1, 1], [1, 0.2], [0.5, 1.5]]);
+    expect(square.length).toBe(4);
+    expect(new Set(square.map((p) => p.join(",")))).toEqual(new Set(["0,0", "2,0", "2,2", "0,2"]));
   });
 
   it("surfaces: flat keeps the lobe's colour, soft and glossy shade it, mesh draws darker grid lines; schemes are valid pairs", () => {
