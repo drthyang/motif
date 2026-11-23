@@ -9,7 +9,7 @@ import { fractionalToCartesian, mulVec, orthogonalizationMatrix } from "../struc
 import type { CellAtom, Component, Structure, Vec3 } from "../structure/types";
 import { defaultColour, defaultRadius } from "./elementStyle";
 import { angleKinds, anglesOfRule, bondAngles, DEFAULT_ANGLE_LOOK, type AngleKind, type AngleRule } from "./angles";
-import { atomsAndBonds, type BondRule } from "./bonds";
+import { atomsAndBonds, type BondColouring, type BondLine, type BondRule } from "./bonds";
 import { mixHex } from "./elementStyle";
 import { connectedGroups, prune, triangles } from "./highlight";
 import { BOUNDARY_TOLERANCE, ONE_CELL, type Range } from "./select";
@@ -96,6 +96,10 @@ export interface StickStyle {
   readonly colour: string;
   /** Thickness in angstrom. */
   readonly width: number;
+  /** Each half in the colour of the atom it starts from (absent: the one colour). */
+  readonly colouring?: BondColouring;
+  /** Solid (absent), dashed or dotted. */
+  readonly line?: BondLine;
 }
 
 /** A soft band laid behind a chain: wide, translucent strokes along its bonds, drawn as one shape. */
@@ -440,7 +444,12 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
   const warnings = selected.warnings;
   const styles: Record<string, SphereStyle> = {};
   // Highlights: chains and triangles in the bonds of each rule.
-  const stickStyles: StickStyle[] = spec.bonds.map((r) => ({ colour: r.colour ?? DEFAULT_STICK.colour, width: r.width ?? DEFAULT_STICK.width }));
+  const stickStyles: StickStyle[] = spec.bonds.map((r) => ({
+    colour: r.colour ?? DEFAULT_STICK.colour,
+    width: r.width ?? DEFAULT_STICK.width,
+    ...(r.colouring === "atoms" ? { colouring: "atoms" as const } : {}),
+    ...(r.line && r.line !== "solid" ? { line: r.line } : {}),
+  }));
   const ruleInfo: RuleInfo[] = [];
   const bandSpecs: { segments: [number, number][]; rule: number }[] = [];
   const polygonSpecs: { corners: number[]; rule: number }[] = [];

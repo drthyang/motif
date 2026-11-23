@@ -59,6 +59,10 @@ writes the reference atom lists in `tests/reference/`.
   a *shared site*, named by its elements ("Fe/Mg") until the user renames it. It is drawn as a pie
   sphere: wedges clockwise from the top in file order, each spanning 360° × its occupancy. A partly
   vacant place gets a pale wedge for the vacant share (this can be switched off).
+- Each bond rule can be drawn in one colour or in atom colours (each half in the colour of the atom it starts
+  from), and as a solid, dashed or dotted line. Dashes are 2.5 rod widths long with gaps of 1.5, dots one rod
+  width across and apart; the pattern fills the length between the two atoms' surfaces exactly and is the
+  same seen from either end. With more than 1,500 bonds the plain strokes carry the same pattern.
 - Bonds are drawn as round rods (surface: soft, flat, glossy, metal or glass; a thin outline can
   be switched on, off by default at the user's choice), in two halves that meet in the middle. A half that points at the viewer comes out of
   its atom's face with a rounded foot; a half that points away is cut by the atom's outline.

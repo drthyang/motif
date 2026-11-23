@@ -17,7 +17,7 @@ import { AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEF
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
-import { pairDistances, type BondRule } from "../scene/bonds";
+import { pairDistances, type BondColouring, type BondLine, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readCif } from "../structure/readCif";
 import { isRmc6f, readRmc6f } from "../structure/readRmc6f";
@@ -1477,9 +1477,32 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 {bondRules.map((r, index) => (
                   <div key={index} className="rule" data-testid={`bond-look-${index}`}>
                     <div className="row">
-                      <input type="color" title="Colour of these bonds" value={r.colour ?? DEFAULT_STICK.colour} onChange={(e) => changeRule(index, { colour: e.target.value })} />
                       <b>{nameOf(r.centre)}–{nameOf(r.neighbour)}</b>
-                      thickness
+                    </div>
+                    <div className="row" title="One colour for the whole bond, or each half in the colour of the atom it starts from.">
+                      <span className="lab">colour</span>
+                      <select
+                        data-testid={`bond-colouring-${index}`}
+                        value={r.colouring ?? "single"}
+                        onChange={(e) => changeRule(index, { colouring: e.target.value as BondColouring })}
+                      >
+                        <option value="single">one colour</option>
+                        <option value="atoms">atom colours, half each</option>
+                      </select>
+                      {(r.colouring ?? "single") === "single" && (
+                        <input type="color" title="Colour of these bonds" value={r.colour ?? DEFAULT_STICK.colour} onChange={(e) => changeRule(index, { colour: e.target.value })} />
+                      )}
+                    </div>
+                    <div className="row" title="A solid rod, or a dashed or dotted one (for weak bonds or contacts). The pattern runs from one atom's surface to the other's.">
+                      <span className="lab">line</span>
+                      <select data-testid={`bond-line-${index}`} value={r.line ?? "solid"} onChange={(e) => changeRule(index, { line: e.target.value as BondLine })}>
+                        <option value="solid">solid</option>
+                        <option value="dashed">dashed</option>
+                        <option value="dotted">dotted</option>
+                      </select>
+                    </div>
+                    <div className="row">
+                      <span className="lab">thickness</span>
                       <input
                         type="number"
                         step={0.02}
@@ -1489,7 +1512,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                         value={r.widthText ?? String(DEFAULT_STICK.width)}
                         onChange={(e) => changeRule(index, { widthText: e.target.value })}
                       />
-                      Å
+                      <span className="unit">Å</span>
                     </div>
                     <label className="row">
                       <input type="checkbox" data-testid={`bond-band-${index}`} checked={r.band ?? false} onChange={(e) => changeRule(index, { band: e.target.checked })} />

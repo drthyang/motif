@@ -6,6 +6,9 @@ import { fractionalToCartesian, planeSpacings } from "../structure/cell";
 import type { CellAtom, Structure, Vec3 } from "../structure/types";
 import { atomsInRange, type Range } from "./select";
 
+export type BondColouring = "single" | "atoms";
+export type BondLine = "solid" | "dashed" | "dotted";
+
 export interface BondRule {
   /** Species at the centre, e.g. the metal of an octahedron: an element symbol, or "Fe/Mg" for a shared site. */
   readonly centre: string;
@@ -21,6 +24,10 @@ export interface BondRule {
   /** Look of the sticks: colour "#rrggbb" and thickness in angstrom. Defaults: pale grey, 0.12 A. */
   readonly colour?: string;
   readonly width?: number;
+  /** "atoms": each half of a bond in the colour of the atom it starts from. Absent: the one colour. */
+  readonly colouring?: BondColouring;
+  /** The line: a solid rod (absent), dashed or dotted. */
+  readonly line?: BondLine;
   /** Lay a soft highlight band behind the bonded atoms (a chain, a net). */
   readonly band?: boolean;
   /**

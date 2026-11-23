@@ -7,7 +7,7 @@
  */
 import { mulVec } from "../structure/cell";
 import { mixHex } from "../scene/elementStyle";
-import type { Material, Scene, Wedge } from "../scene/scene";
+import type { Material, Scene, StickStyle, Wedge } from "../scene/scene";
 import type { Vec3 } from "../structure/types";
 import type { View } from "./view";
 
@@ -97,6 +97,28 @@ export interface DrawnLine {
   readonly along?: number;
   /** A bond drawn as a shaded rod: this half's shapes, ready to write (absent for a plain stroke). */
   readonly svg?: string;
+  /** A plain-stroke bond that is dashed or dotted: its stroke-dasharray in px. */
+  readonly dash?: string;
+}
+
+/**
+ * The pieces of a dashed or dotted bond, as fractions of the bond from atom a: the visible length between the
+ * two atoms' surfaces (from `from` to `to`) is filled with whole dashes (2.5 rod widths long, 1.5 apart) or dots
+ * (one rod width across, one apart), stretched a little so the pattern starts and ends at the surfaces and looks
+ * the same from either end. Solid: none.
+ */
+export function bondPieces(line: "solid" | "dashed" | "dotted", from: number, to: number, bondLength: number, rodWidth: number): [number, number][] {
+  if (line === "solid" || to <= from) return [];
+  const [dash, gap] = line === "dashed" ? [2.5 * rodWidth, 1.5 * rodWidth] : [rodWidth, rodWidth];
+  const visible = (to - from) * bondLength;
+  const n = Math.max(1, Math.round((visible + gap) / (dash + gap)));
+  const k = visible / (n * dash + (n - 1) * gap);
+  const out: [number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    const start = from + (i * (dash + gap) * k) / bondLength;
+    out.push([start, start + (dash * k) / bondLength]);
+  }
+  return out;
 }
 
 /** One part of a moment arrow (see layoutAll): a length of the rod from (x1, y1) to (x2, y2), with the cone if it is the head's part. */
@@ -372,15 +394,28 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const [a, b] = [scene.spheres[stick.i]!, scene.spheres[stick.j]!];
     const [radiusA, radiusB] = [scene.styles[a.style]!.radius, scene.styles[b.style]!.radius];
     if (stick.length <= (radiusA + radiusB) * BOND_START) return; // the spheres overlap: nothing of the bond shows
-    const look = scene.stickStyles[stick.rule] ?? { colour: BOND_COLOUR, width: BOND_WIDTH };
-    const colour = stick.pale ? mixHex(look.colour, "#ffffff", 0.55) : look.colour;
+    const look: StickStyle = scene.stickStyles[stick.rule] ?? { colour: BOND_COLOUR, width: BOND_WIDTH };
+    const paled = (c: string): string => (stick.pale ? mixHex(c, "#ffffff", 0.55) : c);
+    // One colour, or each half in the colour of the atom it starts from.
+    const [colourA, colourB] = look.colouring === "atoms" ? [paled(scene.styles[a.style]!.colour), paled(scene.styles[b.style]!.colour)] : [paled(look.colour), paled(look.colour)];
+    const colour = colourA;
+    const line = look.line ?? "solid";
     const width = (stick.pale ? 0.65 : 1) * look.width * scale;
     const at = (t: number): Vec3 => [0, 1, 2].map((i) => a.centre[i]! + (b.centre[i]! - a.centre[i]!) * t) as unknown as Vec3;
     if (!rods) {
       // A plain stroke from just under one surface to just under the other, drawn just behind an atom at the
-      // same depth, so the nearer atom covers its end.
+      // same depth, so the nearer atom covers its end; in two halves when they differ in colour, dashed or
+      // dotted by a stroke pattern.
       const [p, q] = [project(at((radiusA * BOND_START) / stick.length)), project(at(1 - (radiusB * BOND_START) / stick.length))];
-      drawn.push({ kind: "bond", colour, x1: p[0], y1: p[1], x2: q[0], y2: q[1], width, depth: (p[2] + q[2]) / 2 - 0.1 });
+      const dash = line === "dashed" ? `${n1(2.5 * width)} ${n1(1.5 * width)}` : line === "dotted" ? `0 ${n1(2 * width)}` : undefined;
+      const extra = dash ? { dash } : {};
+      if (colourA === colourB) {
+        drawn.push({ kind: "bond", colour, x1: p[0], y1: p[1], x2: q[0], y2: q[1], width, depth: (p[2] + q[2]) / 2 - 0.1, ...extra });
+      } else {
+        const m = project(at(0.5));
+        drawn.push({ kind: "bond", colour: colourA, x1: p[0], y1: p[1], x2: m[0], y2: m[1], width, depth: (p[2] + m[2]) / 2 - 0.1, ...extra });
+        drawn.push({ kind: "bond", colour: colourB, x1: m[0], y1: m[1], x2: q[0], y2: q[1], width, depth: (m[2] + q[2]) / 2 - 0.1, ...extra });
+      }
       return;
     }
     const [pa, pb, middle] = [project(a.centre), project(b.centre), project(at(0.5))];
@@ -391,15 +426,43 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const towards = (pb[2] - pa[2]) / stick.length; // how much the bond, from a to b, points at the viewer
     const w = width / 2;
     const id = `bond-${stickIndex}`;
-    const defs =
-      `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${n1(middle[0] + px * w)}" y1="${n1(middle[1] + py * w)}" x2="${n1(middle[0] - px * w)}" y2="${n1(middle[1] - py * w)}">` +
-      `${rodStops(colour, scene.bondMaterial ?? "soft")}</linearGradient></defs>`;
-    const edge = scene.bondOutline ? ` stroke="${mixHex(colour, "#000000", 0.4)}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"` : "";
+    // The shading across the rod, one gradient per colour (a two-coloured bond has two).
+    const gradient = (gid: string, c: string): string =>
+      `<linearGradient id="${gid}" gradientUnits="userSpaceOnUse" x1="${n1(middle[0] + px * w)}" y1="${n1(middle[1] + py * w)}" x2="${n1(middle[0] - px * w)}" y2="${n1(middle[1] - py * w)}">` +
+      `${rodStops(c, scene.bondMaterial ?? "soft")}</linearGradient>`;
+    const [idA, idB] = colourA === colourB ? [id, id] : [`${id}a`, `${id}b`];
+    const defs = `<defs>${gradient(idA, colourA)}${idB !== idA ? gradient(idB, colourB) : ""}</defs>`;
+    const edgeOf = (c: string): string => (scene.bondOutline ? ` stroke="${mixHex(c, "#000000", 0.4)}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"` : "");
+    const edge = edgeOf(colour);
     const glass = scene.bondMaterial === "glass" ? ` fill-opacity="${glassAlpha(0.45, scene.glassOpacity)}"` : "";
     const rho = look.width / 2; // the rod's radius, angstrom
+    // Dashed or dotted: the pattern over the visible length, between the two surfaces; each half draws its share.
+    const surface = (radius: number): number => Math.sqrt(Math.max(0, radius * radius - rho * rho)) / stick.length;
+    const pieces = bondPieces(line, surface(radiusA), 1 - surface(radiusB), stick.length, look.width);
+    let defsWritten = false;
     /** One half: from its atom (the end `fromA` says) to just past the middle. */
     const half = (fromA: boolean): void => {
       const [radius, sign] = fromA ? [radiusA, 1] : [radiusB, -1];
+      const gid = fromA ? idA : idB;
+      const hue = fromA ? colourA : colourB;
+      if (line !== "solid") {
+        const corner = (p: Vec3, side: number): string => `${n1(p[0] + side * px * w)},${n1(p[1] + side * py * w)}`;
+        for (const [t0, t1] of pieces) {
+          const middleT = (t0 + t1) / 2;
+          if (line === "dotted" ? middleT < 0.5 !== fromA : false) continue;
+          // A dash that crosses the middle is cut there, so each half keeps its own colour.
+          const [s0, s1] = line === "dotted" ? [t0, t1] : fromA ? [t0, Math.min(t1, 0.5)] : [Math.max(t0, 0.5), t1];
+          if (s1 <= s0) continue;
+          const [p, q] = [project(at(s0)), project(at(s1))];
+          const shape =
+            line === "dotted"
+              ? `<circle class="bond" cx="${n1((p[0] + q[0]) / 2)}" cy="${n1((p[1] + q[1]) / 2)}" r="${n1(w)}" fill="url(#${gid})"${glass}${edgeOf(hue)}/>`
+              : `<polygon class="bond" points="${corner(p, 1)} ${corner(q, 1)} ${corner(q, -1)} ${corner(p, -1)}" fill="url(#${gid})"${glass}${edgeOf(hue)}/>`;
+          drawn.push({ kind: "bond", colour: hue, x1: p[0], y1: p[1], x2: q[0], y2: q[1], width, depth: (p[2] + q[2]) / 2, svg: `${defsWritten ? "" : defs}${shape}` });
+          defsWritten = true;
+        }
+        return;
+      }
       const out = sign * towards; // how much this half, going outwards from its atom, points at the viewer
       const front = out > 0.02;
       const centre = fromA ? pa : pb;
@@ -424,19 +487,19 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       }
       // The outline runs along the two sides and round the foot, not across the middle where the halves meet.
       const sides = edge
-        ? `<path class="bond-edge" d="M${corner(end, -1)} L${corner(start, -1)}${foot ? foot.trim().split(" ").map((q) => ` L${q}`).join("") : ""} L${corner(start, 1)} L${corner(end, 1)}" fill="none"${edge}/>`
+        ? `<path class="bond-edge" d="M${corner(end, -1)} L${corner(start, -1)}${foot ? foot.trim().split(" ").map((q) => ` L${q}`).join("") : ""} L${corner(start, 1)} L${corner(end, 1)}" fill="none"${edgeOf(hue)}/>`
         : "";
       const depth = front ? Math.max((start[2] + end[2]) / 2, centre[2] + 0.01) : Math.min((start[2] + end[2]) / 2, centre[2] - 0.01);
       drawn.push({
         kind: "bond",
-        colour,
+        colour: hue,
         x1: start[0],
         y1: start[1],
         x2: end[0],
         y2: end[1],
         width,
         depth,
-        svg: `${fromA ? defs : ""}<polygon class="bond" points="${outline}" fill="url(#${id})"${glass}/>${sides}`,
+        svg: `${fromA ? defs : ""}<polygon class="bond" points="${outline}" fill="url(#${gid})"${glass}/>${sides}`,
       });
     };
     half(true);
@@ -1035,7 +1098,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
     } else {
       const look =
         d.kind === "bond"
-          ? `stroke="${d.colour ?? BOND_COLOUR}" stroke-width="${n1(d.width)}" stroke-linecap="round"`
+          ? `stroke="${d.colour ?? BOND_COLOUR}" stroke-width="${n1(d.width)}" stroke-linecap="round"${d.dash ? ` stroke-dasharray="${d.dash}"` : ""}`
           : cellStroke(scene, d.depth, d.along ?? 0);
       out += `<line class="${d.kind}" x1="${n1(d.x1)}" y1="${n1(d.y1)}" x2="${n1(d.x2)}" y2="${n1(d.y2)}" ${look}/>\n`;
     }
