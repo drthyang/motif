@@ -892,7 +892,6 @@ Reset
                   </button>
                 ))}
               </div>
-              <p className="faint">The file is read in this page and never leaves your computer.</p>
             </div>
           )}
         </section>
