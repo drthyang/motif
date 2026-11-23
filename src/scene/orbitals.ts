@@ -99,7 +99,19 @@ export const MESH_PHI = 80;
 /** The isovalue a new orbital starts with: lobes of the familiar shape. */
 export const DEFAULT_ISO = 0.3;
 
-const unitSurfaces = new Map<string, OrbitalFace[]>();
+/** What is kept of one orbital at one isovalue: its unit surface, and what `orbitalField` needs. */
+interface UnitData {
+  readonly faces: OrbitalFace[];
+  /** Distance of the farthest point before scaling to 1, in the units of R(r). */
+  readonly farthest: number;
+  /** The isovalue as a value of |Y| R, and the largest |Y| R. */
+  readonly level: number;
+  readonly top: number;
+  /** For each mesh cell (theta row * MESH_PHI + phi column), the lobe of its outer face, or -1. */
+  readonly cellLobe: Int32Array;
+}
+
+const unitSurfaces = new Map<string, UnitData>();
 
 /**
  * The isosurface of one orbital at one isovalue, in its own axes, its farthest point at distance 1. Computed once
@@ -109,6 +121,10 @@ const unitSurfaces = new Map<string, OrbitalFace[]>();
  * lobe both sides meet at the peak, which closes it.
  */
 export function orbitalUnitSurface(kind: OrbitalKind, iso: number): OrbitalFace[] {
+  return unitData(kind, iso).faces;
+}
+
+function unitData(kind: OrbitalKind, iso: number): UnitData {
   const key = `${kind.id}|${iso}`;
   const kept = unitSurfaces.get(key);
   if (kept) return kept;
@@ -203,8 +219,11 @@ export function orbitalUnitSurface(kind: OrbitalKind, iso: number): OrbitalFace[
     lobes += ring ? RING_SEGMENTS : 1;
   }
   const scaled = faces.map((f) => ({ ...f, corners: f.corners.map((c) => [c[0] / farthest, c[1] / farthest, c[2] / farthest]) as unknown as [Vec3, Vec3, Vec3, Vec3] }));
-  unitSurfaces.set(key, scaled);
-  return scaled;
+  const cellLobe = new Int32Array(MESH_THETA * MESH_PHI).fill(-1);
+  for (const [cell, k] of outerAt) cellLobe[cell] = faces[k]!.lobe ?? -1;
+  const data: UnitData = { faces: scaled, farthest, level, top: rMax * yMax, cellLobe };
+  unitSurfaces.set(key, data);
+  return data;
 }
 
 const placedSurfaces = new Map<string, OrbitalFace[]>();
@@ -233,4 +252,36 @@ function placeSurface(kind: OrbitalKind, size: number, frame: Mat3, iso: number)
     ...(f.lobe !== undefined ? { lobe: f.lobe } : {}),
     ...(f.ring !== undefined ? { ring: f.ring } : {}),
   }));
+}
+
+/**
+ * The orbital as a solid, for finding exactly where it lies in front of an atom. `value(x, y, z)` (cartesian,
+ * angstrom, about the atom) is how far inside a lobe the point is, |psi| / level - 1: positive inside, zero on the
+ * isosurface drawn, negative outside. `lobe(x, y, z)` is the lobe the point's direction belongs to, as the faces
+ * number them (-1 where there is none). The size and frame are those of `orbitalSurface`.
+ */
+export function orbitalField(kind: OrbitalKind, size: number, frame: Mat3, iso: number = DEFAULT_ISO): { value: (x: number, y: number, z: number) => number; lobe: (x: number, y: number, z: number) => number } {
+  const data = unitData(kind, iso);
+  const [fx, fy, fz] = frame;
+  const l = kind.l;
+  const n = l + 1;
+  const k = data.farthest / size;
+  const centre = l === 0 ? data.top / data.level - 1 : -1;
+  return {
+    value: (x, y, z) => {
+      const [u, v, w] = [x * fx[0] + y * fx[1] + z * fx[2], x * fy[0] + y * fy[1] + z * fy[2], x * fz[0] + y * fz[1] + z * fz[2]];
+      const r = Math.sqrt(u * u + v * v + w * w);
+      if (r < 1e-12) return centre;
+      const rr = r * k;
+      return (Math.abs(kind.y(u / r, v / r, w / r)) * rr ** l * Math.exp(-rr / n)) / data.level - 1;
+    },
+    lobe: (x, y, z) => {
+      const [u, v, w] = [x * fx[0] + y * fx[1] + z * fx[2], x * fy[0] + y * fy[1] + z * fy[2], x * fz[0] + y * fz[1] + z * fz[2]];
+      const r = Math.sqrt(u * u + v * v + w * w);
+      if (r < 1e-12) return l === 0 ? 0 : -1;
+      const i = Math.min(MESH_THETA - 1, Math.floor((Math.acos(Math.max(-1, Math.min(1, w / r))) / Math.PI) * MESH_THETA));
+      const j = Math.min(MESH_PHI - 1, Math.floor((((Math.atan2(v, u) + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI)) * MESH_PHI));
+      return data.cellLobe[i * MESH_PHI + j]!;
+    },
+  };
 }

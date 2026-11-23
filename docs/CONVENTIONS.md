@@ -1,0 +1,292 @@
+# MOTIF conventions
+
+Every convention MOTIF follows, what was decided and when, and how each part is checked. For the app itself,
+see the [README](../README.md).
+
+## Conventions
+
+- Cartesian axes: *a* along x, *b* in the xy plane, *c*\* along z (as in gemmi and the PDB).
+- The view is a proper rotation, never a reflection, so a structure is never drawn mirrored.
+  Screen x is right, y is up, z is towards the viewer; the projection is orthographic.
+- RMCProfile configurations (`.rmc6f`) are read as P1: the identity is the only operation and every atom of
+  the supercell is its own site. Fractional coordinates are along the file's lattice vectors; the cell is
+  rebuilt from their lengths and angles (the file's "Cell" line, which must agree with them), so the crystal
+  is the same, turned rigidly into MOTIF's axes. Left-handed lattice vectors are refused (they would be
+  drawn mirrored), and so is a file with an unreadable atom line, a non-finite coordinate or a wrong atom
+  count, rather than drawn with atoms missing. Vacancies (`Va`) are left out and counted. The atom-line
+  grammar is adapted from the author's RMCProfile Workbench.
+  A configuration can also be folded into one cell (Structure tab), as RMCProfile Workbench does: each atom is
+  moved into one cell (supercell fraction x N, its fractional part), the copies of a site are grouped by the
+  file's site numbers (the crystallographic site of the unit cell; by distance, 0.5 A, in a file without
+  them), and the site is drawn at their plain average (the user's choice, 2026-11-23): each copy's position in
+  its own cell is (supercell fraction x N) minus its unit-cell indices, so a copy just below a corner reads
+  -0.002, not 0.998; a copy whose cell lies across the supercell's boundary is taken back by one supercell
+  length. A file without cell indices is averaged as RMCProfile Workbench does (circular mean as a centre,
+  plus the mean offset of the copies from it); on a real configuration the two agree to 1e-14. Each element's share of the copies is its occupancy (vacancies count), so a site shared by
+  two elements is a pie sphere. The Info tab gives the largest rms spread of a site's copies. In a folded cell an atom within 0.01 of a limit of
+  the range counts as on it (0.001 elsewhere), so a site averaged to 0.9988 is drawn at both edges, at its
+  measured position (the user's choice, 2026-11-23).
+- The symmetry operations are taken from the file and checked to form a complete group.
+  A file that gives only a space-group symbol is refused, not guessed.
+- What is shown is a range of fractional coordinates along *a*, *b*, *c*. By default an atom on the
+  boundary of the range is drawn at both ends (a cell looks complete); the other setting draws each
+  atom once per cell. An atom within 0.001 of a limit counts as on it.
+- Sites of the file that put different elements at the same place (within 0.05 Å) are one atom,
+  a *shared site*, named by its elements ("Fe/Mg") until the user renames it. It is drawn as a pie
+  sphere: wedges clockwise from the top in file order, each spanning 360° × its occupancy. A partly
+  vacant place gets a pale wedge for the vacant share (this can be switched off).
+- Each bond rule can be drawn in one colour or in atom colours (each half in the colour of the atom it starts
+  from), and as a solid, dashed or dotted line. Dashes are 2.5 rod widths long with gaps of 1.5, dots one rod
+  width across and apart; the pattern fills the length between the two atoms' surfaces exactly and is the
+  same seen from either end. With more than 1,500 bonds the plain strokes carry the same pattern.
+- Bonds are drawn as round rods (surface: soft, flat, glossy, metal or glass; a thin outline can
+  be switched on, off by default at the user's choice), in two halves that meet in the middle. A half that points at the viewer comes out of
+  its atom's face with a rounded foot; a half that points away is cut by the atom's outline.
+  Above 1,500 bonds they are plain strokes, which draw much faster.
+- Bonds: a rule names two elements and a longest distance. A rule may also add the neighbours just
+  outside the range, so that every centre atom shown has all its neighbours. A bond is drawn from
+  surface to surface.
+- The unit-cell outline is drawn for every whole cell inside the range (none for a slab).
+- The structure is fitted to the canvas in each view. While dragging, the placement of the moment
+  the drag began is kept, and the figure is refitted on release.
+- A figure opens at the size of a Nature single column, 89 mm wide, 4:3 (8.9 x 6.675 cm), lettered in
+  Open Sans, with legend, axis letters and angle labels at 7 pt (Nature asks for 5 to 7 pt; the user's
+  defaults, 2026-11-23). Otherwise the figure's canvas is 1440 px wide and takes the shape of its frame on the page, so the figure
+  uses the whole frame and nothing is cut off at an unseen edge inside it (the user's choice,
+  2026-11-22). Or it has a size on paper, width and height in cm or in (the user's choice,
+  2026-11-23): the drawing is then 1440 units wide with that shape, the SVG states the size
+  (`width="8.5cm"`), so a drawing program places it at exactly that size, and the PNG is that size at
+  a chosen dpi (300 by default), with the dpi written in the file. The page shows the whole canvas,
+  as large as the frame allows. A shape can be chosen in either case (1:1, 5:4, 4:3, 3:2, √2:1, 16:10,
+  16:9, 2:1, landscape or portrait); with a size on paper the height then follows the width and the
+  width the height.
+- When a text size is given in pt, the legend's spheres and gaps and the axis arrows follow it, keeping the
+  proportions they were designed with (legend sphere radius 44 to letters 92; axis 140 to letters 76), and the
+  band under the structure shrinks or grows with them; the size settings scale them relative to the text.
+- Text sizes (legend names, axis letters, angle labels) can each be given in pt, and are then exact
+  in the saved figure, whatever the legend or axes size and the paper size. Left empty, a text size
+  follows the legend or axes size as before. Without a size on paper, 1 px of the figure counts as
+  1 pt (as Keynote and Illustrator place an SVG). Zoom and move act on the structure; the legend and axes stay put and are drawn
+  over a structure that reaches them. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the
+  buttons; move: Shift + drag, middle-button drag, arrow keys; fit again: double-click, 0, or
+  "Fit"; "Box" then a drag zooms to a rectangle (Esc cancels). A plain wheel scrolls the page.
+  One quiet line under the figure names the main controls (Drag turn, ⌥ roll, ⇧ move, ⌘ zoom,
+  Double-click fit; Alt and Ctrl off a Mac), with the details in each one's tooltip; the one in use,
+  or whose key is held, is lit. The "?" hides the line.
+  A switch says whether Save writes the zoomed view (the default; the user's answer of 2026-11-22,
+  relayed by the hub) or the whole structure.
+- Moving a large structure (1,200 drawn atoms and bonds or more; the number can be changed under
+  View, and the preview switched off): while the view is changing, a
+  drawing made by the graphics card (WebGL 2 in a worker, `src/preview`) stands in for the
+  structure; the vector figure is drawn again about 0.2 s after the movement stops. The preview is
+  given the same scene and places every atom with the same formula as the SVG (tested), and shades
+  spheres the same way, pie spheres included, but it is simpler: arrows as bars, a plain cell, bonds
+  with square ends, and no bands, filled triangles, angle marks or labels. Where two atoms overlap
+  the preview shows the true intersection of the spheres, the SVG the nearer atom whole. It is never what is
+  saved: Save always writes the vector figure. Small structures are simply redrawn as SVG, and so is
+  everything in a browser that cannot draw in a worker (the page says so). `scripts/browser_check.cjs`
+  checks in a real browser that the saved SVG is identical with the preview on, off and showing,
+  that the two pictures of one view agree, and that the page works without worker drawing. The
+  page shows the figure as two layers (structure; legend and axes) made by the same code as the
+  saved figure. Measured on an Apple M5 Pro in Chromium, per frame while dragging, without and
+  with the preview: 729 atoms 17 ms / 8 ms; 4,913 atoms 167 ms / 8 ms; 19,683 atoms 667 ms / 16 ms.
+- Legend and axes share a band under the structure. The axis arrows are the directions of the cell
+  edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
+  no letter. By default *a*, *b*, *c* are a muted red, green and blue (arrow and letter alike);
+  each colour can be changed, or all three drawn grey. Filled bond triangles take the pale tint of
+  their atoms unless a colour is chosen for them. Lettering: Open Sans by default, then Avenir, Avenir Next (macOS), Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). The font can be chosen
+  from a list (macOS fonts, and free ones from Google Fonts, IBM Plex and DejaVu; those not installed
+  are marked) or typed by name; it must be a font of the computer (the PNG is drawn from the SVG
+  alone, which cannot use a font loaded by the page), and the page says when it is missing. Text stays live
+  text in the SVG; on a system without Avenir the letters look different, the drawing does not.
+- Magnetic CIF (reading approved by the user, 2026-11-22): the magnetic group is every product of an operation and a centring translation,
+  each with its time reversal; the list is checked to be a group with consistent signs. Moments are
+  read as components along the unit vectors of *a*, *b*, *c* in Bohr magnetons (the `crystalaxis`
+  form, the only one read). A moment is carried to a symmetry-equivalent atom as an axial vector,
+  odd under time reversal: m' = (time reversal) × det(R) × R m. If two operations bring different
+  moments to the same atom, the page says that the moment is not allowed by the site symmetry.
+  Modulated (incommensurate) structures are refused.
+- A moment arrow is a thin round rod through the atom with a cone at its tip, shaded like the
+  spheres. The half that points away from the viewer is drawn before the sphere, which cuts it
+  with its own outline; the half that points towards the viewer is drawn after, from the small
+  circle where it pierces the surface (an ellipse when seen at an angle).
+- The thickness of the arrows' rod can be set; the cone at the tip keeps its proportion to it,
+  and its size can be set separately as a multiple of that proportion (also for the axis arrows).
+- The moment arrows, and the axis arrows, each have a thin darker outline, which can be switched off
+  (on by default, the user's choice).
+- Arrow length is proportional to the moment; the largest moment in the file gets the chosen length.
+- A moment arrow's tail side is 80 % of its head side by default (adjustable, 100 % = exactly centred): the
+  cone narrows to a point, so an exactly centred arrow looks longer on its tail side. The head side always
+  runs half the chosen length from the atom's centre (the user's choice, 2026-11-23).
+- Highlights belong to a bond rule. Its bonds form connected groups (chains, nets), numbered by
+  the position of their middle along *a*, then *b*, then *c*, so the numbering does not depend on
+  the view. A band is a wide translucent stroke behind one group or all of them; with one group
+  chosen, the rule's other atoms and bonds are drawn pale. "Fill triangles" fills every three
+  mutually bonded atoms (a kagome net). The fill is cut to the gap its atoms and bonds leave: each side runs half a bond width inside
+  its bond and each corner follows the atom's outline, so it meets them at any angle and covers none of them
+  (it reaches 0.4 px under them, where it is hidden, so no hairline shows). Each rule has its own bond colour and thickness.
+- A bond angle is the angle between two drawn bonds that meet at an atom. An angle rule names
+  the atom at the apex and the two at the ends, and a range in degrees; every such angle in the
+  range is marked with a translucent sector lying in the plane of the two bonds, between the
+  surface of the apex atom and a chosen radius, and (optionally) its size to 0.1°. A straight
+  angle (180°) has no plane and is not drawn.
+- Each angle rule shows the distribution of its angle among the drawn bonds; pointing at a bar
+  previews those angles in the figure, a click or a drag across bars keeps them marked.
+- A bond rule can leave out neighbours it bonds to nothing, and (for bonds within one species)
+  everything that is not part of a complete triangle. The wedge order of a shared site can be set.
+- Moment directions are checked against pymatgen (`scripts/pymatgen_moments.py`), including the
+  arrow's size and its projection on each cell edge, on hexagonal test structures with
+  time-reversed operations (`tests/fixtures`).
+- Surfaces: the atoms, and separately the arrows (moment arrows and axis arrows together), can be
+  drawn soft (the default), flat, glossy, metal or glass. These are vector shading only (gradient
+  stops, a highlight spot, opacity), so the figure stays an editable SVG; a glass sphere shows
+  what is behind it, and a slider sets how solid the glass is (one setting for all glass; 75 % by default). The GPU preview shown while a large structure moves does not draw
+  the surfaces.
+- When a file is opened MOTIF suggests bonds (`src/scene/autoBonds.ts`; can be switched off): each
+  kind of cation to its nearest anions, or a single element to itself, first shell only, with the
+  neighbours outside the range added. A pair that would give an atom more than eight bonds is
+  left out, and a structure with no anions and several elements gets none. The page says which
+  bonds it added. This is a drawing aid, not a statement about bonding.
+- The unit cell is drawn with the edges in front of the middle of the structure solid and those
+  behind it paler and dashed, so the box reads as a solid; all dashed or all solid can be chosen,
+  and the line width set.
+- The page: a view toolbar over the figure and four tabs (the user's layout, 2026-11-23):
+  Info (what the file says), Structure (what is drawn: the cells shown, which elements, bonds,
+  angles, whether moments are shown), Visual (how it looks: presets, surfaces and outlines, colours
+  and sizes of atoms, bonds, angle marks and moment arrows, the unit-cell lines, legend, axes,
+  lettering) and Layout (canvas size and shape, view direction, scale, saved views, dragging, large
+  structures). A bond or angle rule is set up under Structure and styled under Visual. The style
+  quick styles (soft shading; flat colour, outlined; glossy highlight; metallic; clear glass atoms) set
+  surfaces, outlines, lettering weight and legend
+  sizes together.
+- A range may hold up to 100,000 atoms (the user's limit). Grouping bonds into chains is near linear
+  (union-find), so a supercell of that size with its bonds is built in well under a second.
+- Orbitals (Structure tab, the user's choices of 2026-11-23): s, p, d and the general f set (fz³, fxz², fyz²,
+  fxyz, fz(x²−y²), fx(x²−3y²), fy(3x²−y²)) on the atoms of a chosen species, as a schematic: the isosurface
+  |ψ| = isovalue × max|ψ| of a hydrogen-like ψ = R(r)·Y with R ∝ r^l e^(−r/n), n = l + 1 (1s, 2p, 3d, 4f), its
+  farthest point at the chosen size, its lobes coloured by the sign of Y. A low isovalue gives full lobes, a
+  high one slim lobes (the small ring of dz² vanishes above 0.5, where its |ψ| never reaches). Each surface is
+  computed once per orbital and isovalue and shared by every atom and redraw. Axes: MOTIF's (x along a, y in
+  the a–b plane, z along c*), or a local frame with z along [u v w] and x along a second direction.
+  Each lobe is drawn as one smooth shape: its outline seen from the viewer (the convex hull of the projected points of its
+  surface, resampled evenly and drawn as a smooth curve; a lobe is nearly convex, so only a slight dent is filled).
+  An ordinary lobe is drawn running into the nucleus, as in the textbook picture (the isosurface of a p, d or
+  f orbital stops short of it, its radial part being zero there); a ring keeps its own shape, filled with a gradient
+  as atoms are, see-through (60 % by default), at the depth of its centre. A ring (the band of dz², the cones
+  of fz³) is cut into 12 segments, shaded with one gradient for the whole ring, and drawn as one see-through
+  layer (so its halves never lie over one another).
+  Orbitals and atoms cut through one another as solids (2026-11-23). In the orthographic view a point of an
+  orbital lies in front of an atom's visible surface exactly when, about that atom's centre, it is nearer the
+  viewer and outside the atom's radius. A lobe (or a whole ring) is drawn once behind every atom within its
+  reach that it overlaps on screen, and again after each such atom, clipped to the atom's disc and to the region
+  where the lobe lies in front of the sphere. That region comes from the orbital as a solid, not from its mesh:
+  along the line of sight through each point of a grid over the disc (one point per 4 units of the drawing,
+  8 to 24 each way) the largest |ψ| / level − 1 in front of the sphere is found (12 samples, then a golden-section
+  refinement), and its zero contour is traced by marching squares and drawn as a smooth curve, so where a lobe
+  meets an atom the edge is smooth. Atoms beyond an orbital's reach are ordered by depth as usual.
+  While the view moves the edge is found on a coarser grid (a draft); once the view is still, and in every saved
+  figure, it is drawn in full. Surfaces are kept once placed, and atoms of one rule share one outline moved to
+  each atom (the view is orthographic), so turning the view only projects them: on the 8 Ti atoms of the SrTiO₃
+  example, dz² and dxy together take about 12 ms a frame while moving and 41 ms in full. Surfaces: soft, flat, glossy, or mesh (grid lines, drawn face by
+  face, slower); colour schemes for the two lobes, or own colours. Checked (`tests/orbitals.test.ts`): the
+  harmonics are mutually orthogonal over the sphere; the solid is zero on every point of the drawn surface away
+  from a lobe's rim and positive just inside; a lobe inside its atom is never drawn over it, and one that reaches
+  out is drawn over it only on the near side; marching squares returns a disc's rim.
+- A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
+- Saved settings (Layout tab): a person's preferences, by name, kept in the browser, and exported to or
+  imported from a small JSON file (`*.motif-settings.json`, format version 1). They hold everything under
+  Visual and Layout (surfaces, outlines, element colours and radii, arrows, unit-cell lines, legend, axes,
+  lettering, canvas size and shape, dpi, scale, dragging), the saved views, and whether bonds are added on
+  opening; not the structure (cells shown, bond and angle rules, distortion modes, the current view). One of
+  them can be chosen to open the page with; element colours and radii from loaded settings carry over to
+  each file opened. A setting the page does not know, or a value it does not accept, is left out and named.
+- A file opens with c up, a towards the viewer on the left and b to the right, seen a little from
+  above (turn -120, tilt 15): all three axes read well and none is a stub (the user's choice).
+- The view (`src/render/camera.ts`; plan from the camera research of 2026-11-22, approved by the
+  user). The renderer takes a rotation matrix; for people the view is four numbers read from it,
+  so they are always true: the cell axis that is up, turn about it (positive brings the front to
+  the right), tilt (positive looks from above, -90 to 90) and roll about the line of sight
+  (anticlockwise, applied last). They are shown under the figure as one line that can be copied
+  and pasted back, with the nearest low-index direction and how far off the view is.
+  - Drag: turntable by default (left-right turns about the up axis, up-down tilts and stops at
+    +-90, the up axis stays upright; a circle of the mouse does not roll the figure); Alt + drag
+    rolls; a free mode remains.
+  - "Look along [u v w]" or "normal to (h k l)": the direction points at the viewer. Up is the
+    given direction's part perpendicular to the line of sight; by default c, or b when looking
+    along c. Buttons for a, b, c, a*, b*, c*, "other side" and "turn 90".
+  - Releasing a drag within 4 degrees of a direction with indices up to 2 snaps onto it by the
+    smallest turn (can be switched off).
+  - Saved views are the four numbers, kept in the browser, so a view means the same axes in
+    another structure; a switch keeps the view when another file is loaded.
+  - Scale: fitted to each view (default), steady at every angle, or a fixed number of px per A.
+  - Preset views (the toolbar's "Views…" menu), each with c up and built from the cell's own axes:
+    standard (the opening view), clinographic (the textbook crystal drawing: from in front of a,
+    turned atan(1/3) = 18.43 degrees towards b and raised atan(1/6) = 9.46 degrees), isometric (along
+    the sum of the unit vectors of a, b, c, so all three are equally foreshortened), along [110] and
+    along [1-10].
+  - A change of view by a click is shown as a short turn on screen (can be switched off; skipped
+    when the system asks for reduced motion). It is never part of the saved figure.
+- An axis arrow that points mostly into or out of the page is drawn at least 0.45 of the full
+  length, in its true direction on screen, so that it stays readable (as in the user's slide
+  figures); this can be switched off, and every arrow is then the exact projection.
+- The size of the legend and the size of the axis arrows (length, thickness, head and letters
+  together) can each be set as a multiple of the usual size.
+- The legend can follow the size of the structure: its largest sphere as large as that atom is
+  drawn, letters in proportion (within limits), so it scales with the zoom.
+- A file's vectors (moments of an mCIF, displacements of an ISODISTORT file) can be drawn in either style,
+  as moments (through the atom, centred) or as displacements (from the atom's centre, their own colour and
+  thickness): Structure tab, Arrows (the user's choice, 2026-11-23). Each file starts in its own kind.
+- Arrows (the user's rule, for step 6 and later): a magnetic moment is drawn as an arrow passing
+  through its atom, centred on it. An atomic displacement (a distortion mode) is drawn as an arrow
+  starting at the centre of its atom.
+- Distortion modes (reading approved by the user, 2026-11-23): an ISODISTORT CIF (iso.byu.edu) is
+  read as the distorted structure it lists, plus its displacive modes. Each site's displacement from
+  the parent is the sum over the modes switched on of matrix x amplitude x norm (fractional units,
+  checked against the file's own `_iso_deltacoordinate_value`), added to the coordinates its
+  `_iso_coordinate_formula` names, made angstrom with the undistorted supercell (the parent cell in
+  the file's basis), and carried to equivalent atoms as a polar vector, d' = R d. The largest
+  displacement gets the chosen arrow length (1.5 A from the atom's centre unless changed). Displacement
+  arrows are styled apart from moment arrows, so the two never look alike: green, a thicker rod (0.26 A) and
+  a smaller cone (0.6 of the usual proportion), each changeable (the user's choice, 2026-11-23). Strain, magnetic, rotational and occupancy modes are
+  not drawn; the page says when a file has them. Checked by hand against the published BaTiO3
+  coordinates (`tests/distortion.test.ts`).
+- Symmetry images of one site closer than 0.05 Å are one atom (a site on a symmetry element).
+
+## Steps of the first version
+
+| # | Step | Status |
+|---|------|--------|
+| 1 | Read a CIF and draw the atoms; rotate; export SVG and PNG | done |
+| 2 | Choose what is shown: how many cells, or a slab | done |
+| 3 | Bonds by distance for chosen element pairs; the unit cell | done |
+| 4 | Colour and size per element; pie spheres for mixed sites | done |
+| 5 | Legend and axis triad | done (reviewed in use by the user, 2026-11-23) |
+| 6 | mCIF: magnetic moments as arrows | done (reviewed in use, 2026-11-23) |
+| 7 | Highlights: a band along a chain, filled polygons | done (reviewed in use, 2026-11-23) |
+| 8 | Interface: four tabs (Info, Structure, Visual, Layout), toolbar over the figure, one text scale | done (reviewed in use, 2026-11-23) |
+| 9 | Bond angles: a translucent sector between two bonds, with the angle written beside it | done (reviewed in use, 2026-11-23) |
+| 10 | Camera: view as numbers, turntable drag, crystal directions, snapping, saved and preset views | done (reviewed in use, 2026-11-23) |
+| 11 | Distortion modes from ISODISTORT CIFs; arrows drawn as moments or displacements | done (2026-11-23) |
+| 12 | RMCProfile configurations (.rmc6f): the whole supercell as P1, or folded into one averaged cell | done (2026-11-23) |
+| 13 | Figure size on paper, aspect ratios, text in pt (defaults: Nature single column, 4:3, 7 pt) | done (2026-11-23) |
+| 14 | Saved settings: named, kept in the browser, exported and imported as a file | done (2026-11-23) |
+| 15 | Bond styles: atom colours, dashed and dotted; filled triangles cut to the gap | done (2026-11-23) |
+
+Each step is checked against an independent reference before the next one starts.
+
+Examples and screenshots in this repository use published structures only.
+
+## Building and testing
+
+```
+npm install
+npm run dev      # the page, at the local address it prints
+npm test         # the checks, a few seconds
+npm run build    # a static site in dist/
+```
+
+Built with TypeScript, Vite and React; the page's font (IBM Plex Sans, OFL licence) is part of the
+build, so the page makes no request to any other site. The page loads it under a private name, so that
+it does not count as installed when it is chosen for the figure. The CIF reader and symmetry code are MOTIF's own
+(adapted from the author's MATERIA) and are checked against gemmi: `scripts/gemmi_reference.py`
+writes the reference atom lists in `tests/reference/`.

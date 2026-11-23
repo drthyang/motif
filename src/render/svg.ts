@@ -8,7 +8,7 @@
 import { mulVec } from "../structure/cell";
 import { mixHex } from "../scene/elementStyle";
 import type { Material, OrbitalTexture, Scene, StickStyle, Wedge } from "../scene/scene";
-import { orbitalById, orbitalSurface, type OrbitalFace } from "../scene/orbitals";
+import { orbitalById, orbitalField, orbitalSurface, type OrbitalFace } from "../scene/orbitals";
 import type { Vec3 } from "../structure/types";
 import type { View } from "./view";
 
@@ -226,6 +226,18 @@ export interface DrawnSector {
   readonly label?: { readonly text: string; readonly x: number; readonly y: number };
 }
 
+/**
+ * One drawn piece of an orbital (a lobe, a whole ring, or a whole meshed orbital), before it is placed among the
+ * atoms: its gradients, its shapes, and the faces of its outer surface (about the atom's centre, angstrom), which
+ * decide where it lies in front of an atom.
+ */
+interface OrbitalUnit {
+  readonly depth: number;
+  readonly defs: string;
+  readonly body: string;
+  readonly faces: readonly OrbitalFace[];
+}
+
 /** One face of an orbital's surface, shaded and ready to write. */
 export interface DrawnOrbitalFace {
   readonly kind: "orbital";
@@ -282,31 +294,31 @@ function resampleClosed(poly: readonly (readonly [number, number])[], count: num
  * points of its outer surface: round the projection of the lobe's centre, the farthest point in each of
  * LOBE_STEPS directions (a lobe is round enough, seen from any side, for this to be its outline), smoothed a little
  * and drawn as a closed curve. It is filled with a gradient lit from the upper left, as atoms are, and drawn at the
- * depth of its centre, so it passes in front of or behind atoms and other lobes as a whole.
+ * depth of its centre; where it meets an atom it is placed by `placeOrbital`.
  */
 function orbitalLobes(
   faces: readonly OrbitalFace[],
   centre: Vec3,
   centreDepth: number,
-  atomRadius: number,
   project: (p: Vec3) => Vec3,
   o: { readonly colours: readonly [string, string]; readonly opacity: number; readonly texture: OrbitalTexture },
   id: string,
-): DrawnOrbitalFace[] {
-  const lobes = new Map<number, { sign: 1 | -1; ring?: number; points: Vec3[] }>();
+): OrbitalUnit[] {
+  const lobes = new Map<number, { sign: 1 | -1; ring?: number; points: Vec3[]; faces: OrbitalFace[] }>();
   for (const f of faces) {
     if (f.lobe === undefined) continue;
     let lobe = lobes.get(f.lobe);
-    if (!lobe) lobes.set(f.lobe, (lobe = { sign: f.sign, ...(f.ring !== undefined ? { ring: f.ring } : {}), points: [] }));
+    if (!lobe) lobes.set(f.lobe, (lobe = { sign: f.sign, ...(f.ring !== undefined ? { ring: f.ring } : {}), points: [], faces: [] }));
+    lobe.faces.push(f);
     // Neighbouring faces share their corners: the first corner of each face covers a large lobe's points once; a
     // small one (a segment of a ring) takes all four, to have enough.
     const corners = f.ring !== undefined ? f.corners : [f.corners[0]];
     for (const c of corners) lobe.points.push(project([centre[0] + c[0], centre[1] + c[1], centre[2] + c[2]]));
   }
-  const out: DrawnOrbitalFace[] = [];
-  // Segments of a ring are drawn solid, in two see-through groups (behind and in front of the atom), so they join
-  // without seams and do not darken where they overlap.
-  const ringParts = new Map<string, { depth: number; svg: string }[]>();
+  const out: OrbitalUnit[] = [];
+  // Segments of a ring are drawn solid, in one see-through group, so they join without seams and do not darken
+  // where they overlap.
+  const ringParts = new Map<number, { depth: number; defs: string; svg: string; faces: OrbitalFace[] }[]>();
   // Each ring's centre and reach on screen, from all its segments' points, for its one gradient.
   const ringShade = new Map<number, [number, number, number]>();
   const ringWritten = new Set<number>();
@@ -332,14 +344,7 @@ function orbitalLobes(
     const xy = resampleClosed(hull, LOBE_STEPS);
     const radius = Math.max(...xy.map((p) => Math.hypot(p[0] - cx, p[1] - cy)));
     if (!(radius > 0.3)) continue;
-    // A closed curve through the points (Catmull-Rom as cubic Beziers).
-    const steps = xy.length;
-    let d = `M${n1(xy[0]![0])},${n1(xy[0]![1])}`;
-    for (let s = 0; s < steps; s++) {
-      const [p0, p1, p2, p3] = [xy[(s + steps - 1) % steps]!, xy[s]!, xy[(s + 1) % steps]!, xy[(s + 2) % steps]!];
-      d += ` C${n1(p1[0] + (p2[0] - p0[0]) / 6)},${n1(p1[1] + (p2[1] - p0[1]) / 6)} ${n1(p2[0] - (p3[0] - p1[0]) / 6)},${n1(p2[1] - (p3[1] - p1[1]) / 6)} ${n1(p2[0])},${n1(p2[1])}`;
-    }
-    d += " Z";
+    const d = smoothClosed(xy);
     const base = lobe.sign > 0 ? o.colours[0] : o.colours[1];
     // A segment of a ring is shaded with one gradient for the whole ring (its centre and reach), so the ring reads
     // as one smooth band, not as a patchwork of segments each lit on its own.
@@ -364,40 +369,215 @@ function orbitalLobes(
     const opacity = o.opacity < 1 ? ` opacity="${o.opacity}"` : "";
     const edge = mixHex(base, "#000000", 0.3);
     if (lobe.ring !== undefined) {
-      // Every segment in the ring's one layer; a segment in front of the atom also in its clipped copy (see below).
-      const segment = `<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${fill}" stroke-width="0.6"/>`;
-      const all = ringParts.get(`${lobe.ring}|all`) ?? [];
-      all.push({ depth: cz, svg: `${defs}${segment}` });
-      ringParts.set(`${lobe.ring}|all`, all);
-      if (cz >= centreDepth) {
-        const front = ringParts.get(`${lobe.ring}|front`) ?? [];
-        front.push({ depth: cz, svg: segment });
-        ringParts.set(`${lobe.ring}|front`, front);
-      }
+      const all = ringParts.get(lobe.ring) ?? [];
+      all.push({ depth: cz, defs, svg: `<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${fill}" stroke-width="0.6"/>`, faces: lobe.faces });
+      ringParts.set(lobe.ring, all);
       continue;
     }
-    out.push({ kind: "orbital", depth: cz, svg: `${defs}<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${edge}" stroke-width="0.8" stroke-opacity="0.5"${opacity}/>` });
+    out.push({ depth: cz, defs, body: `<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${edge}" stroke-width="0.8" stroke-opacity="0.5"${opacity}/>`, faces: lobe.faces });
   }
-  // A ring is drawn as one see-through layer just behind its atom, so its near and far halves, which overlap at the
-  // ring's ends seen from the side, never lie over one another. Its near half is drawn once more just in front of the
-  // atom, clipped to the atom's disc: only there does it pass in front of the atom, and there the atom hides the layer
-  // behind, so nothing is doubled.
+  // A ring is drawn as one see-through layer at its atom's depth, so its near and far halves, which overlap at the
+  // ring's ends seen from the side, never lie over one another.
   const opacity = o.opacity < 1 ? ` opacity="${o.opacity}"` : "";
-  const [ax, ay] = project(centre);
-  for (const [key, parts] of ringParts) {
+  for (const parts of ringParts.values()) {
     const svg = parts.sort((p, q) => p.depth - q.depth).map((p) => p.svg).join("");
-    if (key.endsWith("|all")) {
-      out.push({ kind: "orbital", depth: centreDepth - 0.02, svg: `<g class="orbital-ring"${opacity}>${svg}</g>` });
-    } else {
-      const clip = `${id}-${key.split("|")[0]}-atom`;
-      out.push({
-        kind: "orbital",
-        depth: centreDepth + 0.02,
-        svg: `<defs><clipPath id="${clip}"><circle cx="${n1(ax)}" cy="${n1(ay)}" r="${n1(atomRadius)}"/></clipPath></defs><g class="orbital-ring" clip-path="url(#${clip})"${opacity}>${svg}</g>`,
-      });
-    }
+    out.push({ depth: centreDepth, defs: parts.map((p) => p.defs).join(""), body: `<g class="orbital-ring"${opacity}>${svg}</g>`, faces: parts.flatMap((p) => p.faces) });
   }
   return out;
+}
+
+/**
+ * Grid points across an atom's disc, each way, for finding where an orbital lies in front of it: one every
+ * FRONT_PX units of the drawing (about 2 px on screen), within these bounds.
+ */
+const FRONT_PX = 4;
+const FRONT_GRID: readonly [number, number] = [8, 24];
+/** Samples along each line of sight through the orbital, before the best one is refined, and refining steps. */
+const FRONT_SAMPLES = 12;
+const FRONT_REFINE = 8;
+/** The same for a draft, drawn while the view is moving: a coarser edge, several times faster. */
+const DRAFT = { px: 12, grid: [5, 9] as const, samples: 6, refine: 3 };
+/** Below this the field is not told apart: far enough from the surface for the contour. */
+const FRONT_FLOOR = -0.5;
+
+/**
+ * Places the pieces of one orbital (its lobes, its ring, or the whole meshed orbital) among the atoms, so that
+ * they and the atoms cut through one another as solids do. Each piece is drawn once just behind every atom it can
+ * touch and overlaps on screen. After each such atom it is drawn again, clipped to the atom's disc and to the region
+ * where the piece lies in front of the atom's surface; so it shows on an atom just where it is in front of the
+ * sphere, and nowhere twice. Atoms out of its reach are ordered by depth as usual.
+ *
+ * The region comes from the orbital as a solid (`orbitalField`), not from its mesh, so its edge, where the lobe
+ * meets the sphere, is smooth. Along the line of sight through each point of a grid over the disc, the largest
+ * value of |psi| / level - 1 in front of the sphere is found; the region is where it is positive, traced by
+ * marching squares and drawn as a smooth curve.
+ */
+function placeOrbital(
+  units: readonly OrbitalUnit[],
+  centre: Vec3,
+  size: number,
+  field: { value: (x: number, y: number, z: number) => number; lobe: (x: number, y: number, z: number) => number },
+  atoms: readonly { readonly centre: Vec3; readonly x: number; readonly y: number; readonly depth: number; readonly radius: number }[],
+  view: View,
+  project: (p: Vec3) => Vec3,
+  scale: number,
+  id: string,
+  draft = false,
+): DrawnOrbitalFace[] {
+  const [px4, grid, samples, refine] = draft ? [DRAFT.px, DRAFT.grid, DRAFT.samples, DRAFT.refine] : [FRONT_PX, FRONT_GRID, FRONT_SAMPLES, FRONT_REFINE];
+  const out: DrawnOrbitalFace[] = [];
+  // Each piece's place on screen as a bounding circle: where it cannot overlap an atom, their order does not matter.
+  const pieces = units.map((unit) => {
+    const pts = unit.faces.map((f) => project([centre[0] + f.corners[0][0], centre[1] + f.corners[0][1], centre[2] + f.corners[0][2]]));
+    const [bx, by] = [pts.reduce((sum, p) => sum + p[0], 0) / pts.length, pts.reduce((sum, p) => sum + p[1], 0) / pts.length];
+    const reach = Math.max(...pts.map((p) => Math.hypot(p[0] - bx, p[1] - by))) + 2;
+    return { unit, depth: unit.depth, lobes: new Set(unit.faces.map((f) => f.lobe ?? -1)), bx, by, reach };
+  });
+  const lobeOf = new Map<number, number>();
+  pieces.forEach((p, k) => p.lobes.forEach((l) => lobeOf.set(l, k)));
+  atoms.forEach((atom, a) => {
+    const rel: Vec3 = [atom.centre[0] - centre[0], atom.centre[1] - centre[1], atom.centre[2] - centre[2]];
+    if (Math.hypot(...rel) > size + atom.radius) return;
+    const r = atom.radius * scale;
+    // The pieces that overlap the atom's disc on screen: each drawn behind the atom.
+    const overlapping = pieces.filter((p) => Math.hypot(p.bx - atom.x, p.by - atom.y) < r + p.reach);
+    if (overlapping.length === 0) return;
+    for (const p of overlapping) p.depth = Math.min(p.depth, atom.depth - 0.001);
+    // In view axes about the atom: the orbital's centre, and the way back to cartesian (the view is a rotation).
+    const c = mulVec(view, [-rel[0], -rel[1], -rel[2]]);
+    const [vx, vy, vz] = view;
+    // The field over the grid, one array per piece; a border at the floor closes every contour.
+    const cells = Math.max(grid[0], Math.min(grid[1], Math.round((2 * r) / px4)));
+    const n = cells + 3;
+    const extent = atom.radius * 1.04;
+    const step = (2 * extent) / cells;
+    const grids = pieces.map(() => new Float64Array(n * n).fill(FRONT_FLOOR));
+    const reached = new Set<number>();
+    for (let i = 1; i < n - 1; i++) {
+      for (let j = 1; j < n - 1; j++) {
+        const [x, y] = [-extent + (i - 1) * step, -extent + (j - 1) * step];
+        // Beyond the disc (and a cell for the contour to close) everything is clipped away.
+        if (x * x + y * y > (atom.radius + 1.5 * step) ** 2) continue;
+        const side = Math.hypot(x - c[0], y - c[1]);
+        if (side >= size) continue;
+        const zs = Math.sqrt(Math.max(0, atom.radius ** 2 - x * x - y * y));
+        const half = Math.sqrt(size * size - side * side);
+        const [z0, z1] = [Math.max(zs, c[2] - half), c[2] + half];
+        if (z1 <= z0) continue;
+        // Cartesian point about the orbital's atom on this line of sight at depth z (the view is a rotation).
+        const px = x * vx[0] + y * vy[0] - rel[0], py = x * vx[1] + y * vy[1] - rel[1], pz = x * vx[2] + y * vy[2] - rel[2];
+        const at = (z: number): number => field.value(px + z * vz[0], py + z * vz[1], pz + z * vz[2]);
+        // The largest value on the line, sampled and then refined (golden section) round the best sample.
+        let [best, bestK] = [-Infinity, 0];
+        for (let k = 0; k <= samples; k++) {
+          const f = at(z0 + ((z1 - z0) * k) / samples);
+          if (f > best) [best, bestK] = [f, k];
+        }
+        if (best <= FRONT_FLOOR) continue;
+        let [lo, hi] = [z0 + ((z1 - z0) * Math.max(0, bestK - 1)) / samples, z0 + ((z1 - z0) * Math.min(samples, bestK + 1)) / samples];
+        for (let k = 0; k < refine; k++) {
+          const [m1, m2] = [hi - 0.618 * (hi - lo), lo + 0.618 * (hi - lo)];
+          if (at(m1) > at(m2)) hi = m2;
+          else lo = m1;
+        }
+        const zBest = (lo + hi) / 2;
+        best = Math.max(best, at(zBest));
+        const piece = lobeOf.get(field.lobe(px + zBest * vz[0], py + zBest * vz[1], pz + zBest * vz[2]));
+        if (piece === undefined) continue;
+        const g = grids[piece]!;
+        if (best > g[i * n + j]!) g[i * n + j] = best;
+        if (best > 0) reached.add(piece);
+      }
+    }
+    for (const piece of reached) {
+      const loops = contourLoops(grids[piece]!, n);
+      if (loops.length === 0) continue;
+      const toScreen = ([gi, gj]: readonly [number, number]): readonly [number, number] => [atom.x + (-extent + (gi - 1) * step) * scale, atom.y - (-extent + (gj - 1) * step) * scale];
+      const d = loops.map((loop) => smoothClosed(loop.map(toScreen))).join(" ");
+      const [disc, region] = [`${id}-a${a}`, `${id}-p${piece}-f${a}`];
+      out.push({
+        kind: "orbital",
+        depth: atom.depth + 0.001,
+        svg: `<defs><clipPath id="${disc}"><circle cx="${n1(atom.x)}" cy="${n1(atom.y)}" r="${n1(r)}"/></clipPath><clipPath id="${region}"><path d="${d}" clip-rule="evenodd"/></clipPath></defs><g clip-path="url(#${disc})"><g clip-path="url(#${region})">${pieces[piece]!.unit.body}</g></g>`,
+      });
+    }
+  });
+  for (const p of pieces) out.push({ kind: "orbital", depth: p.depth, svg: `${p.unit.defs}${p.unit.body}` });
+  return out;
+}
+
+/**
+ * The closed contours where a field on an n x n grid (value at i * n + j) crosses zero, by marching squares, in grid
+ * coordinates. The border of the grid must be negative, so every contour closes. A saddle is split by the value at
+ * the cell's centre.
+ */
+export function contourLoops(v: Float64Array, n: number): [number, number][][] {
+  const point = new Map<string, [number, number]>();
+  const links = new Map<string, string[]>();
+  const edge = (i0: number, j0: number, i1: number, j1: number): string => {
+    const key = `${i0},${j0},${i1},${j1}`;
+    if (!point.has(key)) {
+      const [a, b] = [v[i0 * n + j0]!, v[i1 * n + j1]!];
+      const t = a / (a - b);
+      point.set(key, [i0 + t * (i1 - i0), j0 + t * (j1 - j0)]);
+    }
+    return key;
+  };
+  const link = (p: string, q: string): void => {
+    links.set(p, [...(links.get(p) ?? []), q]);
+    links.set(q, [...(links.get(q) ?? []), p]);
+  };
+  for (let i = 0; i < n - 1; i++) {
+    for (let j = 0; j < n - 1; j++) {
+      const [a, b, c, d] = [v[i * n + j]! > 0, v[(i + 1) * n + j]! > 0, v[(i + 1) * n + j + 1]! > 0, v[i * n + j + 1]! > 0];
+      // Corners a (i, j), b (i+1, j), c (i+1, j+1), d (i, j+1); edges bottom a-b, right b-c, top d-c, left a-d.
+      const cut: string[] = [];
+      if (a !== b) cut.push(edge(i, j, i + 1, j));
+      if (b !== c) cut.push(edge(i + 1, j, i + 1, j + 1));
+      if (d !== c) cut.push(edge(i, j + 1, i + 1, j + 1));
+      if (a !== d) cut.push(edge(i, j, i, j + 1));
+      if (cut.length === 2) link(cut[0]!, cut[1]!);
+      else if (cut.length === 4) {
+        const [bottom, right, top, left] = cut as [string, string, string, string];
+        const middle = (v[i * n + j]! + v[(i + 1) * n + j]! + v[(i + 1) * n + j + 1]! + v[i * n + j + 1]!) / 4 > 0;
+        // Cut off the corners on the other side from the centre: a and c, or b and d.
+        if (middle === a) {
+          link(bottom, right);
+          link(top, left);
+        } else {
+          link(bottom, left);
+          link(right, top);
+        }
+      }
+    }
+  }
+  const loops: [number, number][][] = [];
+  const done = new Set<string>();
+  for (const start of links.keys()) {
+    if (done.has(start)) continue;
+    const loop: [number, number][] = [];
+    let [prev, at] = ["", start];
+    while (!done.has(at)) {
+      done.add(at);
+      loop.push(point.get(at)!);
+      const next = links.get(at)!.find((q) => q !== prev && !done.has(q)) ?? links.get(at)!.find((q) => q !== prev);
+      if (next === undefined) break;
+      [prev, at] = [at, next];
+    }
+    if (loop.length >= 3) loops.push(loop);
+  }
+  return loops;
+}
+
+/** A smooth closed curve through the points (Catmull-Rom as cubic Beziers), as SVG path data. */
+function smoothClosed(xy: readonly (readonly [number, number])[]): string {
+  const steps = xy.length;
+  let d = `M${n1(xy[0]![0])},${n1(xy[0]![1])}`;
+  for (let s = 0; s < steps; s++) {
+    const [p0, p1, p2, p3] = [xy[(s + steps - 1) % steps]!, xy[s]!, xy[(s + 1) % steps]!, xy[(s + 2) % steps]!];
+    d += ` C${n1(p1[0] + (p2[0] - p0[0]) / 6)},${n1(p1[1] + (p2[1] - p0[1]) / 6)} ${n1(p2[0] - (p3[0] - p1[0]) / 6)},${n1(p2[1] - (p3[1] - p1[1]) / 6)} ${n1(p2[0])},${n1(p2[1])}`;
+  }
+  return `${d} Z`;
 }
 
 /** The colour of an orbital face lit by `lit` (0 to 1, how squarely it faces the light), for each surface. */
@@ -574,7 +754,7 @@ export function pxPerAngstrom(scene: Scene, view: View, canvas: Canvas, fit?: Fi
 }
 
 /** Project everything and order it back to front. */
-export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = fitView(scene, view, canvas)): Drawn[] {
+export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = fitView(scene, view, canvas), options: RenderOptions = {}): Drawn[] {
   const scale = fit.scale;
   // Screen position (px) and depth (angstrom) of a point given in angstrom.
   const project = (p: Vec3): Vec3 => {
@@ -586,12 +766,24 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const [x, y, depth] = project(s.centre);
     drawn.push({ kind: "sphere", x, y, depth, r: scene.styles[s.style]!.radius * scale, style: s.style, label: s.label });
   }
-  // Orbitals: each face of the surface a small shaded polygon. An orbital is drawn as two groups, the faces
-  // behind its atom's centre and those in front, each placed just behind or just in front of the atom; inside a
-  // group the faces are drawn back to front, opaque, and the group as a whole takes the orbital's opacity, so a
-  // see-through lobe has no seams and its overlapping faces do not darken one another. Faces turned away from the
-  // viewer are hidden by the lobe's near side and are left out. Atoms of one rule share one surface.
+  // Orbitals, placed among the atoms so that they cut through one another as solids do (see placeOrbital).
+  const atoms = scene.spheres.map((s) => {
+    const [x, y, depth] = project(s.centre);
+    return { centre: s.centre, x, y, depth, radius: scene.styles[s.style]!.radius };
+  });
+  // With the mesh surface each face is a small shaded polygon and an orbital is one group: inside it the faces are
+  // drawn back to front, opaque, and the group as a whole takes the orbital's opacity, so a see-through lobe has no
+  // seams and its overlapping faces do not darken one another. Faces turned away from the viewer are hidden by the
+  // lobe's near side and are left out. Atoms of one rule share one surface.
   const surfaces = new Map<string, OrbitalFace[]>();
+  const fields = new Map<string, ReturnType<typeof orbitalField>>();
+  const outlines = new Map<string, { units: OrbitalUnit[]; x: number; y: number; depth: number }>();
+  const field = (o: { rule: number; kind: string; size: number; frame: View; iso?: number }) => {
+    const key = `${o.rule}|${o.kind}`;
+    let f = fields.get(key);
+    if (!f) fields.set(key, (f = orbitalField(orbitalById(o.kind)!, o.size, o.frame, o.iso)));
+    return f;
+  };
   let orbitalIndex = 0;
   for (const o of scene.orbitals ?? []) {
     const key = `${o.rule}|${o.kind}`;
@@ -601,11 +793,22 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const centreDepth = project(sphere.centre)[2];
     if (o.texture !== "mesh") {
       // Each lobe one smooth shape: its outline seen from the viewer, filled with a gradient as an atom is shaded.
-      drawn.push(...orbitalLobes(faces, sphere.centre, centreDepth, scene.styles[sphere.style]!.radius * scale, project, o, `orb-${orbitalIndex}`));
+      // Atoms of one rule share the surface and its frame, and the view is orthographic, so on screen their lobes
+      // are one shape moved: it is outlined (with its gradients) once, and moved to each other atom.
+      const [x, y] = project(sphere.centre);
+      const key = `${o.rule}|${o.kind}`;
+      let first = outlines.get(key);
+      if (!first) outlines.set(key, (first = { units: orbitalLobes(faces, sphere.centre, centreDepth, project, o, `orb-${orbitalIndex}`), x, y, depth: centreDepth }));
+      const [dx, dy, dz] = [x - first.x, y - first.y, centreDepth - first.depth];
+      const units =
+        dx === 0 && dy === 0 && dz === 0
+          ? first.units
+          : first.units.map((u) => ({ depth: u.depth + dz, defs: "", body: `<g transform="translate(${n1(dx)} ${n1(dy)})">${u.body}</g>`, faces: u.faces }));
+      drawn.push(...placeOrbital(units, sphere.centre, o.size, field(o), atoms, view, project, scale, `orb-${orbitalIndex}`, options.draft));
       orbitalIndex += 1;
       continue;
     }
-    const parts: { back: { depth: number; svg: string }[]; front: { depth: number; svg: string }[] } = { back: [], front: [] };
+    const parts: { depth: number; svg: string }[] = [];
     for (const f of faces) {
       // Normal in view axes, turned to point out of the lobe; a face turned away is left out.
       const [a, b] = [mulVec(view, [f.corners[2][0] - f.corners[0][0], f.corners[2][1] - f.corners[0][1], f.corners[2][2] - f.corners[0][2]]), mulVec(view, [f.corners[3][0] - f.corners[1][0], f.corners[3][1] - f.corners[1][1], f.corners[3][2] - f.corners[1][2]])];
@@ -625,13 +828,14 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       const points = pts.map((p) => `${n1(p[0])},${n1(p[1])}`).join(" ");
       // A hairline of the face's own colour closes the seams; the mesh surface draws its grid lines in a darker tone.
       const [line, lineWidth] = o.texture === "mesh" ? [mixHex(base, "#000000", 0.25), "0.7"] : [fill, "0.6"];
-      (depth < centreDepth ? parts.back : parts.front).push({ depth, svg: `<polygon class="orbital" points="${points}" fill="${fill}" stroke="${line}" stroke-width="${lineWidth}" stroke-linejoin="round"/>` });
+      parts.push({ depth, svg: `<polygon class="orbital" points="${points}" fill="${fill}" stroke="${line}" stroke-width="${lineWidth}" stroke-linejoin="round"/>` });
     }
     const opacity = o.opacity < 1 ? ` opacity="${o.opacity}"` : "";
-    for (const [part, depth] of [[parts.back, centreDepth - 0.02], [parts.front, centreDepth + 0.02]] as const) {
-      if (part.length === 0) continue;
-      const svg = part.sort((p, q) => p.depth - q.depth).map((p) => p.svg).join("");
-      drawn.push({ kind: "orbital", depth, svg: `<g class="orbital-part"${opacity}>${svg}</g>` });
+    if (parts.length > 0) {
+      const svg = parts.sort((p, q) => p.depth - q.depth).map((p) => p.svg).join("");
+      const unit = { depth: centreDepth, defs: "", body: `<g class="orbital-part"${opacity}>${svg}</g>`, faces: faces.filter((f) => f.lobe !== undefined) };
+      drawn.push(...placeOrbital([unit], sphere.centre, o.size, field(o), atoms, view, project, scale, `orb-${orbitalIndex}`, options.draft));
+      orbitalIndex += 1;
     }
   }
   // Bonds. With a surface chosen (and not too many of them) each bond is a round rod, drawn as the rods of the
@@ -1284,8 +1488,13 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
  * legend and axes can follow a movement without the structure being redrawn: "structure" is everything but
  * the legend and axes, "band" is only those. Together they hold exactly what "all" (the saved figure) holds.
  */
-export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CANVAS, fit?: Fit, part: "all" | "structure" | "band" = "all"): string {
-  const drawn = part === "band" ? [] : layoutAll(scene, view, canvas, fit);
+/** How a figure is drawn. `draft`: orbitals with a coarser edge where they meet atoms, for drawing while the view moves. */
+export interface RenderOptions {
+  readonly draft?: boolean;
+}
+
+export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CANVAS, fit?: Fit, part: "all" | "structure" | "band" = "all", options: RenderOptions = {}): string {
+  const drawn = part === "band" ? [] : layoutAll(scene, view, canvas, fit, options);
   const { width, height } = canvas;
   // With a size on paper the SVG states it, so a drawing program places the figure at exactly that size.
   const p = canvas.physical;

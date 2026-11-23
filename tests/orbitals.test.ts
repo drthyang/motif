@@ -3,9 +3,9 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { convexHull, orbitalShade, renderSvg } from "../src/render/svg";
+import { contourLoops, convexHull, orbitalShade, renderSvg } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
-import { ORBITALS, orbitalById, orbitalFrame, orbitalSurface, orbitalUnitSurface } from "../src/scene/orbitals";
+import { ORBITALS, orbitalById, orbitalField, orbitalFrame, orbitalSurface, orbitalUnitSurface } from "../src/scene/orbitals";
 import { buildScene, DEFAULT_ORBITAL_COLOURS, DEFAULT_SPEC, ORBITAL_SCHEMES } from "../src/scene/scene";
 import { readCif } from "../src/structure/readCif";
 
@@ -95,17 +95,91 @@ describe("orbitals: the real spherical harmonics", () => {
     const ti = scene.spheres.filter((s) => s.species === "Ti").length;
     expect(scene.orbitals!.length).toBe(2 * ti);
     const svg = renderSvg(scene, DEFAULT_VIEW);
-    // One smooth see-through shape per lobe: dz2 has 2 lobes and a ring cut into 12 segments, dxy 4 lobes.
-    // Every lobe and ring segment once, plus the ring's near segments again in the copy clipped to the atom.
-    const shapes = (svg.match(/<path class="orbital-lobe"/g) ?? []).length;
-    expect(shapes).toBeGreaterThanOrEqual((14 + 4) * ti);
-    expect(shapes).toBeLessThanOrEqual((14 + 4 + 12) * ti);
-    expect((svg.match(/<g class="orbital-ring" clip-path="url\(#/g) ?? []).length).toBeLessThanOrEqual(ti);
-    // A lobe carries its own opacity; a ring's segments share it in two groups per atom (behind, in front).
-    expect((svg.match(/<path class="orbital-lobe"[^>]* opacity="0.6"/g) ?? []).length).toBe((2 + 4) * ti);
-    expect((svg.match(/<g class="orbital-ring" opacity="0.6">/g) ?? []).length).toBeLessThanOrEqual(2 * ti);
+    // One smooth see-through shape per lobe: dz2 has 2 lobes and a ring cut into 12 segments, dxy 4 lobes. Each is
+    // drawn whole once; where it lies in front of an atom it is drawn again over that atom, clipped.
+    const whole = svg.replace(/<g clip-path="url\(#[^)]*\)"><g clip-path="url\(#[^)]*\)">.*?<\/g><\/g>(<\/g>)?/g, "");
+    expect((whole.match(/<path class="orbital-lobe"/g) ?? []).length).toBe((14 + 4) * ti);
+    // A lobe carries its own opacity; a ring's segments share it in one group per atom.
+    expect((whole.match(/<path class="orbital-lobe"[^>]* opacity="0.6"/g) ?? []).length).toBe((2 + 4) * ti);
+    expect((whole.match(/<g class="orbital-ring" opacity="0.6">/g) ?? []).length).toBe(ti);
     expect(svg).not.toMatch(/class="orbital"/); // no small faces unless the mesh surface is chosen
     expect(buildScene(srtio3).orbitals).toBeUndefined();
+  });
+
+  it("an orbital and an atom cut through one another as solids: a lobe shows on the atom only where it is in front", () => {
+    // One atom alone, seen down z, so the + lobe of pz points at the viewer and the - lobe away.
+    const one = readCif("data_one\n_cell_length_a 6\n_cell_length_b 6\n_cell_length_c 6\n_cell_angle_alpha 90\n_cell_angle_beta 90\n_cell_angle_gamma 90\n_symmetry_space_group_name_H-M 'P 1'\nloop_\n_symmetry_equiv_pos_as_xyz\nx,y,z\nloop_\n_atom_site_label\n_atom_site_type_symbol\n_atom_site_fract_x\n_atom_site_fract_y\n_atom_site_fract_z\nTi1 Ti 0.5 0.5 0.5\n");
+    const down = [[1, 0, 0], [0, 1, 0], [0, 0, 1]] as const;
+    for (const texture of ["soft", "flat", "mesh"] as const) {
+      const draw = (size: number) => {
+        const scene = buildScene(one, { ...DEFAULT_SPEC, orbitals: [{ species: "Ti", orbitals: ["pz"], size, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6, texture }] });
+        expect(scene.spheres.length).toBe(1);
+        return { svg: renderSvg(scene, down), radius: scene.styles[scene.spheres[0]!.style]!.radius };
+      };
+      // A lobe that stays inside the atom is hidden by it: drawn once, before the atom, never over it.
+      const { radius } = draw(1);
+      const inside = draw(0.8 * radius).svg;
+      expect(inside.lastIndexOf('class="orbital')).toBeLessThan(inside.indexOf("<circle "));
+      expect(inside).not.toMatch(/clip-path/);
+      // A lobe that reaches beyond the atom: the near lobe is drawn again over the atom, clipped to the atom's disc and
+      // to the faces in front of the sphere; the far lobe is not.
+      const out = draw(2.5 * radius).svg;
+      const atom = out.indexOf("<circle ");
+      const over = out.slice(atom).match(/<g clip-path="url\(#([^)]*)\)"><g clip-path="url\(#([^)]*)\)">/g) ?? [];
+      expect(over.length).toBe(1);
+      const disc = /<clipPath id="[^"]*"><circle cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"\/><\/clipPath>/.exec(out)!;
+      const atomCircle = /<circle cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"/.exec(out.slice(atom))!;
+      expect(disc.slice(1)).toEqual(atomCircle.slice(1));
+      if (texture === "flat") {
+        // Only the + lobe (the near one, in the first colour) is drawn over the atom.
+        const patch = out.slice(out.indexOf("<g clip-path", atom));
+        expect(patch).toContain(`<path class="orbital-lobe"`);
+        expect(patch.split("</g></g>")[0]).toContain(`fill="${DEFAULT_ORBITAL_COLOURS[0]}"`);
+        expect(patch.split("</g></g>")[0]).not.toContain(`fill="${DEFAULT_ORBITAL_COLOURS[1]}"`);
+      }
+    }
+  });
+
+  it("the orbital as a solid: zero on every point of the drawn surface, positive inside, and each point in its lobe", () => {
+    const frame = orbitalFrame({ a: 4, b: 4, c: 4, alpha: 90, beta: 90, gamma: 90 }, [1, 1, 0]);
+    for (const id of ["pz", "dz2", "dxy", "fz3"]) {
+      const field = orbitalField(orbitalById(id)!, 1.7, frame);
+      const faces = orbitalSurface(orbitalById(id)!, 1.7, frame);
+      let [on, rim] = [0, 0];
+      for (const f of faces) {
+        if (f.lobe === undefined) continue;
+        const c = f.corners[0];
+        const v = field.value(...c);
+        // A corner where the lobe closes at its rim (no lobe in that direction; the surface folds shut at the peak
+        // of R) lies just outside the solid; every other one is on the isosurface, with the solid just inside.
+        expect(v, id).toBeLessThan(1e-9);
+        if (v < -1e-9) {
+          rim += 1;
+          continue;
+        }
+        on += 1;
+        expect(field.value(c[0] * 0.97, c[1] * 0.97, c[2] * 0.97), id).toBeGreaterThan(0);
+      }
+      expect(on, id).toBeGreaterThan(5 * rim);
+      // The centre of a face's points lies in that face's lobe.
+      for (const f of faces.filter((x) => x.lobe !== undefined).slice(0, 200)) {
+        const m = [0, 1, 2].map((i) => f.corners.reduce((sum, c) => sum + c[i]!, 0) / 4) as [number, number, number];
+        expect(field.lobe(...m)).toBe(f.lobe);
+      }
+    }
+  });
+
+  it("marching squares: a disc in the field comes back as one closed loop on its rim", () => {
+    const n = 41;
+    const v = new Float64Array(n * n);
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) v[i * n + j] = 1 - Math.hypot(i - 20, j - 20) / 12;
+    const loops = contourLoops(v, n);
+    expect(loops.length).toBe(1);
+    expect(loops[0]!.length).toBeGreaterThan(40);
+    for (const [i, j] of loops[0]!) expect(Math.hypot(i - 20, j - 20)).toBeCloseTo(12, 1);
+    // A ring (positive between radii 6 and 12) gives two loops, the hole drawn by the even-odd rule.
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) v[i * n + j] = 3 - Math.abs(Math.hypot(i - 20, j - 20) - 9);
+    expect(contourLoops(v, n).length).toBe(2);
   });
 
   it("lobes: each orbital's outer surface splits into its lobes; a ring is cut into segments", () => {

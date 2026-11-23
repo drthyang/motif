@@ -590,11 +590,13 @@ export function App() {
   // preview is live the structure layer is only hidden (its drawing is kept, so nothing has to be torn down),
   // and the legend and axes go on following the view. Both layers come from the same code as the saved figure.
   const lastStructure = useRef("");
+  const orbitalDraft = moving && !previewing && (scene?.orbitals?.length ?? 0) > 0;
   const structureSvg = useMemo(() => {
     if (!scene || !fit) return "";
-    if (!previewing) lastStructure.current = renderSvg(scene, view, canvasOptions, fit, "structure");
+    // Orbitals are drawn in draft while the view moves, and in full once it is still and in every saved figure.
+    if (!previewing) lastStructure.current = renderSvg(scene, view, canvasOptions, fit, "structure", { draft: orbitalDraft });
     return lastStructure.current;
-  }, [scene, view, canvasOptions, fit, previewing]);
+  }, [scene, view, canvasOptions, fit, previewing, orbitalDraft]);
   const bandSvg = useMemo(() => (scene && fit ? renderSvg(scene, view, canvasOptions, fit, "band") : ""), [scene, view, canvasOptions, fit]);
   /** What "Save" writes: always the full vector figure, as shown, or (if chosen) the whole structure fitted. */
   const figureToSave = (): string => {
