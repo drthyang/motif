@@ -39,6 +39,7 @@ Latest changes (2026-11-23):
 - Axis arrows a, b, c in their own colours (muted red, green, blue), pickers per axis, a grey option
   (Visual tab, Axes).
 - Colour of filled bond triangles can be chosen (Visual tab, Bonds, after "Fill triangles").
+- Displacement arrows: the largest is 2.5 Å long by default (the user's choice).
 - Page style: the user asked for the manner of the MFA Boston website, then "a bit more soft touch".
   Now in `src/ui/app.css`: bold tight lettering (IBM Plex Sans, self-hosted as "MOTIF UI"), warm
   near-black ink `#1b1a18`, one dark rule under the header, light hairlines elsewhere, rounded corners
@@ -61,7 +62,9 @@ Latest changes (2026-11-23):
   The user's own mCIF used to check moment directions is local only too.
 - No mCIF from MAGNDATA or any database in the repo before the user agrees the licence.
 - Commit and push to `main` (repo is private); no tags or releases; no paid API calls; do not edit other repos.
-- Commit messages end with `Co-Authored-By: Claude <noreply@anthropic.com>`; no model names in the repo.
+- The user is the only author of every commit: no `Co-Authored-By` trailer and no "Generated with" line
+  (the user's rule in `~/Research/GitHub/CLAUDE.md`; older commits carry one, history is left as is). No model
+  names in the repo.
 - New source files start with `// SPDX-License-Identifier: AGPL-3.0-or-later` and
   `// Copyright (C) 2026 Tsung-Han Yang`.
 - Others also push to `main`: `git pull --rebase` before pushing.
