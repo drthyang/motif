@@ -80,7 +80,18 @@ export interface OrbitalFace {
   readonly corners: readonly [Vec3, Vec3, Vec3, Vec3];
   readonly sign: 1 | -1;
   readonly out: Vec3;
+  /**
+   * Which lobe the face belongs to (outer faces only; an inner face, inside its lobe, has none). A ring (the band of
+   * dz², the cones of fz³) is cut into segments round its axis, each a lobe of its own, so its near part can be drawn
+   * in front of the atom and its far part behind.
+   */
+  readonly lobe?: number;
+  /** For a segment of a ring: which ring (its segments are drawn together, see the renderer). */
+  readonly ring?: number;
 }
+
+/** Segments a ring-shaped lobe is cut into. */
+export const RING_SEGMENTS = 12;
 
 /** Steps in theta (pole to pole) and phi (round the axis) of the surface mesh. */
 export const MESH_THETA = 40;
@@ -139,7 +150,8 @@ export function orbitalUnitSurface(kind: OrbitalKind, iso: number): OrbitalFace[
     grid.push(row);
   }
   const at = (c: ReturnType<typeof corner>, r: number): Vec3 => [c.d[0] * r, c.d[1] * r, c.d[2] * r];
-  const faces: { corners: [Vec3, Vec3, Vec3, Vec3]; sign: 1 | -1; out: Vec3 }[] = [];
+  const faces: { corners: [Vec3, Vec3, Vec3, Vec3]; sign: 1 | -1; out: Vec3; lobe?: number; ring?: number }[] = [];
+  const outerAt = new Map<number, number>(); // cell i * MESH_PHI + j -> index of its outer face
   let farthest = 0;
   for (let i = 0; i < MESH_THETA; i++) {
     for (let j = 0; j < MESH_PHI; j++) {
@@ -148,6 +160,7 @@ export function orbitalUnitSurface(kind: OrbitalKind, iso: number): OrbitalFace[
       if (q.every((c) => c.rOut === peak && c.rIn === peak)) continue;
       const mid = corner((Math.PI * (i + 0.5)) / MESH_THETA, (2 * Math.PI * (j + 0.5)) / MESH_PHI);
       const sign: 1 | -1 = mid.value >= 0 ? 1 : -1;
+      outerAt.set(i * MESH_PHI + j, faces.length);
       faces.push({ corners: [at(q[0]!, q[0]!.rOut), at(q[1]!, q[1]!.rOut), at(q[2]!, q[2]!.rOut), at(q[3]!, q[3]!.rOut)], sign, out: mid.d });
       farthest = Math.max(farthest, ...q.map((c) => c.rOut));
       if (l > 0) {
@@ -156,18 +169,68 @@ export function orbitalUnitSurface(kind: OrbitalKind, iso: number): OrbitalFace[
       }
     }
   }
+  // Lobes: the outer faces joined edge to edge (phi wraps round) with the same sign.
+  let lobes = 0;
+  const seen = new Set<number>();
+  for (const start of outerAt.keys()) {
+    if (seen.has(start)) continue;
+    const cells: number[] = [];
+    const stack = [start];
+    seen.add(start);
+    const sign = faces[outerAt.get(start)!]!.sign;
+    while (stack.length) {
+      const cell = stack.pop()!;
+      cells.push(cell);
+      const [i, j] = [Math.floor(cell / MESH_PHI), cell % MESH_PHI];
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const ni = i + di;
+        if (ni < 0 || ni >= MESH_THETA) continue;
+        const next = ni * MESH_PHI + ((j + dj + MESH_PHI) % MESH_PHI);
+        if (seen.has(next) || !outerAt.has(next) || faces[outerAt.get(next)!]!.sign !== sign) continue;
+        seen.add(next);
+        stack.push(next);
+      }
+    }
+    // A ring goes all the way round the axis without reaching either pole: cut it into segments.
+    const columns = new Set(cells.map((c) => c % MESH_PHI));
+    const rows = cells.map((c) => Math.floor(c / MESH_PHI));
+    const ring = columns.size === MESH_PHI && Math.min(...rows) > 0 && Math.max(...rows) < MESH_THETA - 1;
+    for (const c of cells) {
+      const face = faces[outerAt.get(c)!]!;
+      face.lobe = lobes + (ring ? Math.floor(((c % MESH_PHI) * RING_SEGMENTS) / MESH_PHI) : 0);
+      if (ring) face.ring = lobes;
+    }
+    lobes += ring ? RING_SEGMENTS : 1;
+  }
   const scaled = faces.map((f) => ({ ...f, corners: f.corners.map((c) => [c[0] / farthest, c[1] / farthest, c[2] / farthest]) as unknown as [Vec3, Vec3, Vec3, Vec3] }));
   unitSurfaces.set(key, scaled);
   return scaled;
 }
 
-/** The surface at a given size (the farthest point's distance, angstrom) in a given frame (cartesian x, y, z axes). */
+const placedSurfaces = new Map<string, OrbitalFace[]>();
+
+/**
+ * The surface at a given size (the farthest point's distance, angstrom) in a given frame (cartesian x, y, z axes).
+ * Kept too (the last few hundred), so turning the view does not place it again.
+ */
 export function orbitalSurface(kind: OrbitalKind, size: number, frame: Mat3, iso: number = DEFAULT_ISO): OrbitalFace[] {
+  const key = `${kind.id}|${iso}|${size}|${frame.flat().join(",")}`;
+  const kept = placedSurfaces.get(key);
+  if (kept) return kept;
+  if (placedSurfaces.size > 300) placedSurfaces.clear();
+  const placed = placeSurface(kind, size, frame, iso);
+  placedSurfaces.set(key, placed);
+  return placed;
+}
+
+function placeSurface(kind: OrbitalKind, size: number, frame: Mat3, iso: number): OrbitalFace[] {
   const [fx, fy, fz] = frame;
   const turn = (v: Vec3, k: number): Vec3 => [0, 1, 2].map((m) => k * (v[0] * fx[m]! + v[1] * fy[m]! + v[2] * fz[m]!)) as unknown as Vec3;
   return orbitalUnitSurface(kind, iso).map((f) => ({
     corners: f.corners.map((c) => turn(c, size)) as unknown as [Vec3, Vec3, Vec3, Vec3],
     sign: f.sign,
     out: turn(f.out, 1),
+    ...(f.lobe !== undefined ? { lobe: f.lobe } : {}),
+    ...(f.ring !== undefined ? { ring: f.ring } : {}),
   }));
 }

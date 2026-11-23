@@ -192,9 +192,13 @@ writes the reference atom lists in `tests/reference/`.
   high one slim lobes (the small ring of dz² vanishes above 0.5, where its |ψ| never reaches). Each surface is
   computed once per orbital and isovalue and shared by every atom and redraw. Axes: MOTIF's (x along a, y in
   the a–b plane, z along c*), or a local frame with z along [u v w] and x along a second direction.
-  Drawn see-through (60 % by default) as two groups per orbital, behind and in front of its atom, each
-  with one opacity, so there are no seams; faces turned away are left out. Surfaces: soft, flat, glossy,
-  or mesh (grid lines); colour schemes for the two lobes, or own colours. The harmonics are checked to be
+  Each lobe is drawn as one smooth shape: its outline seen from the viewer (from the projected points of
+  its surface, the farthest in each direction round its centre, smoothed into curves), filled with a gradient
+  as atoms are, see-through (60 % by default), at the depth of its centre. A ring (the band of dz², the cones
+  of fz³) is cut into 12 segments drawn in two see-through groups, behind and in front of the atom, so it
+  has no seams. Surfaces are kept once placed, so turning the view only projects them (16 ms a frame for
+  two orbitals on 8 atoms, 0.6 MB of SVG). Surfaces: soft, flat, glossy, or mesh (grid lines, drawn face by
+  face, slower); colour schemes for the two lobes, or own colours. The harmonics are checked to be
   mutually orthogonal over the sphere (`tests/orbitals.test.ts`).
 - A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
 - Saved settings (Layout tab): a person's preferences, by name, kept in the browser, and exported to or

@@ -235,6 +235,101 @@ export interface DrawnOrbitalFace {
 
 export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand | DrawnSector | DrawnOrbitalFace;
 
+/** Angle steps of a lobe's outline. */
+const LOBE_STEPS = 96;
+
+/**
+ * The lobes of one orbital as smooth shapes. A lobe's outline, seen from the viewer, is found from the projected
+ * points of its outer surface: round the projection of the lobe's centre, the farthest point in each of
+ * LOBE_STEPS directions (a lobe is round enough, seen from any side, for this to be its outline), smoothed a little
+ * and drawn as a closed curve. It is filled with a gradient lit from the upper left, as atoms are, and drawn at the
+ * depth of its centre, so it passes in front of or behind atoms and other lobes as a whole.
+ */
+function orbitalLobes(
+  faces: readonly OrbitalFace[],
+  centre: Vec3,
+  centreDepth: number,
+  project: (p: Vec3) => Vec3,
+  o: { readonly colours: readonly [string, string]; readonly opacity: number; readonly texture: OrbitalTexture },
+  id: string,
+): DrawnOrbitalFace[] {
+  const lobes = new Map<number, { sign: 1 | -1; ring?: number; points: Vec3[] }>();
+  for (const f of faces) {
+    if (f.lobe === undefined) continue;
+    let lobe = lobes.get(f.lobe);
+    if (!lobe) lobes.set(f.lobe, (lobe = { sign: f.sign, ...(f.ring !== undefined ? { ring: f.ring } : {}), points: [] }));
+    // Neighbouring faces share their corners: the first corner of each face covers the surface's points once.
+    const c = f.corners[0];
+    lobe.points.push(project([centre[0] + c[0], centre[1] + c[1], centre[2] + c[2]]));
+  }
+  const out: DrawnOrbitalFace[] = [];
+  // Segments of a ring are drawn solid, in two see-through groups (behind and in front of the atom), so they join
+  // without seams and do not darken where they overlap.
+  const ringParts = new Map<string, { depth: number; svg: string }[]>();
+  for (const [k, lobe] of lobes) {
+    const pts = lobe.points;
+    const [cx, cy, cz] = [0, 1, 2].map((i) => pts.reduce((sum, p) => sum + p[i]!, 0) / pts.length) as [number, number, number];
+    const reach = new Array<number>(LOBE_STEPS).fill(0);
+    for (const p of pts) {
+      const [dx, dy] = [p[0] - cx, p[1] - cy];
+      const r = Math.hypot(dx, dy);
+      const step = Math.floor(((Math.atan2(dy, dx) + Math.PI) / (2 * Math.PI)) * LOBE_STEPS) % LOBE_STEPS;
+      if (r > reach[step]!) reach[step] = r;
+    }
+    // Directions no point fell in take their neighbours' reach; then a light smoothing.
+    for (let pass = 0; pass < 2; pass++) {
+      for (let s = 0; s < LOBE_STEPS; s++) {
+        if (reach[s]! > 0) continue;
+        reach[s] = Math.max(reach[(s + LOBE_STEPS - 1) % LOBE_STEPS]!, reach[(s + 1) % LOBE_STEPS]!);
+      }
+    }
+    const smooth = reach.map((r, s) => (reach[(s + LOBE_STEPS - 1) % LOBE_STEPS]! + 2 * r + reach[(s + 1) % LOBE_STEPS]!) / 4);
+    const radius = Math.max(...smooth);
+    if (!(radius > 0.3)) continue;
+    const xy = smooth.map((r, s) => {
+      const a = ((s + 0.5) / LOBE_STEPS) * 2 * Math.PI - Math.PI;
+      return [cx + r * Math.cos(a), cy + r * Math.sin(a)] as const;
+    });
+    // A closed curve through the points (Catmull-Rom as cubic Beziers).
+    let d = `M${n1(xy[0]![0])},${n1(xy[0]![1])}`;
+    for (let s = 0; s < LOBE_STEPS; s++) {
+      const [p0, p1, p2, p3] = [xy[(s + LOBE_STEPS - 1) % LOBE_STEPS]!, xy[s]!, xy[(s + 1) % LOBE_STEPS]!, xy[(s + 2) % LOBE_STEPS]!];
+      d += ` C${n1(p1[0] + (p2[0] - p0[0]) / 6)},${n1(p1[1] + (p2[1] - p0[1]) / 6)} ${n1(p2[0] - (p3[0] - p1[0]) / 6)},${n1(p2[1] - (p3[1] - p1[1]) / 6)} ${n1(p2[0])},${n1(p2[1])}`;
+    }
+    d += " Z";
+    const base = lobe.sign > 0 ? o.colours[0] : o.colours[1];
+    const gid = `${id}-${k}`;
+    const [hx, hy] = [cx - 0.35 * radius, cy - 0.4 * radius];
+    let fill: string;
+    let defs = "";
+    if (o.texture === "flat") fill = base;
+    else {
+      const stops =
+        o.texture === "glossy"
+          ? `<stop offset="0" stop-color="${mixHex(base, "#ffffff", 0.85)}"/><stop offset="0.18" stop-color="${mixHex(base, "#ffffff", 0.3)}"/><stop offset="0.6" stop-color="${base}"/><stop offset="1" stop-color="${mixHex(base, "#000000", 0.45)}"/>`
+          : `<stop offset="0" stop-color="${mixHex(base, "#ffffff", 0.45)}"/><stop offset="0.5" stop-color="${base}"/><stop offset="1" stop-color="${mixHex(base, "#000000", 0.3)}"/>`;
+      defs = `<defs><radialGradient id="${gid}" gradientUnits="userSpaceOnUse" cx="${n1(hx)}" cy="${n1(hy)}" r="${n1(1.6 * radius)}">${stops}</radialGradient></defs>`;
+      fill = `url(#${gid})`;
+    }
+    const opacity = o.opacity < 1 ? ` opacity="${o.opacity}"` : "";
+    const edge = mixHex(base, "#000000", 0.3);
+    if (lobe.ring !== undefined) {
+      const key = `${lobe.ring}|${cz < centreDepth ? "back" : "front"}`;
+      const list = ringParts.get(key) ?? [];
+      list.push({ depth: cz, svg: `${defs}<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${fill}" stroke-width="0.6"/>` });
+      ringParts.set(key, list);
+      continue;
+    }
+    out.push({ kind: "orbital", depth: cz, svg: `${defs}<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${edge}" stroke-width="0.8" stroke-opacity="0.5"${opacity}/>` });
+  }
+  const opacity = o.opacity < 1 ? ` opacity="${o.opacity}"` : "";
+  for (const [key, parts] of ringParts) {
+    const svg = parts.sort((p, q) => p.depth - q.depth).map((p) => p.svg).join("");
+    out.push({ kind: "orbital", depth: key.endsWith("back") ? centreDepth - 0.02 : centreDepth + 0.02, svg: `<g class="orbital-ring"${opacity}>${svg}</g>` });
+  }
+  return out;
+}
+
 /** The colour of an orbital face lit by `lit` (0 to 1, how squarely it faces the light), for each surface. */
 export function orbitalShade(base: string, lit: number, texture: OrbitalTexture): string {
   switch (texture) {
@@ -427,12 +522,19 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
   // see-through lobe has no seams and its overlapping faces do not darken one another. Faces turned away from the
   // viewer are hidden by the lobe's near side and are left out. Atoms of one rule share one surface.
   const surfaces = new Map<string, OrbitalFace[]>();
+  let orbitalIndex = 0;
   for (const o of scene.orbitals ?? []) {
     const key = `${o.rule}|${o.kind}`;
     let faces = surfaces.get(key);
     if (!faces) surfaces.set(key, (faces = orbitalSurface(orbitalById(o.kind)!, o.size, o.frame, o.iso)));
     const sphere = scene.spheres[o.sphere]!;
     const centreDepth = project(sphere.centre)[2];
+    if (o.texture !== "mesh") {
+      // Each lobe one smooth shape: its outline seen from the viewer, filled with a gradient as an atom is shaded.
+      drawn.push(...orbitalLobes(faces, sphere.centre, centreDepth, project, o, `orb-${orbitalIndex}`));
+      orbitalIndex += 1;
+      continue;
+    }
     const parts: { back: { depth: number; svg: string }[]; front: { depth: number; svg: string }[] } = { back: [], front: [] };
     for (const f of faces) {
       // Normal in view axes, turned to point out of the lobe; a face turned away is left out.

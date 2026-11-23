@@ -95,12 +95,24 @@ describe("orbitals: the real spherical harmonics", () => {
     const ti = scene.spheres.filter((s) => s.species === "Ti").length;
     expect(scene.orbitals!.length).toBe(2 * ti);
     const svg = renderSvg(scene, DEFAULT_VIEW);
-    expect((svg.match(/class="orbital"/g) ?? []).length).toBeGreaterThan(1000);
-    // Each orbital in at most two see-through groups (behind and in front of its atom).
-    const groups = (svg.match(/<g class="orbital-part" opacity="0.6">/g) ?? []).length;
-    expect(groups).toBeGreaterThan(0);
-    expect(groups).toBeLessThanOrEqual(2 * scene.orbitals!.length);
+    // One smooth see-through shape per lobe: dz2 has 2 lobes and a ring cut into 12 segments, dxy 4 lobes.
+    expect((svg.match(/<path class="orbital-lobe"/g) ?? []).length).toBe((14 + 4) * ti);
+    // A lobe carries its own opacity; a ring's segments share it in two groups per atom (behind, in front).
+    expect((svg.match(/<path class="orbital-lobe"[^>]* opacity="0.6"/g) ?? []).length).toBe((2 + 4) * ti);
+    expect((svg.match(/<g class="orbital-ring" opacity="0.6">/g) ?? []).length).toBeLessThanOrEqual(2 * ti);
+    expect(svg).not.toMatch(/class="orbital"/); // no small faces unless the mesh surface is chosen
     expect(buildScene(srtio3).orbitals).toBeUndefined();
+  });
+
+  it("lobes: each orbital's outer surface splits into its lobes; a ring is cut into segments", () => {
+    const lobes = (id: string, iso = 0.3) => new Set(orbitalUnitSurface(orbitalById(id)!, iso).flatMap((f) => (f.lobe === undefined ? [] : [f.lobe]))).size;
+    expect(lobes("s")).toBe(1);
+    expect(lobes("pz")).toBe(2);
+    expect(lobes("dxy")).toBe(4);
+    expect(lobes("dx2-y2")).toBe(4);
+    expect(lobes("dz2")).toBe(2 + 12);
+    expect(lobes("dz2", 0.6)).toBe(2); // above 0.5 the ring has no surface
+    expect(lobes("fxyz")).toBe(8);
   });
 
   it("surfaces: flat keeps the lobe's colour, soft and glossy shade it, mesh draws darker grid lines; schemes are valid pairs", () => {
