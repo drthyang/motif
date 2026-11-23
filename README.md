@@ -1,6 +1,6 @@
 # MOTIF
 
-Crystal structure visualizer.
+Publication-quality figures of crystal structures.
 
 Clean vector figures of crystal structures, made in the browser from a CIF or mCIF file.
 
@@ -90,7 +90,8 @@ writes the reference atom lists in `tests/reference/`.
 - Legend and axes share a band under the structure. The axis arrows are the directions of the cell
   edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
   no letter. By default *a*, *b*, *c* are a muted red, green and blue (arrow and letter alike);
-  each colour can be changed, or all three drawn grey. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). The font can be chosen
+  each colour can be changed, or all three drawn grey. Filled bond triangles take the pale tint of
+  their atoms unless a colour is chosen for them. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). The font can be chosen
   from a list (macOS fonts, and free ones from Google Fonts, IBM Plex and DejaVu; those not installed
   are marked) or typed by name; it must be a font of the computer (the PNG is drawn from the SVG
   alone, which cannot use a font loaded by the page), and the page says when it is missing. Text stays live

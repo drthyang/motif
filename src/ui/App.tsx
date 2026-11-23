@@ -684,7 +684,7 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="mark">MOTIF</span>
-          <span className="tagline">Crystal structure visualizer</span>
+          <span className="tagline">Publication-quality crystal structure figures</span>
         </div>
         <div className="actions">
           <label className="button primary">
@@ -1343,6 +1343,23 @@ Reset
                       <input type="checkbox" data-testid={`bond-fill-${index}`} checked={r.fill ?? false} onChange={(e) => changeRule(index, { fill: e.target.checked })} />
                       Fill triangles
                     </label>
+                    {r.fill && (scene?.ruleInfo[sceneRule(index)]?.triangles ?? 0) > 0 && (
+                      <div className="row">
+                        triangle colour
+                        <input
+                          type="color"
+                          data-testid={`bond-fill-colour-${index}`}
+                          title="Colour of the filled triangles (drawn translucent)"
+                          value={r.fillColour ?? scene?.ruleInfo[sceneRule(index)]?.fillColour ?? "#cccccc"}
+                          onChange={(e) => changeRule(index, { fillColour: e.target.value })}
+                        />
+                        {r.fillColour && (
+                          <button className="plain" title="Back to the usual tint of the atoms' colour" data-testid={`bond-fill-colour-reset-${index}`} onClick={() => changeRule(index, { fillColour: undefined })}>
+                            ↺
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </Section>

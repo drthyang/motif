@@ -133,6 +133,8 @@ export interface RuleInfo {
   /** Number of connected groups (chains, nets) its bonds form. */
   readonly groups: number;
   readonly triangles: number;
+  /** Colour the filled triangles are drawn in (the chosen one, else the usual tint); null with no triangles. */
+  readonly fillColour?: string | null;
 }
 
 export const DEFAULT_STICK: StickStyle = { colour: "#b4bbc1", width: 0.12 };
@@ -540,8 +542,12 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     .map((b) => ({ segments: b.segments, colour: BAND_COLOUR, width: 2.4 * Math.max(...b.segments.flat().map(radiusOf)), opacity: 0.5 }));
   const polygons: Polygon[] = polygonSpecs.map((p) => ({
     corners: p.corners,
-    colour: mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
+    colour: spec.bonds[p.rule]!.fillColour ?? mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
     opacity: 0.55,
   }));
+  polygons.forEach((p, k) => {
+    const rule = polygonSpecs[k]!.rule;
+    if (ruleInfo[rule] && ruleInfo[rule]!.fillColour === undefined) ruleInfo[rule] = { ...ruleInfo[rule]!, fillColour: p.colour };
+  });
   return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, axesColours: spec.axesColoured ? spec.axesColours : undefined, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, glassOpacity: spec.glassOpacity, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legendFontPt: spec.legendFontPt, axesFontPt: spec.axesFontPt, angleFontPt: spec.angleFontPt, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

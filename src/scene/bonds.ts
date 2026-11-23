@@ -31,6 +31,8 @@ export interface BondRule {
   readonly chain?: number | null;
   /** Fill every triangle of three mutually bonded atoms with a translucent colour (a kagome net). */
   readonly fill?: boolean;
+  /** Colour of the filled triangles (absent: a pale tint of the colour of the atoms at their corners). */
+  readonly fillColour?: string | undefined;
   /** Leave out the `neighbour` atoms that this rule bonds to nothing (for example oxygens with no metal shown). */
   readonly hideUnbonded?: boolean;
   /**

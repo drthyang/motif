@@ -134,6 +134,18 @@ describe("drawing highlights", () => {
     expect(lastFill).toBeLessThan(firstCo);
   });
 
+  it("the colour of filled triangles can be chosen; without a choice it is the usual tint, reported beside the rule", () => {
+    const at = (extra: object) => buildScene(kagome, { ...DEFAULT_SPEC, range: range([0, 0, 0], [2, 2, 0]), bonds: [rule("Co", 2.7, { fill: true, ...extra })], showCell: false });
+    const usual = at({});
+    const tint = usual.polygons[0]!.colour;
+    expect(usual.ruleInfo[0]!.fillColour).toBe(tint);
+    const chosen = at({ fillColour: "#3366cc" });
+    expect(chosen.polygons.every((p) => p.colour === "#3366cc")).toBe(true);
+    expect(chosen.ruleInfo[0]!.fillColour).toBe("#3366cc");
+    expect(renderSvg(chosen, DEFAULT_VIEW)).toContain('fill="#3366cc"');
+    expect(at({ fill: false }).ruleInfo[0]!.fillColour).toBeUndefined();
+  });
+
   it("bond colour and thickness per rule", () => {
     const scene = buildScene(kagome, { ...DEFAULT_SPEC, range: range([0, 0, 0], [1, 1, 0]), bonds: [rule("Co", 2.7, { colour: "#a3242d", width: 0.46 }), { centre: "Co", neighbour: "Sn", max: 2.7, complete: false }] });
     expect(scene.stickStyles).toEqual([{ colour: "#a3242d", width: 0.46 }, DEFAULT_STICK]);
