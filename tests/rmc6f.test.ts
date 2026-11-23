@@ -128,7 +128,9 @@ describe("folding an RMC configuration into one cell", () => {
     let k = 0;
     for (const i of [0, 1]) for (const j of [0, 1]) {
       const s = shifts[k]!;
-      const corner = [(i + s[0]! + 1) % 2, (j + s[1]! + 1) % 2, 0].map((x, axis) => (axis < 2 ? x / 2 : x));
+      // The corner of cell (i, j), moved by s; a copy below 0 wraps to the far side of the supercell, as RMCProfile
+      // writes it (cell 0, position near 1), so it lies across the supercell's boundary.
+      const corner = [((i + s[0]! + 2) % 2) / 2, ((j + s[1]! + 2) % 2) / 2, 0];
       n += 1;
       lines.push(`${n} Cl [1] ${corner.map((x) => x.toFixed(6)).join(" ")}${withSites ? ` 1 ${i} ${j} 0` : ""}`);
       const element = k === 3 ? "K" : "Na";
@@ -140,7 +142,7 @@ describe("folding an RMC configuration into one cell", () => {
     return ["(Version 6f format configuration file)", `Number of atoms: ${n}`, "Supercell dimensions: 2 2 1", "Lattice vectors (Ang):", " 8 0 0", " 0 8 0", " 0 0 4", "Atoms:", ...lines].join("\n");
   }
 
-  it("each site is the average of its copies, a corner site lands at 0 (not 1/2), and shares become occupancies", () => {
+  it("each site is the plain average of its copies in their own cells (a copy across the supercell's edge included), and shares become occupancies", () => {
     const s = readRmc6f(folded(), "f.rmc6f", { fold: true });
     expect([s.cell.a, s.cell.b, s.cell.c]).toEqual([4, 4, 4]);
     expect(s.rmc).toMatchObject({ folded: true, grouping: "site numbers", supercell: [2, 2, 1] });

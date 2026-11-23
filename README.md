@@ -41,9 +41,12 @@ writes the reference atom lists in `tests/reference/`.
   grammar is adapted from the author's RMCProfile Workbench.
   A configuration can also be folded into one cell (Structure tab), as RMCProfile Workbench does: each atom is
   moved into one cell (supercell fraction x N, its fractional part), the copies of a site are grouped by the
-  file's site numbers (by distance, 0.5 A, in a file without them), and the site is drawn at their average:
-  the circular mean per axis as a centre (so a site on a cell edge is found), plus the mean offset of the
-  copies from it. Each element's share of the copies is its occupancy (vacancies count), so a site shared by
+  file's site numbers (the crystallographic site of the unit cell; by distance, 0.5 A, in a file without
+  them), and the site is drawn at their plain average (the user's choice, 2026-11-23): each copy's position in
+  its own cell is (supercell fraction x N) minus its unit-cell indices, so a copy just below a corner reads
+  -0.002, not 0.998; a copy whose cell lies across the supercell's boundary is taken back by one supercell
+  length. A file without cell indices is averaged as RMCProfile Workbench does (circular mean as a centre,
+  plus the mean offset of the copies from it); on a real configuration the two agree to 1e-14. Each element's share of the copies is its occupancy (vacancies count), so a site shared by
   two elements is a pie sphere. The Info tab gives the largest rms spread of a site's copies. In a folded cell an atom within 0.01 of a limit of
   the range counts as on it (0.001 elsewhere), so a site averaged to 0.9988 is drawn at both edges, at its
   measured position (the user's choice, 2026-11-23).
