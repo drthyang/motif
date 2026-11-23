@@ -216,3 +216,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .foot a { color: inherit; text-decoration: underline; text-decoration-color: var(--control); text-underline-offset: 2px; }
 .foot a:hover { color: var(--ink); text-decoration-color: var(--ink); }
 .foot .links { display: inline-flex; gap: 14px; }
+/* Orbital choices: small check boxes side by side after the label of their l. */
+.orbital-row { flex-wrap: nowrap; align-items: flex-start; }
+.orbital-row .lab { width: 18px; padding-top: 3px; }
+.orbital-row .picks { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; padding-top: 3px; }
+.pick { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }

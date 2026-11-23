@@ -13,7 +13,8 @@ import {
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { type ArrowStyle, AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, DEFAULT_MOMENT_TAIL, type Look, type Scene } from "../scene/scene";
+import { type ArrowStyle, AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, DEFAULT_MOMENT_TAIL, DEFAULT_ORBITAL_COLOURS, DEFAULT_ORBITAL_SIZE, type Look, type OrbitalRule, type Scene } from "../scene/scene";
+import { ORBITALS } from "../scene/orbitals";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
@@ -308,6 +309,25 @@ export function App() {
   // While the pointer rests on a bar of an angle plot: that rule shows only the bar's angles.
   const [angleHover, setAngleHover] = useState<{ rule: number; range: [number, number] } | null>(null);
   const changeAngle = (index: number, change: Partial<(typeof angleRules)[number]>) => setAngleRules((all) => all.map((x, i) => (i === index ? { ...x, ...change } : x)));
+  // Orbitals on the atoms of chosen species (see scene/orbitals.ts); reset for each new file.
+  const [orbitalRules, setOrbitalRules] = useState<{ species: string; orbitals: string[]; sizeText: string; colours: [string, string]; opacityText: string; zText: string; xText: string }[]>([]);
+  const [newOrbitalSpecies, setNewOrbitalSpecies] = useState("");
+  const changeOrbitalRule = (index: number, change: Partial<(typeof orbitalRules)[number]>) => setOrbitalRules((all) => all.map((r, i) => (i === index ? { ...r, ...change } : r)));
+  const sceneOrbitals = useMemo((): OrbitalRule[] => {
+    const indices = (text: string): [number, number, number] | null => {
+      const parts = text.trim().split(/[\s,]+/).map(Number);
+      return parts.length === 3 && parts.every(Number.isFinite) && parts.some((x) => x !== 0) ? (parts as [number, number, number]) : null;
+    };
+    return orbitalRules.map((r) => ({
+      species: r.species,
+      orbitals: r.orbitals,
+      size: Number(r.sizeText) > 0 && Number(r.sizeText) <= 20 ? Number(r.sizeText) : DEFAULT_ORBITAL_SIZE,
+      colours: r.colours,
+      opacity: Number(r.opacityText) >= 0.05 && Number(r.opacityText) <= 1 ? Number(r.opacityText) : 1,
+      z: indices(r.zText),
+      x: indices(r.xText),
+    }));
+  }, [orbitalRules]);
   const sceneAngles = useMemo(
     () =>
       angleRules.map((r, index): AngleRule => {
@@ -391,6 +411,7 @@ export function App() {
       setNewPair("");
       setLooks({ ...preferredLooks.current }); // element colours and radii from loaded settings, if any
       setAngleRules([]);
+      setOrbitalRules([]);
       setAngleHover(null);
       setNewAngle("");
       if (!keepViewRef.current) setUpAxis(2);
@@ -441,11 +462,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(drawnStructure ?? structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, showDisplacements, displacementLength, displacementColour, displacementThickness, ...(arrowStyle ? { arrowStyle } : {}), momentTail, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(drawnStructure ?? structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, ...(sceneOrbitals.length ? { orbitals: sceneOrbitals } : {}), showMoments, showDisplacements, displacementLength, displacementColour, displacementThickness, ...(arrowStyle ? { arrowStyle } : {}), momentTail, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [drawnStructure, showDisplacements, displacementLength, displacementColour, displacementThickness, arrowStyle, momentTail, structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
+  }, [sceneOrbitals, drawnStructure, showDisplacements, displacementLength, displacementColour, displacementThickness, arrowStyle, momentTail, structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -487,7 +508,9 @@ export function App() {
   const [smooth, setSmooth] = useState(true);
   const [previewFromText, setPreviewFromText] = useState(String(PREVIEW_LIMIT));
   const previewFrom = previewFromText.trim() !== "" && Number(previewFromText) >= 0 ? Number(previewFromText) : PREVIEW_LIMIT;
-  const large = scene !== null && scene.spheres.length + scene.sticks.length >= previewFrom;
+  // How much there is to redraw: atoms and bonds, and each orbital as much as 60 of them (it is about 1,100 small faces).
+  const drawLoad = scene ? scene.spheres.length + scene.sticks.length + 60 * (scene.orbitals?.length ?? 0) : 0;
+  const large = scene !== null && drawLoad >= previewFrom;
   const usePreviewNow = smooth && large && !preview.failed;
   useEffect(() => {
     if (!scene || !usePreviewNow || preview.loaded === scene) return;
@@ -1333,6 +1356,65 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 </div>
               )}
             </Section>
+            <Section tab="structure" title="Orbitals" hint="The textbook angular picture of an atomic orbital: the surface r ∝ |Y|² of a real spherical harmonic, its lobes coloured by the sign of Y. The axes are MOTIF's (x along a, y in the a–b plane, z along c*), or a local frame: z along a crystal direction [u v w] you give (towards a ligand, say), x along a second one. Size and colours are under Visual.">
+              {orbitalRules.map((r, index) => (
+                <div key={index} className="rule" data-testid={`orbital-${index}`}>
+                  <div className="row">
+                    <b>{nameOf(r.species)}</b>
+                    <button title="Remove these orbitals" onClick={() => setOrbitalRules((all) => all.filter((_, i) => i !== index))}>×</button>
+                  </div>
+                  {[0, 1, 2, 3].map((l) => (
+                    <div className="row orbital-row" key={l}>
+                      <span className="lab">{"spdf"[l]}</span>
+                      <span className="picks">
+                      {ORBITALS.filter((o) => o.l === l).map((o) => (
+                        <label key={o.id} className="pick">
+                          <input
+                            type="checkbox"
+                            data-testid={`orbital-${index}-${o.id}`}
+                            checked={r.orbitals.includes(o.id)}
+                            onChange={(e) => changeOrbitalRule(index, { orbitals: e.target.checked ? [...r.orbitals, o.id] : r.orbitals.filter((x) => x !== o.id) })}
+                          />
+                          {o.label}
+                        </label>
+                      ))}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="row" title="Local z: a crystal direction [u v w], towards a ligand say (empty: the crystal axes, z along c*).">
+                    <span className="lab">local z</span>
+                    <input type="text" className="indices" placeholder="u v w" data-testid={`orbital-z-${index}`} value={r.zText} onChange={(e) => changeOrbitalRule(index, { zText: e.target.value })} />
+                  </div>
+                  {r.zText.trim() !== "" && (
+                    <div className="row" title="Local x: a second crystal direction; its part perpendicular to z is used (empty: from a).">
+                      <span className="lab">local x</span>
+                      <input type="text" className="indices" placeholder="u v w" value={r.xText} onChange={(e) => changeOrbitalRule(index, { xText: e.target.value })} />
+                      <span className="unit">optional</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div className="row">
+                <select className="grow" data-testid="new-orbital" value={newOrbitalSpecies} onChange={(e) => setNewOrbitalSpecies(e.target.value)}>
+                  <option value="">Add orbitals on…</option>
+                  {contents.species.map((x) => (
+                    <option key={x.key} value={x.key}>
+                      {nameOf(x.key)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  data-testid="add-orbital"
+                  disabled={!newOrbitalSpecies}
+                  onClick={() => {
+                    setOrbitalRules((all) => [...all, { species: newOrbitalSpecies, orbitals: ["dz2"], sizeText: String(DEFAULT_ORBITAL_SIZE), colours: [...DEFAULT_ORBITAL_COLOURS] as [string, string], opacityText: "1", zText: "", xText: "" }]);
+                    setNewOrbitalSpecies("");
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            </Section>
             {structure.distortion && drawnStructure && (
               <Section tab="structure" title="Distortion modes" hint="From an ISODISTORT file: the atoms are the distorted structure, and each arrow starts at an atom's centre and shows its displacement from the parent structure, summed over the modes ticked. The amplitudes are in Å, as ISODISTORT gives them; the arrow of the largest displacement has the length set under Visual, the others in proportion.">
                 {structure.distortion.modes.map((m, j) => {
@@ -1627,6 +1709,34 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   <input type="number" step={5} min={20} max={100} data-testid="moment-tail" value={momentTailText} onChange={(e) => setMomentTailText(e.target.value)} />
                   <span className="unit">% of the head side</span>
                 </div>
+              </Section>
+            )}
+            {orbitalRules.length > 0 && (
+              <Section tab="visual" title="Orbitals" hint="Size: how far the largest lobe reaches from the atom's centre. The two colours are the lobes where the orbital is positive and negative. Opacity below 1 lets atoms and bonds show through.">
+                {orbitalRules.map((r, index) => (
+                  <div key={index} className="rule" data-testid={`orbital-look-${index}`}>
+                    <div className="row">
+                      <b>{nameOf(r.species)}</b>
+                      <span className="sub">{r.orbitals.map((id) => ORBITALS.find((o) => o.id === id)?.label).join(", ") || "none ticked"}</span>
+                    </div>
+                    <div className="row">
+                      <span className="lab">size</span>
+                      <input type="number" step={0.1} min={0.1} max={20} data-testid={`orbital-size-${index}`} value={r.sizeText} onChange={(e) => changeOrbitalRule(index, { sizeText: e.target.value })} />
+                      <span className="unit">Å</span>
+                    </div>
+                    <div className="row">
+                      <span className="lab">lobes</span>
+                      <input type="color" title="Where the orbital is positive" value={r.colours[0]} onChange={(e) => changeOrbitalRule(index, { colours: [e.target.value, r.colours[1]] })} />
+                      <span className="unit">+</span>
+                      <input type="color" title="Where the orbital is negative" value={r.colours[1]} onChange={(e) => changeOrbitalRule(index, { colours: [r.colours[0], e.target.value] })} />
+                      <span className="unit">−</span>
+                    </div>
+                    <div className="row">
+                      <span className="lab">opacity</span>
+                      <input type="number" step={0.05} min={0.05} max={1} value={r.opacityText} onChange={(e) => changeOrbitalRule(index, { opacityText: e.target.value })} />
+                    </div>
+                  </div>
+                ))}
               </Section>
             )}
             {arrowStyle === "displacement" && (
@@ -2108,7 +2218,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 </div>
               )}
               {smooth && !preview.failed && scene && (
-                <p className="sub">This structure: {scene.spheres.length + scene.sticks.length} atoms + bonds.</p>
+                <p className="sub">This structure: {drawLoad} atoms + bonds{scene.orbitals?.length ? " (an orbital counts as 60)" : ""}.</p>
               )}
               {preview.failed && <p className="sub" data-testid="preview-failed">Not available in this browser ({preview.failed}); the vector figure is redrawn instead.</p>}
             </Section>

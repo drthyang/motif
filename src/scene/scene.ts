@@ -6,7 +6,8 @@
  * Positions are cartesian, in angstrom. The scene knows nothing about the view.
  */
 import { fractionalToCartesian, mulVec, orthogonalizationMatrix } from "../structure/cell";
-import type { CellAtom, Component, Structure, Vec3 } from "../structure/types";
+import type { CellAtom, Component, Mat3, Structure, Vec3 } from "../structure/types";
+import { orbitalById, orbitalFrame } from "./orbitals";
 import { defaultColour, defaultRadius } from "./elementStyle";
 import { angleKinds, anglesOfRule, bondAngles, DEFAULT_ANGLE_LOOK, type AngleKind, type AngleRule } from "./angles";
 import { atomsAndBonds, type BondColouring, type BondLine, type BondRule } from "./bonds";
@@ -177,6 +178,8 @@ export interface Scene {
   readonly centre: Vec3;
   /** Radius of a ball around `centre` that holds everything drawn: the drawing scale comes from it, so rotating never rescales. */
   readonly extent: number;
+  /** Orbitals on atoms (absent or empty: none). */
+  readonly orbitals?: readonly DrawnOrbital[];
   /** Moment arrows. Empty when the structure has no moments or they are switched off. */
   readonly arrows: readonly Arrow[];
   readonly arrowColour: string;
@@ -249,6 +252,37 @@ export function cellAxes(structure: Structure): Axis[] {
 }
 
 /** What the user has chosen to show. Plain data: it can be saved and loaded again. */
+/**
+ * Orbitals to draw on the atoms of one species (see orbitals.ts): which, how large (angstrom, the longest lobe from
+ * the atom's centre), the colours of the positive and negative lobes, and an optional local frame (z along a crystal
+ * direction [u v w], x along a second one).
+ */
+export interface OrbitalRule {
+  readonly species: string;
+  readonly orbitals: readonly string[];
+  readonly size: number;
+  readonly colours: readonly [string, string];
+  readonly opacity: number;
+  readonly z?: Vec3 | null;
+  readonly x?: Vec3 | null;
+}
+
+/** An orbital on one atom: which sphere, which orbital, its frame (cartesian unit vectors x, y, z) and its look. */
+export interface DrawnOrbital {
+  readonly sphere: number;
+  readonly kind: string;
+  /** Index of the rule it comes from (atoms of one rule share one surface). */
+  readonly rule: number;
+  readonly frame: Mat3;
+  readonly size: number;
+  readonly colours: readonly [string, string];
+  readonly opacity: number;
+}
+
+export const DEFAULT_ORBITAL_SIZE = 1.6;
+/** Positive and negative lobes: blue and red. */
+export const DEFAULT_ORBITAL_COLOURS: readonly [string, string] = ["#3f7fd0", "#d9534f"];
+
 /** How arrows are drawn: as magnetic moments or as atomic displacements. */
 export type ArrowStyle = "moment" | "displacement";
 
@@ -279,6 +313,8 @@ export interface SceneSpec {
    * choice, 2026-11-23). The head side, from the atom's centre, keeps half the chosen length.
    */
   readonly momentTail?: number;
+  /** Orbitals to draw (absent: none). */
+  readonly orbitals?: readonly OrbitalRule[];
   /** Draw the displacements of a distortion (an ISODISTORT file) as arrows from the atoms' centres. */
   readonly showDisplacements?: boolean;
   /** Length in angstrom of the arrow of the largest displacement; the others are in proportion. */
@@ -548,6 +584,17 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     });
   }
   const arrowNote = hidden > 0 ? [`${hidden} arrow${hidden > 1 ? "s are" : " is"} shorter than the atom and cannot be seen. Increase the arrow length or reduce the atom's radius.`] : [];
+  // Orbitals: on every drawn atom of the rule's species, each in the rule's frame.
+  const orbitals: DrawnOrbital[] = [];
+  (spec.orbitals ?? []).forEach((rule, ruleIndex) => {
+    const kinds = rule.orbitals.filter((id) => orbitalById(id));
+    if (kinds.length === 0 || !(rule.size > 0)) return;
+    const frame = orbitalFrame(structure.cell, rule.z, rule.x);
+    spheres.forEach((sp, index) => {
+      if (sp.species !== rule.species) return;
+      for (const kind of kinds) orbitals.push({ sphere: index, kind, rule: ruleIndex, frame, size: rule.size, colours: rule.colours, opacity: rule.opacity });
+    });
+  });
   const cellEdges = spec.showCell ? cellEdgesInRange(structure, spec.range) : [];
   // Middle of the bounding box of everything drawn.
   const points = [...spheres.map((s) => s.centre), ...cellEdges.flat()];
@@ -561,6 +608,7 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
   for (const s of spheres) extent = Math.max(extent, reach(s.centre) + styles[s.style]!.radius);
   for (const a of arrows) extent = Math.max(extent, reach(spheres[a.sphere]!.centre) + Math.hypot(a.vector[0], a.vector[1], a.vector[2]) / (a.start === "centre" ? 1 : 2));
   for (const p of cellEdges.flat()) extent = Math.max(extent, reach(p));
+  for (const o of orbitals) extent = Math.max(extent, reach(spheres[o.sphere]!.centre) + o.size);
   // One legend entry per name, in the order the species first appear in the file.
   const legend: LegendEntry[] = [];
   if (spec.showLegend) {
@@ -606,5 +654,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     const rule = polygonSpecs[k]!.rule;
     if (ruleInfo[rule] && ruleInfo[rule]!.fillColour === undefined) ruleInfo[rule] = { ...ruleInfo[rule]!, fillColour: p.colour };
   });
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, axesColours: spec.axesColoured ? spec.axesColours : undefined, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, glassOpacity: spec.glassOpacity, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legendFontPt: spec.legendFontPt, axesFontPt: spec.axesFontPt, angleFontPt: spec.angleFontPt, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, ...(orbitals.length ? { orbitals } : {}), arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, axesColours: spec.axesColoured ? spec.axesColours : undefined, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, glassOpacity: spec.glassOpacity, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legendFontPt: spec.legendFontPt, axesFontPt: spec.axesFontPt, angleFontPt: spec.angleFontPt, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

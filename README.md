@@ -185,6 +185,13 @@ writes the reference atom lists in `tests/reference/`.
   sizes together.
 - A range may hold up to 100,000 atoms (the user's limit). Grouping bonds into chains is near linear
   (union-find), so a supercell of that size with its bonds is built in well under a second.
+- Orbitals (Structure tab, the user's choices of 2026-11-23): s, p, d and the general f set (fz³, fxz², fyz²,
+  fxyz, fz(x²−y²), fx(x²−3y²), fy(3x²−y²)) on the atoms of a chosen species, as the textbook angular picture:
+  the surface r ∝ |Y|² of the real spherical harmonic, its longest lobe reaching the chosen size, the lobes
+  coloured by the sign of Y. Axes: MOTIF's (x along a, y in the a–b plane, z along c*), or a local frame
+  with z along a crystal direction [u v w] and x along a second one. Drawn as small shaded faces sorted by
+  depth with everything else, so lobes pass in front of and behind atoms and bonds. The harmonics are checked
+  to be mutually orthogonal over the sphere (`tests/orbitals.test.ts`).
 - A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
 - Saved settings (Layout tab): a person's preferences, by name, kept in the browser, and exported to or
   imported from a small JSON file (`*.motif-settings.json`, format version 1). They hold everything under

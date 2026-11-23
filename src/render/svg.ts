@@ -8,6 +8,7 @@
 import { mulVec } from "../structure/cell";
 import { mixHex } from "../scene/elementStyle";
 import type { Material, Scene, StickStyle, Wedge } from "../scene/scene";
+import { orbitalById, orbitalSurface, type OrbitalFace } from "../scene/orbitals";
 import type { Vec3 } from "../structure/types";
 import type { View } from "./view";
 
@@ -225,7 +226,21 @@ export interface DrawnSector {
   readonly label?: { readonly text: string; readonly x: number; readonly y: number };
 }
 
-export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand | DrawnSector;
+/** One face of an orbital's surface, shaded and ready to write. */
+export interface DrawnOrbitalFace {
+  readonly kind: "orbital";
+  readonly depth: number;
+  readonly svg: string;
+}
+
+export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand | DrawnSector | DrawnOrbitalFace;
+
+/** Light for orbital faces, in view axes (right, up, towards the viewer): from the upper left, in front. */
+const ORBITAL_LIGHT: Vec3 = (() => {
+  const v = [-0.45, 0.55, 0.7];
+  const n = Math.hypot(...v);
+  return [v[0]! / n, v[1]! / n, v[2]! / n];
+})();
 
 /**
  * The silhouette of a cone that points towards the viewer. Its base is a circle seen at an angle: an ellipse,
@@ -344,6 +359,7 @@ export function fitView(scene: Scene, view: View, canvas: Canvas): Fit {
   };
   for (const s of scene.spheres) include(s.centre, scene.styles[s.style]!.radius);
   for (const edge of scene.cellEdges) for (const p of edge) include(p, 0);
+  for (const o of scene.orbitals ?? []) include(scene.spheres[o.sphere]!.centre, o.size);
   for (const a of scene.arrows) {
     const c = scene.spheres[a.sphere]!.centre;
     for (const sign of a.start === "centre" ? [0, 1] : [-0.5 * (a.tail ?? 1), 0.5]) include([c[0] + sign * a.vector[0], c[1] + sign * a.vector[1], c[2] + sign * a.vector[2]], arrowSizes(scene, a).headWidth / 2);
@@ -388,6 +404,35 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
   for (const s of scene.spheres) {
     const [x, y, depth] = project(s.centre);
     drawn.push({ kind: "sphere", x, y, depth, r: scene.styles[s.style]!.radius * scale, style: s.style, label: s.label });
+  }
+  // Orbitals: each face of the surface a small polygon, shaded by how it faces the light and sorted by depth with
+  // everything else, so a lobe passes in front of or behind atoms and bonds as it should. A face inside the atom's
+  // sphere is put just behind the atom, which hides it. Atoms of one rule share one surface, moved to each atom.
+  const surfaces = new Map<string, OrbitalFace[]>();
+  for (const o of scene.orbitals ?? []) {
+    const key = `${o.rule}|${o.kind}`;
+    let faces = surfaces.get(key);
+    if (!faces) surfaces.set(key, (faces = orbitalSurface(orbitalById(o.kind)!, o.size, o.frame)));
+    const sphere = scene.spheres[o.sphere]!;
+    const atomRadius = scene.styles[sphere.style]!.radius;
+    const centreDepth = project(sphere.centre)[2];
+    for (const f of faces) {
+      const pts = f.corners.map((c) => project([sphere.centre[0] + c[0], sphere.centre[1] + c[1], sphere.centre[2] + c[2]]));
+      // Normal in view axes, from the two diagonals; either side may face the viewer, so take the one that does.
+      const [a, b] = [mulVec(view, [f.corners[2][0] - f.corners[0][0], f.corners[2][1] - f.corners[0][1], f.corners[2][2] - f.corners[0][2]]), mulVec(view, [f.corners[3][0] - f.corners[1][0], f.corners[3][1] - f.corners[1][1], f.corners[3][2] - f.corners[1][2]])];
+      const n = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+      const len = Math.hypot(n[0]!, n[1]!, n[2]!) || 1;
+      const s = n[2]! < 0 ? -1 : 1;
+      const lit = Math.max(0, (s * (n[0]! * ORBITAL_LIGHT[0] + n[1]! * ORBITAL_LIGHT[1] + n[2]! * ORBITAL_LIGHT[2])) / len);
+      const base = f.sign > 0 ? o.colours[0] : o.colours[1];
+      const fill = lit > 0.6 ? mixHex(base, "#ffffff", (lit - 0.6) * 0.9) : mixHex(base, "#000000", (0.6 - lit) * 0.55);
+      const inside = Math.max(...f.corners.map((c) => Math.hypot(c[0], c[1], c[2]))) < atomRadius;
+      const depth = inside ? Math.min(pts.reduce((sum, p) => sum + p[2], 0) / 4, centreDepth - 0.02) : pts.reduce((sum, p) => sum + p[2], 0) / 4;
+      const points = pts.map((p) => `${n1(p[0])},${n1(p[1])}`).join(" ");
+      // A hairline of the same colour closes the seams between neighbouring faces.
+      const opacity = o.opacity < 1 ? ` fill-opacity="${o.opacity}" stroke-opacity="${o.opacity}"` : "";
+      drawn.push({ kind: "orbital", depth, svg: `<polygon class="orbital" points="${points}" fill="${fill}" stroke="${fill}" stroke-width="0.6" stroke-linejoin="round"${opacity}/>` });
+    }
   }
   // Bonds. With a surface chosen (and not too many of them) each bond is a round rod, drawn as the rods of the
   // arrows are: in two halves that meet in the middle, each belonging to the atom it starts from. A half that
@@ -1095,6 +1140,8 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
         out += `<line x1="${p!.split(",")[0]}" y1="${p!.split(",")[1]}" x2="${q!.split(",")[0]}" y2="${q!.split(",")[1]}"/>`;
       }
       out += "</g>\n";
+    } else if (d.kind === "orbital") {
+      out += `${d.svg}\n`;
     } else if (d.kind === "arrow") {
       // The outline, when asked for: every shape of the arrow in the darker tone of its colour, as the spheres have.
       const outline = scene.arrowOutline ? ` stroke="${mixHex(d.colour ?? scene.arrowColour, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round"` : "";
