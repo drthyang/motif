@@ -52,14 +52,16 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
 - Since 2026-11-23 writing and building are done by separate sessions: the writing session owns `README.md`,
   `docs/CONVENTIONS.md`, `docs/HANDOFF.md` and `examples/README.md`; the building session owns the code and
   the example data, and may add a line to `docs/CONVENTIONS.md` when it records a convention.
+- The app link `https://drthyang.github.io/motif/` does not work yet (the repo is private, GitHub Pages is not
+  set up). The user's choice (2026-11-23): keep the link in the README, with a grey "app: not yet live" badge
+  and a line saying it will work once published. When the app goes live, change the badge back to "app: live"
+  and drop that line.
 - Planned by the building session, not yet on `main`: five feature examples (normal structure, magnetic,
   distortion mode, orbitals, RMC configuration with folding), listed in `examples/features.json`. When they
   land, `examples/README.md` and the README describe them.
 
 ## Open questions for the user (none blocking)
 
-- The app link in the README, `https://drthyang.github.io/motif/`, does not work yet: the repo is private and
-  GitHub Pages is not set up. How the link is to be handled is the user's call.
 - Version: the page footer shows "MOTIF 0.1" (`VERSION` in `src/ui/App.tsx`) while `package.json` says
   0.0.0, and no release has been made. The shared rules want one version source and a dev suffix on `main`
   (`0.1.0-dev.0`). The README no longer states a number.

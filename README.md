@@ -1,12 +1,13 @@
 # MOTIF
 
-[![Live app](https://img.shields.io/badge/app-live-2563eb)](https://drthyang.github.io/motif/)
+[![App: not yet live](https://img.shields.io/badge/app-not%20yet%20live-8a8f98)](https://drthyang.github.io/motif/)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-3c8c3c)](LICENSE)
 
 **Crystal structure figures, drawn in the browser.** Clean vector figures from CIF, magnetic CIF, ISODISTORT
 and RMCProfile files, ready for a paper or a slide, with nothing to install.
 
 **▶ [Open MOTIF](https://drthyang.github.io/motif/)**: your file is read on your own machine and never uploaded.
+*The app is not online yet; this link will work once it is published.*
 
 <p align="center">
   <img src="docs/media/mnf2.svg" alt="The MnF2 antiferromagnet drawn by MOTIF: Mn atoms with their magnetic moments as arrows, F neighbours, bonds and the unit cell" width="80%" />
