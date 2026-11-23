@@ -95,17 +95,12 @@ body { margin: 0; background: var(--page); }
 .view-line { margin: 0; font-size: var(--fz-small); color: var(--secondary); font-variant-numeric: tabular-nums; }
 .view-line .copy { font-size: 14px; color: var(--faint); margin-left: 6px; }
 .hint { margin: 0; color: var(--faint); font-size: var(--fz-small); }
-/* The controls under the figure: what to press, then what it does. The one in use is lit. */
-.controls { list-style: none; margin: 4px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 2px 12px; font-size: var(--fz-small); color: var(--secondary); }
-.controls li { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 6px; padding: 3px 6px; border-radius: 6px; transition: background-color 0.12s, color 0.12s; }
-.controls li.on { background: var(--ink); color: #fff; }
-.controls li.on kbd { background: #fff; color: var(--ink); border-color: #fff; }
-.controls .keys { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
-.controls .does { color: inherit; }
-.controls .does::before { content: "→ "; opacity: 0.5; }
-.controls .also { width: 100%; padding-left: 2px; font-size: 11px; opacity: 0.8; }
-kbd { display: inline-flex; align-items: center; gap: 3px; font: inherit; font-size: 11px; line-height: 1.5; padding: 0 5px; color: var(--ink); background: #fff; border: 1px solid var(--control); border-bottom-width: 2px; border-radius: 4px; white-space: nowrap; }
-kbd .mouse { display: block; }
+/* The controls under the figure: one quiet line, a key then what it does. The one in use is lit. */
+.controls { list-style: none; margin: 2px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: var(--fz-small); color: var(--faint); }
+.controls li { display: inline-flex; align-items: center; gap: 5px; padding: 1px 5px 1px 1px; border-radius: 5px; cursor: default; transition: background-color 0.12s, color 0.12s; }
+.controls li.on { background: var(--muted); color: var(--ink); }
+.controls li.on kbd { border-color: var(--ink); color: var(--ink); }
+kbd { font: inherit; font-size: 11px; line-height: 1.45; padding: 0 5px; color: var(--secondary); background: #fff; border: 1px solid var(--control); border-radius: 4px; white-space: nowrap; }
 
 .empty { margin: auto; text-align: center; color: var(--secondary); line-height: 1.6; padding: 48px 24px; width: min(560px, 100%); }
 .empty p { margin: 4px 0; }

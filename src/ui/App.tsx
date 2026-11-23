@@ -874,7 +874,6 @@ Reset
                     snap={snap}
                   />
                 )}
-                {showHelp && transparent && <p className="hint">The checker pattern marks where the figure is transparent; it is not saved.</p>}
                 {/* Always there, hidden when not zoomed: the frame must not change height when it appears, or the figure would jump. */}
                 <label className="check" data-testid="save-zoomed-label" style={{ visibility: isZoomed(zoom) ? "visible" : "hidden" }}>
                   <input type="checkbox" data-testid="save-zoomed" checked={saveZoomed} disabled={!isZoomed(zoom)} onChange={(e) => setSaveZoomed(e.target.checked)} />
@@ -1724,57 +1723,28 @@ function fontInstalled(family: string): boolean {
 }
 
 const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
-const KEY = { alt: IS_MAC ? "⌥ Option" : "Alt", shift: "⇧ Shift", zoom: IS_MAC ? "⌘ Cmd" : "Ctrl" };
-
-/** A small mouse, with the button that is pressed (left, middle) or the wheel marked. */
-function Mouse({ part }: { part: "left" | "middle" | "wheel" }) {
-  return (
-    <svg className="mouse" viewBox="0 0 14 20" width="11" height="16" aria-hidden="true">
-      <rect x="1" y="1" width="12" height="18" rx="6" fill="none" stroke="currentColor" strokeWidth="1.3" />
-      <line x1="7" y1="1.5" x2="7" y2="8" stroke="currentColor" strokeWidth="1" />
-      {part === "left" && <path d="M1.7 7.6 V7 A5.3 5.3 0 0 1 6.5 1.7 V7.6 Z" fill="currentColor" />}
-      {part !== "left" && <rect x="5.6" y="3" width="2.8" height="4.6" rx="1.4" fill="currentColor" />}
-    </svg>
-  );
-}
 
 type ControlId = "turn" | "roll" | "move" | "zoom" | "box" | "fit";
 
 /**
- * The ways to handle the figure, each as what to press and what it does, always in view under the figure.
- * The control being used lights up (held modifier keys count), so the strip also confirms what a drag will do.
+ * The ways to handle the figure, in one quiet line under it: a key, then what it does. The fuller
+ * explanation is in each item's tooltip. The control in use (or whose key is held) is lit.
  */
 function Controls({ active, turntable, snap }: { active: ControlId | null; turntable: boolean; snap: boolean }) {
-  const drag = (
-    <kbd>
-      <Mouse part="left" /> drag
-    </kbd>
-  );
-  const items: { id: ControlId; keys: ReactNode; does: string; also?: ReactNode }[] = [
-    { id: "turn", keys: drag, does: turntable ? "turn (left–right) and tilt (up–down)" : "turn freely", also: snap ? "on release it snaps to a nearby crystal direction" : undefined },
-    { id: "roll", keys: <><kbd>{KEY.alt}</kbd>+{drag}</>, does: "roll in the screen plane" },
-    {
-      id: "move",
-      keys: <><kbd>{KEY.shift}</kbd>+{drag}</>,
-      does: "move",
-      also: <>or <kbd><Mouse part="middle" /> drag</kbd> or <kbd>← ↑ → ↓</kbd></>,
-    },
-    {
-      id: "zoom",
-      keys: <><kbd>{KEY.zoom}</kbd>+<kbd><Mouse part="wheel" /> scroll</kbd></>,
-      does: "zoom at the pointer",
-      also: <>or pinch, or <kbd>+</kbd> <kbd>−</kbd></>,
-    },
-    { id: "box", keys: <><kbd>Box</kbd> then {drag}</>, does: "zoom to a rectangle", also: <><kbd>Esc</kbd> cancels</> },
-    { id: "fit", keys: <kbd>double-click</kbd>, does: "fit the whole structure again", also: <>or <kbd>0</kbd></> },
+  const items: { id: ControlId; key: string; does: string; more: string }[] = [
+    { id: "turn", key: "Drag", does: "turn", more: (turntable ? "Left–right turns, up–down tilts." : "Turns freely.") + (snap ? " On release it snaps to a nearby crystal direction." : "") },
+    { id: "roll", key: IS_MAC ? "⌥" : "Alt", does: "roll", more: `${IS_MAC ? "Option" : "Alt"} + drag rolls the picture in the screen plane.` },
+    { id: "move", key: "⇧", does: "move", more: "Shift + drag moves the structure; so do a middle-button drag and the arrow keys." },
+    { id: "zoom", key: IS_MAC ? "⌘" : "Ctrl", does: "zoom", more: `${IS_MAC ? "Command" : "Ctrl"} + scroll zooms at the pointer; so do a pinch and the + and − keys. Box, then a drag, zooms to a rectangle.` },
+    { id: "fit", key: "Double-click", does: "fit", more: "Fits the whole structure again; so does the 0 key." },
   ];
+  const lit = active === "box" ? "zoom" : active;
   return (
     <ul className="controls" data-testid="controls" aria-label="How to handle the figure">
       {items.map((x) => (
-        <li key={x.id} className={active === x.id ? "on" : ""} data-testid={`control-${x.id}`}>
-          <span className="keys">{x.keys}</span>
-          <span className="does">{x.does}</span>
-          {x.also && <span className="also">{x.also}</span>}
+        <li key={x.id} className={lit === x.id ? "on" : ""} data-testid={`control-${x.id}`} title={x.more}>
+          <kbd>{x.key}</kbd>
+          {x.does}
         </li>
       ))}
     </ul>
