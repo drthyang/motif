@@ -114,6 +114,8 @@ export interface DrawnArrow {
   readonly front?: boolean;
   /** The part's shapes, ready to write. */
   readonly svg: string;
+  /** The arrow's colour (for its outline). */
+  readonly colour?: string;
 }
 
 /** A filled polygon, or a highlight band (several wide strokes drawn as one translucent shape). */
@@ -235,9 +237,9 @@ export const ARROW_HEAD_WIDTH = 0.46;
 /** Width of the optional outline of arrows, px (the spheres' outline is 2 px). */
 export const OUTLINE_WIDTH = 1.5;
 /** The arrows' rod thickness, head length and head width for a scene, in angstrom: the head keeps its proportion to the rod. */
-export function arrowSizes(scene: Scene): { shaft: number; headLength: number; headWidth: number } {
-  const shaft = scene.arrowThickness ?? ARROW_SHAFT;
-  const k = (shaft / ARROW_SHAFT) * (scene.arrowHeadSize ?? 1);
+export function arrowSizes(scene: Scene, arrow?: { readonly thickness?: number | undefined; readonly headScale?: number | undefined }): { shaft: number; headLength: number; headWidth: number } {
+  const shaft = arrow?.thickness ?? scene.arrowThickness ?? ARROW_SHAFT;
+  const k = (shaft / ARROW_SHAFT) * (scene.arrowHeadSize ?? 1) * (arrow?.headScale ?? 1);
   return { shaft, headLength: ARROW_HEAD_LENGTH * k, headWidth: ARROW_HEAD_WIDTH * k };
 }
 
@@ -297,7 +299,7 @@ export function fitView(scene: Scene, view: View, canvas: Canvas): Fit {
   for (const edge of scene.cellEdges) for (const p of edge) include(p, 0);
   for (const a of scene.arrows) {
     const c = scene.spheres[a.sphere]!.centre;
-    for (const sign of a.start === "centre" ? [0, 1] : [-0.5, 0.5]) include([c[0] + sign * a.vector[0], c[1] + sign * a.vector[1], c[2] + sign * a.vector[2]], arrowSizes(scene).headWidth / 2);
+    for (const sign of a.start === "centre" ? [0, 1] : [-0.5, 0.5]) include([c[0] + sign * a.vector[0], c[1] + sign * a.vector[1], c[2] + sign * a.vector[2]], arrowSizes(scene, a).headWidth / 2);
   }
   const height = structureHeight(scene, canvas);
   if (box.x0 > box.x1) return { scale: 1, x: canvas.width / 2, y: height / 2 };
@@ -510,12 +512,12 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     // Across the rod, on the side the light comes from (upper left).
     let [px, py] = [-uy, ux];
     if (px * -0.5 + py * -0.7 < 0) [px, py] = [-px, -py];
-    const sizes = arrowSizes(scene);
+    const sizes = arrowSizes(scene, arrow);
     const w = (sizes.shaft * scale) / 2; // half the rod's thickness, px
     const hw = (sizes.headWidth * scale) / 2;
     const headLength = Math.min(sizes.headLength, hi - radius);
     const base = at(hi - headLength); // centre of the cone's base
-    const colour = scene.arrowColour;
+    const colour = arrow.colour ?? scene.arrowColour;
     const [light, darker] = [mixHex(colour, "#ffffff", 0.5), mixHex(colour, "#000000", 0.45)];
     const id = `arrow-${arrowIndex}`;
     // Shading across the rod and across the cone: a round surface lit from the upper left.
@@ -569,8 +571,8 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const tailHalf = (start: number, foot: boolean): string => rod(start, lo, -1, foot) + (towards < 0 ? ellipse("arrow-end", tail, w, Math.abs(towards), light) : "");
     const behind = centre[2] - 0.01;
     // 1. Both halves from the centre outwards, each no nearer than just behind the sphere: the sphere's outline cuts them.
-    if (!fromCentre) drawn.push({ kind: "arrow", x1: tail[0], y1: tail[1], x2: centre[0], y2: centre[1], width: 2 * w, depth: Math.min((tail[2] + centre[2]) / 2, behind), svg: defs + tailHalf(0, false) });
-    drawn.push({ kind: "arrow", x1: centre[0], y1: centre[1], x2: base[0], y2: base[1], width: 2 * w, depth: Math.min((tip[2] + centre[2]) / 2, behind), head, svg: (fromCentre ? defs : "") + headHalf(0, false) });
+    if (!fromCentre) drawn.push({ kind: "arrow", colour, x1: tail[0], y1: tail[1], x2: centre[0], y2: centre[1], width: 2 * w, depth: Math.min((tail[2] + centre[2]) / 2, behind), svg: defs + tailHalf(0, false) });
+    drawn.push({ kind: "arrow", colour, x1: centre[0], y1: centre[1], x2: base[0], y2: base[1], width: 2 * w, depth: Math.min((tip[2] + centre[2]) / 2, behind), head, svg: (fromCentre ? defs : "") + headHalf(0, false) });
     // 2. The half that comes out of the sphere's face, over the sphere, from where it pierces the surface.
     const rho = Math.min(sizes.shaft / 2, radius);
     const pierce = Math.sqrt(Math.max(0, radius * radius - rho * rho));
@@ -581,6 +583,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       const piece = sign > 0 ? headHalf(pierce, true) : tailHalf(-pierce, true);
       drawn.push({
         kind: "arrow",
+        colour,
         x1: foot[0],
         y1: foot[1],
         x2: sign > 0 ? base[0] : tail[0],
@@ -1005,7 +1008,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
       out += "</g>\n";
     } else if (d.kind === "arrow") {
       // The outline, when asked for: every shape of the arrow in the darker tone of its colour, as the spheres have.
-      const outline = scene.arrowOutline ? ` stroke="${mixHex(scene.arrowColour, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round"` : "";
+      const outline = scene.arrowOutline ? ` stroke="${mixHex(d.colour ?? scene.arrowColour, "#000000", 0.45)}" stroke-width="${OUTLINE_WIDTH}" stroke-linejoin="round"` : "";
       out += `<g class="arrow"${outline}${scene.arrowMaterial === "glass" ? ` fill-opacity="${glassAlpha(0.45, scene.glassOpacity)}"` : ""}>${d.svg}</g>\n`;
     } else if (d.kind === "bond" && d.svg !== undefined) {
       out += `${d.svg}\n`;

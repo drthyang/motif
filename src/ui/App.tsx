@@ -13,7 +13,7 @@ import {
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, type Look, type Scene } from "../scene/scene";
+import { AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
@@ -332,6 +332,9 @@ export function App() {
   const [displacementLengthText, setDisplacementLengthText] = useState(String(DEFAULT_DISPLACEMENT_LENGTH));
   const displacementLength = Number(displacementLengthText) > 0 && Number(displacementLengthText) <= 20 ? Number(displacementLengthText) : DEFAULT_DISPLACEMENT_LENGTH;
   const [modesOn, setModesOn] = useState<boolean[]>([]);
+  const [displacementColour, setDisplacementColour] = useState(DEFAULT_DISPLACEMENT_COLOUR);
+  const [displacementThicknessText, setDisplacementThicknessText] = useState(String(DEFAULT_DISPLACEMENT_THICKNESS));
+  const displacementThickness = Number(displacementThicknessText) >= 0.02 && Number(displacementThicknessText) <= 2 ? Number(displacementThicknessText) : DEFAULT_DISPLACEMENT_THICKNESS;
   useEffect(() => setModesOn(structure?.distortion?.modes.map(() => true) ?? []), [structure]);
   // The structure as drawn: with the displacements of the modes switched on.
   const drawnStructure = useMemo(
@@ -425,11 +428,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(drawnStructure ?? structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, showDisplacements, displacementLength, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(drawnStructure ?? structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, showDisplacements, displacementLength, displacementColour, displacementThickness, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [drawnStructure, showDisplacements, displacementLength, structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
+  }, [drawnStructure, showDisplacements, displacementLength, displacementColour, displacementThickness, structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -739,6 +742,8 @@ export function App() {
     momentThickness: field(momentThicknessText, setMomentThicknessText, isText),
     arrowHead: field(momentHeadText, setMomentHeadText, isText),
     displacementLength: field(displacementLengthText, setDisplacementLengthText, isText),
+    displacementColour: field(displacementColour, setDisplacementColour, isColour),
+    displacementThickness: field(displacementThicknessText, setDisplacementThicknessText, isText),
     showCell: field(showCell, setShowCell, isBool),
     cellStyle: field(cellStyle, setCellStyle, oneOf("depth", "dashed", "solid")),
     cellWidth: field(cellWidthText, setCellWidthText, isText),
@@ -1528,17 +1533,12 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 ))}
               </Section>
             )}
-            {(largestMoment(structure) > 0 || structure.distortion) && (
-              <Section tab="visual" title={structure.distortion ? "Displacement arrows" : "Moment arrows"} hint={`The arrow of the largest ${structure.distortion ? "displacement" : "moment"} in the file has the length given here; the others are in proportion. The cone at the tip keeps its proportion to the rod; head scales it further.`}>
+            {largestMoment(structure) > 0 && (
+              <Section tab="visual" title="Moment arrows" hint="The arrow of the largest moment in the file has the length given here; the others are in proportion. The cone at the tip keeps its proportion to the rod; head scales it further (also for displacement arrows).">
                 <div className="row">
-                  <input type="color" title="Colour of the arrows" value={momentColour} onChange={(e) => setMomentColour(e.target.value)} />
+                  <input type="color" title="Colour of the moment arrows" value={momentColour} onChange={(e) => setMomentColour(e.target.value)} />
                   length
-                  {largestMoment(structure) > 0 && (
-                    <input type="number" step={0.25} min={0.25} max={20} data-testid="moment-length" value={momentLengthText} onChange={(e) => setMomentLengthText(e.target.value)} />
-                  )}
-                  {structure.distortion && (
-                    <input type="number" step={0.25} min={0.25} max={20} data-testid="displacement-length" value={displacementLengthText} onChange={(e) => setDisplacementLengthText(e.target.value)} />
-                  )}
+                  <input type="number" step={0.25} min={0.25} max={20} data-testid="moment-length" value={momentLengthText} onChange={(e) => setMomentLengthText(e.target.value)} />
                   Å
                 </div>
                 <div className="row">
@@ -1547,6 +1547,27 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   Å
                   head
                   <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
+                </div>
+              </Section>
+            )}
+            {structure.distortion && (
+              <Section tab="visual" title="Displacement arrows" hint="Drawn apart from moment arrows: green and thicker by default. The arrow of the largest displacement has the length given here, measured from the atom's centre; the others are in proportion. The cone at the tip keeps its proportion to the rod.">
+                <div className="row">
+                  <input type="color" title="Colour of the displacement arrows" data-testid="displacement-colour" value={displacementColour} onChange={(e) => setDisplacementColour(e.target.value)} />
+                  length
+                  <input type="number" step={0.25} min={0.25} max={20} data-testid="displacement-length" value={displacementLengthText} onChange={(e) => setDisplacementLengthText(e.target.value)} />
+                  Å
+                </div>
+                <div className="row">
+                  thickness
+                  <input type="number" step={0.02} min={0.02} max={2} data-testid="displacement-thickness" title="Thickness of the rod. The cone at the tip keeps its proportion to it." value={displacementThicknessText} onChange={(e) => setDisplacementThicknessText(e.target.value)} />
+                  Å
+                  {largestMoment(structure) === 0 && (
+                    <>
+                      head
+                      <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
+                    </>
+                  )}
                 </div>
               </Section>
             )}

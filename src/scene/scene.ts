@@ -60,6 +60,11 @@ export interface Arrow {
   readonly sphere: number;
   /** "centre": the arrow starts at the atom's centre. Absent: it passes through the atom, centred on it. */
   readonly start?: "centre";
+  /** Its own colour and rod thickness (angstrom), when not the scene's arrow style (displacements). */
+  readonly colour?: string;
+  readonly thickness?: number;
+  /** Its cone relative to the usual proportion to the rod (displacements: smaller, so a thick short arrow keeps a shaft). */
+  readonly headScale?: number;
   /** From tail to tip, in angstrom: the direction is the moment's, the length is its size times the chosen scale. */
   readonly vector: Vec3;
 }
@@ -255,6 +260,9 @@ export interface SceneSpec {
   readonly showDisplacements?: boolean;
   /** Length in angstrom of the arrow of the largest displacement; the others are in proportion. */
   readonly displacementLength?: number;
+  /** Colour and rod thickness (angstrom) of the displacement arrows, apart from the moment arrows'. */
+  readonly displacementColour?: string;
+  readonly displacementThickness?: number;
   /** Length in angstrom of the arrow of the largest moment in the structure; the others are in proportion. */
   readonly momentLength: number;
   readonly momentColour: string;
@@ -320,7 +328,12 @@ export interface Look {
 export const VACANCY_COLOUR = "#ffffff";
 
 /** Length in angstrom of the arrow of the largest displacement, unless chosen. */
-export const DEFAULT_DISPLACEMENT_LENGTH = 2.5;
+export const DEFAULT_DISPLACEMENT_LENGTH = 1.5;
+/** Displacement arrows look apart from moment arrows: green and thicker (the user's choice). */
+export const DEFAULT_DISPLACEMENT_COLOUR = "#27a33a";
+/** The cone of a displacement arrow, relative to the usual proportion to its rod. */
+export const DISPLACEMENT_HEAD_SCALE = 0.6;
+export const DEFAULT_DISPLACEMENT_THICKNESS = 0.26;
 
 /** Usual colours of the a, b, c arrows: a muted red, green and blue, in that order. */
 export const AXES_COLOURS: readonly [string, string, string] = ["#c4473f", "#3f8a4a", "#3567b0"];
@@ -490,7 +503,14 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
       if (!s.displacement) return;
       const vector: Vec3 = [s.displacement[0] * k, s.displacement[1] * k, s.displacement[2] * k];
       if (Math.hypot(vector[0], vector[1], vector[2]) <= styles[s.style]!.radius) hidden++;
-      arrows.push({ sphere: index, vector, start: "centre" });
+      arrows.push({
+        sphere: index,
+        vector,
+        start: "centre",
+        colour: spec.displacementColour ?? DEFAULT_DISPLACEMENT_COLOUR,
+        thickness: spec.displacementThickness ?? DEFAULT_DISPLACEMENT_THICKNESS,
+        headScale: DISPLACEMENT_HEAD_SCALE,
+      });
     });
   }
   const arrowNote = hidden > 0 ? [`${hidden} arrow${hidden > 1 ? "s are" : " is"} shorter than the atom and cannot be seen. Increase the arrow length or reduce the atom's radius.`] : [];

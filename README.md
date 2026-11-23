@@ -209,7 +209,9 @@ writes the reference atom lists in `tests/reference/`.
   checked against the file's own `_iso_deltacoordinate_value`), added to the coordinates its
   `_iso_coordinate_formula` names, made angstrom with the undistorted supercell (the parent cell in
   the file's basis), and carried to equivalent atoms as a polar vector, d' = R d. The largest
-  displacement gets the chosen arrow length (2.5 A unless changed, the user's choice). Strain, magnetic, rotational and occupancy modes are
+  displacement gets the chosen arrow length (1.5 A from the atom's centre unless changed). Displacement
+  arrows are styled apart from moment arrows, so the two never look alike: green, a thicker rod (0.26 A) and
+  a smaller cone (0.6 of the usual proportion), each changeable (the user's choice, 2026-11-23). Strain, magnetic, rotational and occupancy modes are
   not drawn; the page says when a file has them. Checked by hand against the published BaTiO3
   coordinates (`tests/distortion.test.ts`).
 - Symmetry images of one site closer than 0.05 Å are one atom (a site on a symmetry element).

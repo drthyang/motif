@@ -69,10 +69,11 @@ export function buildPreviewData(scene: Scene): PreviewData {
     // A displacement starts at the centre; a moment passes through it.
     const [lo, hi] = arrow.start === "centre" ? [0, length] : [-length / 2, length / 2];
     const at = (t: number): Vec3 => [c[0] + (arrow.vector[0] / length) * t, c[1] + (arrow.vector[1] / length) * t, c[2] + (arrow.vector[2] / length) * t];
-    const sizes = arrowSizes(scene);
+    const sizes = arrowSizes(scene, arrow);
     const head = Math.min(sizes.headLength, hi);
-    lines.push(...at(lo), ...at(hi - head), sizes.shaft, ...rgb(scene.arrowColour));
-    lines.push(...at(hi - head), ...at(hi - head * 0.35), sizes.headWidth * 0.75, ...rgb(scene.arrowColour));
+    const colour = arrow.colour ?? scene.arrowColour;
+    lines.push(...at(lo), ...at(hi - head), sizes.shaft, ...rgb(colour));
+    lines.push(...at(hi - head), ...at(hi - head * 0.35), sizes.headWidth * 0.75, ...rgb(colour));
   }
   for (const [from, to] of scene.cellEdges) lines.push(...from, ...to, -3, ...rgb("#aab3ba"));
   return { spheres, lines: new Float32Array(lines), centre: scene.centre, reach: scene.extent * 1.05 + 1 };
