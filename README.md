@@ -153,6 +153,13 @@ writes the reference atom lists in `tests/reference/`.
   presets (Slide, Paper, Glossy, Metal, Glass) set surfaces, outlines, lettering weight and legend
   sizes together.
 - A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
+- Saved settings (Layout tab): a person's preferences, by name, kept in the browser, and exported to or
+  imported from a small JSON file (`*.motif-settings.json`, format version 1). They hold everything under
+  Visual and Layout (surfaces, outlines, element colours and radii, arrows, unit-cell lines, legend, axes,
+  lettering, canvas size and shape, dpi, scale, dragging), the saved views, and whether bonds are added on
+  opening; not the structure (cells shown, bond and angle rules, distortion modes, the current view). One of
+  them can be chosen to open the page with; element colours and radii from loaded settings carry over to
+  each file opened. A setting the page does not know, or a value it does not accept, is left out and named.
 - A file opens with c up, a towards the viewer on the left and b to the right, seen a little from
   above (turn -120, tilt 15): all three axes read well and none is a stub (the user's choice).
 - The view (`src/render/camera.ts`; plan from the camera research of 2026-11-22, approved by the

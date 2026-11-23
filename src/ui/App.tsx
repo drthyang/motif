@@ -21,6 +21,26 @@ import { pairDistances, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readCif } from "../structure/readCif";
 import { withDisplacements } from "../structure/distortion";
+import {
+  apply as applySettings,
+  coloursOf,
+  collect as collectSettings,
+  defaultSettingsName,
+  isBool,
+  isColour,
+  isNumber,
+  isText,
+  oneOf,
+  readSettingsFile,
+  setDefaultSettingsName,
+  settingsFileText,
+  storedSettings,
+  storeSettings,
+  textRecord,
+  textsOf,
+  type SavedSettings,
+  type SettingField,
+} from "./settings";
 import type { Structure } from "../structure/types";
 
 // Published structures shipped with the page (see examples/README.md).
@@ -117,6 +137,8 @@ export function App() {
   const [showCell, setShowCell] = useState(true);
   const [newPair, setNewPair] = useState("");
   // The user's changes to colours, sizes and names. Radii are kept as typed, so a box can be emptied while editing.
+  // Element colours and radii from loaded settings: each newly opened file starts from them.
+  const preferredLooks = useRef<Record<string, { colour?: string; radiusText?: string }>>({});
   const [looks, setLooks] = useState<Record<string, { colour?: string; radiusText?: string; name?: string; hidden?: boolean; orderText?: string }>>({});
   // ---- The view. It is kept as a rotation matrix; the four numbers (axis up, turn, tilt, roll) are read from it,
   // so they are always true, whatever moved the view.
@@ -350,7 +372,7 @@ export function App() {
       setBondRules(suggested.map((r) => ({ ...r, maxText: String(r.max) })));
       setAutoNote(suggested.length > 0 ? suggested.map((r) => `${r.centre}–${r.neighbour} up to ${r.max} Å`).join(", ") : "");
       setNewPair("");
-      setLooks({});
+      setLooks({ ...preferredLooks.current }); // element colours and radii from loaded settings, if any
       setAngleRules([]);
       setAngleHover(null);
       setNewAngle("");
@@ -677,6 +699,106 @@ export function App() {
     } else return;
     e.preventDefault();
   };
+
+  // ---- Saved settings: preferences for how figures look and are laid out (not the structure shown).
+  const field = <T,>(value: T, set: (v: T) => void, valid: (v: unknown) => boolean): SettingField => ({ value, set: set as (v: never) => void, valid });
+  const isMaterial = oneOf(...MATERIALS);
+  // Element colours and radii only: names, hidden species and wedge orders belong to one file.
+  const elementLooks = Object.fromEntries(
+    Object.entries(looks)
+      .filter(([k]) => !k.includes("/"))
+      .map(([k, l]) => [k, { ...(l.colour ? { colour: l.colour } : {}), ...(l.radiusText ? { radiusText: l.radiusText } : {}) }])
+      .filter(([, l]) => Object.keys(l as object).length > 0),
+  );
+  const isElementLooks = (v: unknown): boolean =>
+    typeof v === "object" && v !== null && !Array.isArray(v) &&
+    Object.values(v).every((l) => typeof l === "object" && l !== null && (l.colour === undefined || isColour(l.colour)) && (l.radiusText === undefined || isText(l.radiusText)));
+  const isSavedViews = (v: unknown): boolean =>
+    Array.isArray(v) && v.length <= 100 && v.every((x) => typeof x?.name === "string" && [0, 1, 2].includes(x.up) && [x.turn, x.tilt, x.roll].every(isNumber));
+  const settingFields: Record<string, SettingField> = {
+    // Visual
+    atomMaterial: field(atomMaterial, setAtomMaterial, isMaterial),
+    bondMaterial: field(bondMaterial, setBondMaterial, isMaterial),
+    arrowMaterial: field(arrowMaterial, setArrowMaterial, isMaterial),
+    glassOpacity: field(glassOpacity, setGlassOpacity, (v) => isNumber(v) && (v as number) >= 0.05 && (v as number) <= 1),
+    bondOutline: field(bondOutline, setBondOutline, isBool),
+    momentOutline: field(momentOutline, setMomentOutline, isBool),
+    axesOutline: field(axesOutline, setAxesOutline, isBool),
+    elementLooks: field(elementLooks, (v: Record<string, { colour?: string; radiusText?: string }>) => {
+      preferredLooks.current = { ...v };
+      setLooks((all) => {
+      const next = { ...all };
+      for (const [k, l] of Object.entries(v)) next[k] = { ...next[k], ...l };
+      return next;
+      });
+    }, isElementLooks),
+    showVacancy: field(showVacancy, setShowVacancy, isBool),
+    momentColour: field(momentColour, setMomentColour, isColour),
+    momentLength: field(momentLengthText, setMomentLengthText, isText),
+    momentThickness: field(momentThicknessText, setMomentThicknessText, isText),
+    arrowHead: field(momentHeadText, setMomentHeadText, isText),
+    displacementLength: field(displacementLengthText, setDisplacementLengthText, isText),
+    showCell: field(showCell, setShowCell, isBool),
+    cellStyle: field(cellStyle, setCellStyle, oneOf("depth", "dashed", "solid")),
+    cellWidth: field(cellWidthText, setCellWidthText, isText),
+    showLegend: field(showLegend, setShowLegend, isBool),
+    legendFollows: field(legendFollows, setLegendFollows, isBool),
+    legendSize: field(legendSizeText, setLegendSizeText, isText),
+    showAxes: field(showAxes, setShowAxes, isBool),
+    axesSize: field(axesSizeText, setAxesSizeText, isText),
+    axesHead: field(axesHeadText, setAxesHeadText, isText),
+    axesReadable: field(axesReadable, setAxesReadable, isBool),
+    axesColoured: field(axesColoured, setAxesColoured, isBool),
+    axesColours: field(axesColours, setAxesColours, coloursOf(3)),
+    fontFamily: field(fontFamily, setFontFamily, isText),
+    customFont: field(customFont, setCustomFont, isBool),
+    letterWeight: field(letterWeight, setLetterWeight, oneOf(400, 500, 800)),
+    textSizes: field(fontPtText, setFontPtText, textRecord(["legend", "axes", "angle"])),
+    // Layout and saving
+    canvasFixed: field(canvasFixed, setCanvasFixed, isBool),
+    canvasUnit: field(canvasUnit, setCanvasUnit, oneOf("cm", "in")),
+    canvasSize: field(canvasSizeText, setCanvasSizeText, textsOf(2)),
+    aspect: field(aspect, setAspect, oneOf(...ASPECTS.map((a) => a.key))),
+    portrait: field(portrait, setPortrait, isBool),
+    dpi: field(dpiText, setDpiText, isText),
+    transparent: field(transparent, setTransparent, isBool),
+    pngWidth: field(pngWidth, setPngWidth, (v) => isNumber(v) && (v as number) >= 100 && (v as number) <= 16000),
+    saveZoomed: field(saveZoomed, setSaveZoomed, isBool),
+    scaleMode: field(scaleMode, setScaleMode, oneOf("outline", "steady", "fixed")),
+    fixedScale: field(fixedScaleText, setFixedScaleText, isText),
+    dragMode: field(dragMode, setDragMode, oneOf("turntable", "free")),
+    snap: field(snap, setSnap, isBool),
+    animate: field(animate, setAnimate, isBool),
+    keepView: field(keepView, setKeepView, isBool),
+    smooth: field(smooth, setSmooth, isBool),
+    previewFrom: field(previewFromText, setPreviewFromText, isText),
+    showControls: field(showHelp, setShowHelp, isBool),
+    // Structure: general habits, not one file's rules
+    repeatBoundary: field(repeatBoundary, setRepeatBoundary, isBool),
+    autoBonds: field(autoBonds, setAutoBonds, isBool),
+    savedViews: field(savedViews, storeViews, isSavedViews),
+  };
+  const [settingsList, setSettingsList] = useState<SavedSettings[]>(storedSettings);
+  const [settingsChoice, setSettingsChoice] = useState("");
+  const [settingsName, setSettingsName] = useState("");
+  const [startWith, setStartWith] = useState(defaultSettingsName);
+  const [settingsNote, setSettingsNote] = useState("");
+  const keepSettingsList = (list: SavedSettings[]) => {
+    setSettingsList(list);
+    if (!storeSettings(list)) setSettingsNote("This browser does not keep settings (a private window?). Export them to a file instead.");
+  };
+  const loadSettings = (s: SavedSettings) => {
+    const skipped = applySettings(settingFields, s.values);
+    setSettingsNote(`Loaded “${s.name}”.${skipped.length ? ` Not used: ${skipped.join(", ")} (unknown here, or not a usable value).` : ""}`);
+  };
+  // The settings chosen to open with, once, when the page starts.
+  const startedWith = useRef(false);
+  useEffect(() => {
+    if (startedWith.current) return;
+    startedWith.current = true;
+    const chosen = storedSettings().find((s) => s.name === defaultSettingsName());
+    if (chosen) applySettings(settingFields, chosen.values);
+  });
 
   const cell = structure?.cell;
   return (
@@ -1545,6 +1667,116 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-angle" placeholder={`${autoPt.angle}`} value={fontPtText.angle} onChange={(e) => setFontPtText((t) => ({ ...t, angle: e.target.value }))} />
                 pt
               </div>
+            </Section>
+            <Section tab="layout" title="Saved settings" hint="Your preferences for how figures look and are laid out: everything under Visual and Layout (surfaces, outlines, element colours and radii, arrows, unit cell, legend, axes, lettering, canvas size and shape, dpi, scale, dragging), your saved views, and whether bonds are added on opening. Not the structure: the cells shown, bond and angle rules, distortion modes and the current view stay with the file. Kept in this browser; export to a file to keep them elsewhere or use them on another computer.">
+              {settingsList.length > 0 && (
+                <div className="row">
+                  <select data-testid="settings-choice" value={settingsChoice} onChange={(e) => setSettingsChoice(e.target.value)}>
+                    <option value="">Saved settings…</option>
+                    {settingsList.map((s) => (
+                      <option key={s.name} value={s.name}>
+                        {s.name}
+                        {s.name === startWith ? " (opens with)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    data-testid="settings-load"
+                    disabled={!settingsChoice}
+                    onClick={() => {
+                      const s = settingsList.find((x) => x.name === settingsChoice);
+                      if (s) loadSettings(s);
+                    }}
+                  >
+                    Load
+                  </button>
+                  <button
+                    data-testid="settings-delete"
+                    title="Remove these settings from this browser"
+                    disabled={!settingsChoice}
+                    onClick={() => {
+                      keepSettingsList(settingsList.filter((x) => x.name !== settingsChoice));
+                      if (startWith === settingsChoice) {
+                        setStartWith("");
+                        setDefaultSettingsName("");
+                      }
+                      setSettingsNote(`Removed “${settingsChoice}”.`);
+                      setSettingsChoice("");
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              {settingsChoice && (
+                <label className="row">
+                  <input
+                    type="checkbox"
+                    data-testid="settings-start"
+                    checked={startWith === settingsChoice}
+                    onChange={(e) => {
+                      const name = e.target.checked ? settingsChoice : "";
+                      setStartWith(name);
+                      setDefaultSettingsName(name);
+                    }}
+                  />
+                  Open the page with these settings
+                </label>
+              )}
+              <div className="row">
+                <input type="text" className="name" data-testid="settings-name" placeholder="Name these settings" value={settingsName} onChange={(e) => setSettingsName(e.target.value)} />
+                <button
+                  data-testid="settings-save"
+                  disabled={settingsName.trim() === ""}
+                  title="Save the current settings under this name (replacing any of the same name)"
+                  onClick={() => {
+                    const name = settingsName.trim().slice(0, 60);
+                    keepSettingsList([...settingsList.filter((x) => x.name !== name), { name, values: collectSettings(settingFields) }]);
+                    setSettingsChoice(name);
+                    setSettingsName("");
+                    setSettingsNote(`Saved “${name}”.`);
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+              <div className="row">
+                <button
+                  data-testid="settings-export"
+                  title="Download the current settings as a small file"
+                  onClick={() => {
+                    const name = settingsChoice || settingsName.trim() || "MOTIF settings";
+                    download(new Blob([settingsFileText({ name, values: collectSettings(settingFields) })], { type: "application/json" }), `${name.replace(/[^\w.-]+/g, "_")}.motif-settings.json`);
+                  }}
+                >
+                  Export file
+                </button>
+                <label className="button">
+                  Import file
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    data-testid="settings-import"
+                    hidden
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!file) return;
+                      void file.text().then((text) => {
+                        try {
+                          const s = readSettingsFile(text);
+                          keepSettingsList([...settingsList.filter((x) => x.name !== s.name), s]);
+                          setSettingsChoice(s.name);
+                          loadSettings(s);
+                        } catch (err) {
+                          setSettingsNote(err instanceof Error ? err.message : String(err));
+                        }
+                      });
+                    }}
+                  />
+                </label>
+              </div>
+              {settingsNote && <p className="sub" data-testid="settings-note">{settingsNote}</p>}
             </Section>
             <Section tab="layout" title="Canvas" hint="Fit the frame: the figure is 1440 px wide and as high as the frame on the page makes it. Size on paper: the width and height you give, in cm or in; the SVG states that size, so a drawing program places it at exactly that size, and the PNG is that size at the dpi given under Save. Lines, spheres and the legend keep their proportions to the figure; text given in pt under Lettering keeps its size.">
               <div className="row">
