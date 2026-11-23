@@ -36,6 +36,40 @@ export interface Site {
   readonly statedMultiplicity?: number;
   /** Magnetic moment in Bohr magnetons, as components along the unit vectors of the cell edges a, b, c (the mCIF "crystalaxis" form). */
   readonly moment?: Vec3;
+  /**
+   * Displacement from the parent (high-symmetry) structure, in fractional coordinates of the file's cell,
+   * from the displacive modes switched on (see Distortion). Absent when the file describes none.
+   */
+  readonly displacement?: Vec3;
+}
+
+/** One displacive mode of an ISODISTORT file. */
+export interface DisplaciveMode {
+  /** As written, e.g. "Pm-3m[0,0,0]GM4-(0,0,a)[Ti:a:dsp]T1u(a)". */
+  readonly label: string;
+  /** Amplitude in angstrom (ISODISTORT's convention: over the undistorted supercell). */
+  readonly amplitude: number;
+  /** Normalization factor: amplitude x norm is in fractional units. */
+  readonly norm: number;
+}
+
+/**
+ * The displacive distortion an ISODISTORT CIF describes. The fractional shift of a coordinate (a "delta") is
+ *   delta_i = sum_j matrix[i][j] x amplitude_j x norm_j,
+ * and each delta adds, with a coefficient, to coordinates of named sites.
+ */
+export interface Distortion {
+  readonly modes: readonly DisplaciveMode[];
+  /** matrix[i][j]: delta i from mode j. */
+  readonly matrix: readonly (readonly number[])[];
+  /** The deltas as the file states them (all modes at their amplitudes), for checking. */
+  readonly deltas: readonly { readonly label: string; readonly value: number }[];
+  /** Which site coordinate each delta moves: coordinate `axis` of site `site` changes by coefficient x delta. */
+  readonly uses: readonly { readonly site: string; readonly axis: 0 | 1 | 2; readonly delta: number; readonly coefficient: number }[];
+  /** The undistorted supercell (parent cell in the file's basis): fractional shifts become angstrom with it. */
+  readonly undistortedCell: Cell;
+  /** Kinds of mode in the file that are not drawn (strain, magnetic, ...), in words. */
+  readonly notDrawn: readonly string[];
 }
 
 /** What a CIF says: cell, symmetry operations, sites. Nothing about drawing. */
@@ -49,6 +83,8 @@ export interface Structure {
   readonly sites: readonly Site[];
   /** True when the file is a magnetic CIF: the operations then carry time reversal and are the magnetic group. */
   readonly magnetic: boolean;
+  /** Present for an ISODISTORT file with displacive modes. */
+  readonly distortion?: Distortion;
 }
 
 export interface Component {
@@ -74,4 +110,6 @@ export interface CellAtom {
   readonly frac: Vec3;
   /** Magnetic moment of this atom in Bohr magnetons, as components along the unit vectors of a, b, c. */
   readonly moment?: Vec3;
+  /** Displacement from the parent structure, in fractional coordinates of the file's cell (see Site). */
+  readonly displacement?: Vec3;
 }

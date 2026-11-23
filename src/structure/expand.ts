@@ -35,6 +35,15 @@ export function transformMoment(op: SymmetryOperation, moment: Vec3, edges: Vec3
   return [sign * f[0] * edges[0] + 0, sign * f[1] * edges[1] + 0, sign * f[2] * edges[2] + 0];
 }
 
+/**
+ * A displacement carried from a site to its image: a polar vector in fractional coordinates, d' = R d
+ * (no determinant, no time reversal).
+ */
+export function transformDisplacement(op: SymmetryOperation, d: Vec3): Vec3 {
+  const f = mulVec(op.rotation, d);
+  return [f[0] + 0, f[1] + 0, f[2] + 0];
+}
+
 export interface Expansion {
   /** Every atom of one unit cell, fractional coordinates in [0, 1). */
   readonly atoms: readonly CellAtom[];
@@ -49,6 +58,7 @@ export interface Expansion {
  */
 export function expandToUnitCell(structure: Structure): Expansion {
   const m = orthogonalizationMatrix(structure.cell);
+  const m3 = m; // fractional -> angstrom, for comparing displacements
   // Distance between two fractional points, taking the nearest lattice image.
   const separation = (p: Vec3, q: Vec3): number => {
     const d = [0, 1, 2].map((i) => {
@@ -61,6 +71,7 @@ export function expandToUnitCell(structure: Structure): Expansion {
   const edges: Vec3 = [structure.cell.a, structure.cell.b, structure.cell.c];
   interface Place {
     moment?: Vec3;
+    displacement?: Vec3;
     siteIndex: number;
     labels: string[];
     components: { element: string; occupancy: number }[];
@@ -72,11 +83,14 @@ export function expandToUnitCell(structure: Structure): Expansion {
   structure.sites.forEach((site, siteIndex) => {
     const images: Vec3[] = [];
     const moments: (Vec3 | undefined)[] = [];
+    const shifts: (Vec3 | undefined)[] = [];
     let widestMerge = 0;
     let momentClash = 0;
+    let shiftClash = 0;
     for (const op of structure.operations) {
       const p = wrapFractional(applyOperation(op, site.frac));
       const m = site.moment ? transformMoment(op, site.moment, edges) : undefined;
+      const d = site.displacement ? transformDisplacement(op, site.displacement) : undefined;
       const near = images.map((q) => separation(p, q));
       const closest = near.length ? Math.min(...near) : Infinity;
       if (closest < SAME_ATOM_DISTANCE) {
@@ -84,15 +98,21 @@ export function expandToUnitCell(structure: Structure): Expansion {
         // Two operations bring the site to the same atom: they must also bring the same moment.
         const first = moments[near.indexOf(closest)];
         if (m && first) momentClash = Math.max(momentClash, Math.hypot(m[0] - first[0], m[1] - first[1], m[2] - first[2]));
+        const firstShift = shifts[near.indexOf(closest)];
+        if (d && firstShift) shiftClash = Math.max(shiftClash, Math.hypot(...mulVec(m3, [d[0] - firstShift[0], d[1] - firstShift[1], d[2] - firstShift[2]])));
       } else {
         images.push(p);
         moments.push(m);
+        shifts.push(d);
       }
     }
     if (site.moment && momentClash > 0.01 + 0.01 * Math.hypot(...site.moment)) {
       warnings.push(
         `${site.label}: the moment in the file is not allowed by the magnetic symmetry of its site (two operations give moments ${momentClash.toFixed(2)} Bohr magnetons apart). The arrows drawn for it may be wrong.`,
       );
+    }
+    if (site.displacement && shiftClash > 0.005) {
+      warnings.push(`${site.label}: the displacement in the file is not allowed by the symmetry of its site (two operations give displacements ${shiftClash.toFixed(3)} A apart). The arrows drawn for it may be wrong.`);
     }
     if (widestMerge > REPORT_DISTANCE) {
       warnings.push(
@@ -104,13 +124,15 @@ export function expandToUnitCell(structure: Structure): Expansion {
     }
     images.forEach((frac, n) => {
       const moment = moments[n];
+      const displacement = shifts[n];
       // An earlier site already at this place: the two share it.
       const shared = places.find((q) => q.siteIndex !== siteIndex && separation(q.frac, frac) < SAME_ATOM_DISTANCE);
       if (!shared) {
-        places.push({ siteIndex, labels: [site.label], components: [{ element: site.element, occupancy: site.occupancy }], frac, ...(moment ? { moment } : {}) });
+        places.push({ siteIndex, labels: [site.label], components: [{ element: site.element, occupancy: site.occupancy }], frac, ...(moment ? { moment } : {}), ...(displacement ? { displacement } : {}) });
         return;
       }
       // Elements sharing a place: the place shows the first moment given; differing moments are reported.
+      if (displacement && !shared.displacement) shared.displacement = displacement;
       if (moment && !shared.moment) shared.moment = moment;
       else if (moment && shared.moment && Math.hypot(moment[0] - shared.moment[0], moment[1] - shared.moment[1], moment[2] - shared.moment[2]) > 0.01) {
         differing.add(`${shared.labels.join("/")}/${site.label}: the elements sharing this place have different moments; the first one is drawn.`);
@@ -126,7 +148,7 @@ export function expandToUnitCell(structure: Structure): Expansion {
     const occupancy = p.components.reduce((sum, c) => sum + c.occupancy, 0);
     const label = p.labels.join("/");
     if (occupancy > 1.005) overfull.add(`${label}: the occupancies at this place add up to ${occupancy.toFixed(3)}, more than 1.`);
-    return { siteIndex: p.siteIndex, label, species: p.components.map((c) => c.element).join("/"), components: p.components, occupancy, frac: p.frac, ...(p.moment ? { moment: p.moment } : {}) };
+    return { siteIndex: p.siteIndex, label, species: p.components.map((c) => c.element).join("/"), components: p.components, occupancy, frac: p.frac, ...(p.moment ? { moment: p.moment } : {}), ...(p.displacement ? { displacement: p.displacement } : {}) };
   });
   return { atoms, warnings: [...warnings, ...overfull] };
 }

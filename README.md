@@ -179,8 +179,17 @@ writes the reference atom lists in `tests/reference/`.
 - The legend can follow the size of the structure: its largest sphere as large as that atom is
   drawn, letters in proportion (within limits), so it scales with the zoom.
 - Arrows (the user's rule, for step 6 and later): a magnetic moment is drawn as an arrow passing
-  through its atom, centred on it. An atomic displacement (a distortion mode, not yet a planned
-  step) is drawn as an arrow starting at the centre of its atom.
+  through its atom, centred on it. An atomic displacement (a distortion mode) is drawn as an arrow
+  starting at the centre of its atom.
+- Distortion modes (reading approved by the user, 2026-11-23): an ISODISTORT CIF (iso.byu.edu) is
+  read as the distorted structure it lists, plus its displacive modes. Each site's displacement from
+  the parent is the sum over the modes switched on of matrix x amplitude x norm (fractional units,
+  checked against the file's own `_iso_deltacoordinate_value`), added to the coordinates its
+  `_iso_coordinate_formula` names, made angstrom with the undistorted supercell (the parent cell in
+  the file's basis), and carried to equivalent atoms as a polar vector, d' = R d. The largest
+  displacement gets the chosen arrow length. Strain, magnetic, rotational and occupancy modes are
+  not drawn; the page says when a file has them. Checked by hand against the published BaTiO3
+  coordinates (`tests/distortion.test.ts`).
 - Symmetry images of one site closer than 0.05 Å are one atom (a site on a symmetry element).
 
 ## Steps of the first version

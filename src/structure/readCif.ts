@@ -8,6 +8,7 @@
 
 import { cifText, findLoop, parseCifBlocks, parseCifNumber, BLOCK_NAME, type Loop } from "./cifSyntax";
 import { elementFromLetters, elementsForLabel, formulaElements, labelUsesCase, type LabelContext } from "./elements";
+import { readDistortion, withDisplacements } from "./distortion";
 import { composeOperations, operationKey, parseMagneticSymmetryOperation, parseSymmetryOperation } from "./symmetry";
 import type { Cell, Site, Structure, SymmetryOperation, Vec3 } from "./types";
 
@@ -234,5 +235,8 @@ export function readCif(text: string): Structure {
     cifText(items.get(BLOCK_NAME)) ??
     "structure";
   const groupName = magnetic ? magneticName : spaceGroupName;
-  return { name, cell, ...(groupName !== undefined ? { spaceGroupName: groupName } : {}), operations, sites, magnetic };
+  const distortion = readDistortion(items, loops, sites);
+  const structure: Structure = { name, cell, ...(groupName !== undefined ? { spaceGroupName: groupName } : {}), operations, sites, magnetic, ...(distortion ? { distortion } : {}) };
+  // An ISODISTORT file: every displacive mode at the amplitude the file gives.
+  return withDisplacements(structure);
 }

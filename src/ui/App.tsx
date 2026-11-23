@@ -13,13 +13,14 @@ import {
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
+import { AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
 import { pairDistances, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readCif } from "../structure/readCif";
+import { withDisplacements } from "../structure/distortion";
 import type { Structure } from "../structure/types";
 
 // Published structures shipped with the page (see examples/README.md).
@@ -303,6 +304,17 @@ export function App() {
   const [momentThicknessText, setMomentThicknessText] = useState(String(DEFAULT_SPEC.momentThickness));
   const momentThickness = Number(momentThicknessText) >= 0.02 && Number(momentThicknessText) <= 2 ? Number(momentThicknessText) : DEFAULT_SPEC.momentThickness;
   const momentLength = Number(momentLengthText) > 0 && Number(momentLengthText) <= 20 ? Number(momentLengthText) : DEFAULT_SPEC.momentLength;
+  // A distortion (ISODISTORT file): its displacements as arrows, from the modes switched on.
+  const [showDisplacements, setShowDisplacements] = useState(true);
+  const [displacementLengthText, setDisplacementLengthText] = useState(String(DEFAULT_DISPLACEMENT_LENGTH));
+  const displacementLength = Number(displacementLengthText) > 0 && Number(displacementLengthText) <= 20 ? Number(displacementLengthText) : DEFAULT_DISPLACEMENT_LENGTH;
+  const [modesOn, setModesOn] = useState<boolean[]>([]);
+  useEffect(() => setModesOn(structure?.distortion?.modes.map(() => true) ?? []), [structure]);
+  // The structure as drawn: with the displacements of the modes switched on.
+  const drawnStructure = useMemo(
+    () => (structure?.distortion && modesOn.length === structure.distortion.modes.length ? withDisplacements(structure, modesOn) : structure),
+    [structure, modesOn],
+  );
   const [showAxes, setShowAxes] = useState(true);
   const setLook = (key: string, change: { colour?: string; radiusText?: string; name?: string; hidden?: boolean; orderText?: string }) =>
     setLooks((all) => ({ ...all, [key]: { ...all[key], ...change } }));
@@ -390,11 +402,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(drawnStructure ?? structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, showDisplacements, displacementLength, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
+  }, [drawnStructure, showDisplacements, displacementLength, structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -920,6 +932,9 @@ Reset
                   {largestMoment(structure) > 0 && (
                     <tr><td>Largest moment</td><td data-testid="largest-moment">{largestMoment(structure).toFixed(2)} μB</td></tr>
                   )}
+                  {structure.distortion && (
+                    <tr><td>Distortion</td><td data-testid="distortion-info">{[...new Set(structure.distortion.modes.map((m) => modeName(m.label).irrep))].join(", ")} of the parent; largest displacement {largestDisplacement(structure).toFixed(3)} Å</td></tr>
+                  )}
                   <tr><td>Atoms drawn</td><td>{scene.spheres.length}{counts && ` (${counts})`}</td></tr>
                 </tbody>
               </table>
@@ -1135,6 +1150,34 @@ Reset
                 </div>
               )}
             </Section>
+            {structure.distortion && drawnStructure && (
+              <Section tab="structure" title="Distortion modes" hint="From an ISODISTORT file: the atoms are the distorted structure, and each arrow starts at an atom's centre and shows its displacement from the parent structure, summed over the modes ticked. The amplitudes are in Å, as ISODISTORT gives them; the arrow of the largest displacement has the length set under Visual, the others in proportion.">
+                <label className="row">
+                  <input type="checkbox" data-testid="show-displacements" checked={showDisplacements} onChange={(e) => setShowDisplacements(e.target.checked)} />
+                  Displacement arrows
+                </label>
+                {structure.distortion.modes.map((m, j) => {
+                  const name = modeName(m.label);
+                  return (
+                    <label className="row" key={j} title={m.label}>
+                      <input
+                        type="checkbox"
+                        data-testid={`mode-${j}`}
+                        checked={modesOn[j] ?? true}
+                        onChange={(e) => setModesOn((all) => all.map((x, k) => (k === j ? e.target.checked : x)))}
+                      />
+                      <b>{name.irrep}</b>
+                      {name.part}
+                      <span className="sub">{m.amplitude.toFixed(4)} Å</span>
+                    </label>
+                  );
+                })}
+                <p className="sub" data-testid="largest-displacement">
+                  Largest displacement now: {largestDisplacement(drawnStructure).toFixed(3)} Å.
+                  {structure.distortion.notDrawn.length > 0 && ` Not drawn: ${structure.distortion.notDrawn.join(", ")}.`}
+                </p>
+              </Section>
+            )}
             {largestMoment(structure) > 0 && (
               <Section tab="structure" title="Magnetic moments" hint="A moment is drawn as an arrow through its atom, centred on it; the arrow of the largest moment has the length set under Visual, the others in proportion.">
                 <label className="row">
@@ -1327,12 +1370,17 @@ Reset
                 ))}
               </Section>
             )}
-            {largestMoment(structure) > 0 && (
-              <Section tab="visual" title="Moment arrows" hint="The arrow of the largest moment in the file has the length given here; the others are in proportion. The cone at the tip keeps its proportion to the rod; head scales it further.">
+            {(largestMoment(structure) > 0 || structure.distortion) && (
+              <Section tab="visual" title={structure.distortion ? "Displacement arrows" : "Moment arrows"} hint={`The arrow of the largest ${structure.distortion ? "displacement" : "moment"} in the file has the length given here; the others are in proportion. The cone at the tip keeps its proportion to the rod; head scales it further.`}>
                 <div className="row">
                   <input type="color" title="Colour of the arrows" value={momentColour} onChange={(e) => setMomentColour(e.target.value)} />
                   length
-                  <input type="number" step={0.25} min={0.25} max={20} data-testid="moment-length" value={momentLengthText} onChange={(e) => setMomentLengthText(e.target.value)} />
+                  {largestMoment(structure) > 0 && (
+                    <input type="number" step={0.25} min={0.25} max={20} data-testid="moment-length" value={momentLengthText} onChange={(e) => setMomentLengthText(e.target.value)} />
+                  )}
+                  {structure.distortion && (
+                    <input type="number" step={0.25} min={0.25} max={20} data-testid="displacement-length" value={displacementLengthText} onChange={(e) => setDisplacementLengthText(e.target.value)} />
+                  )}
                   Å
                 </div>
                 <div className="row">
@@ -1766,6 +1814,13 @@ function fontInstalled(family: string): boolean {
 }
 
 const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
+/** "Pm-3m[0,0,0]GM4-(0,0,a)[Ti:a:dsp]T1u(a)" -> irrep "GM4-", part "Ti T1u" (the full label stays in the tooltip). */
+function modeName(label: string): { irrep: string; part: string } {
+  const irrep = /\]([A-Za-z]+\d*[+-]?)\(/.exec(label)?.[1] ?? label;
+  const part = /\[([^:\]]+):[^\]]*\]([^(\s]+)/.exec(label.slice(label.indexOf(")") + 1));
+  return { irrep, part: part ? `${part[1]} ${part[2]}` : "" };
+}
 
 type ControlId = "turn" | "roll" | "move" | "zoom" | "box" | "fit";
 

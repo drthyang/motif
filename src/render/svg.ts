@@ -240,7 +240,7 @@ export function fitView(scene: Scene, view: View, canvas: Canvas): Fit {
   for (const edge of scene.cellEdges) for (const p of edge) include(p, 0);
   for (const a of scene.arrows) {
     const c = scene.spheres[a.sphere]!.centre;
-    for (const sign of [-0.5, 0.5]) include([c[0] + sign * a.vector[0], c[1] + sign * a.vector[1], c[2] + sign * a.vector[2]], arrowSizes(scene).headWidth / 2);
+    for (const sign of a.start === "centre" ? [0, 1] : [-0.5, 0.5]) include([c[0] + sign * a.vector[0], c[1] + sign * a.vector[1], c[2] + sign * a.vector[2]], arrowSizes(scene).headWidth / 2);
   }
   const height = structureHeight(scene, canvas);
   if (box.x0 > box.x1) return { scale: 1, x: canvas.width / 2, y: height / 2 };
@@ -429,12 +429,15 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     // rounded.
     const sphere = scene.spheres[arrow.sphere]!;
     const radius = scene.styles[sphere.style]!.radius;
-    const half = Math.hypot(arrow.vector[0], arrow.vector[1], arrow.vector[2]) / 2;
-    if (half <= radius) return;
-    const unit: Vec3 = [arrow.vector[0] / (2 * half), arrow.vector[1] / (2 * half), arrow.vector[2] / (2 * half)];
+    // A displacement arrow (start "centre") has no tail half: it runs from the centre (lo = 0) to its tip.
+    const length = Math.hypot(arrow.vector[0], arrow.vector[1], arrow.vector[2]);
+    const fromCentre = arrow.start === "centre";
+    const [lo, hi] = fromCentre ? [0, length] : [-length / 2, length / 2];
+    if (hi <= radius) return;
+    const unit: Vec3 = [arrow.vector[0] / length, arrow.vector[1] / length, arrow.vector[2] / length];
     const at = (t: number): Vec3 => project([sphere.centre[0] + unit[0] * t, sphere.centre[1] + unit[1] * t, sphere.centre[2] + unit[2] * t]);
-    const [centre, tip, tail] = [at(0), at(half), at(-half)];
-    const towards = (tip[2] - centre[2]) / half; // how much the arrow points at the viewer: -1 to 1
+    const [centre, tip, tail] = [at(0), at(hi), at(lo)];
+    const towards = (tip[2] - centre[2]) / hi; // how much the arrow points at the viewer: -1 to 1
     const onScreen = Math.hypot(tip[0] - centre[0], tip[1] - centre[1]);
     // Direction of the arrow on screen; seen end on there is none and any will do (the shapes are round).
     const [ux, uy] = onScreen > 1e-6 ? [(tip[0] - centre[0]) / onScreen, (tip[1] - centre[1]) / onScreen] : [1, 0];
@@ -444,8 +447,8 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const sizes = arrowSizes(scene);
     const w = (sizes.shaft * scale) / 2; // half the rod's thickness, px
     const hw = (sizes.headWidth * scale) / 2;
-    const headLength = Math.min(sizes.headLength, half - radius);
-    const base = at(half - headLength); // centre of the cone's base
+    const headLength = Math.min(sizes.headLength, hi - radius);
+    const base = at(hi - headLength); // centre of the cone's base
     const colour = scene.arrowColour;
     const [light, darker] = [mixHex(colour, "#ffffff", 0.5), mixHex(colour, "#000000", 0.45)];
     const id = `arrow-${arrowIndex}`;
@@ -493,19 +496,19 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     };
     const head = `${n1(tip[0])},${n1(tip[1])} ${corner(base, 1, hw)} ${corner(base, -1, hw)}`;
     const headHalf = (start: number, foot: boolean): string => {
-      const shaft = rod(start, half - headLength, 1, foot);
+      const shaft = rod(start, hi - headLength, 1, foot);
       return towards >= 0 ? shaft + cone() : cone() + shaft;
     };
     // The flat end of the tail, seen when the tail points at the viewer.
-    const tailHalf = (start: number, foot: boolean): string => rod(start, -half, -1, foot) + (towards < 0 ? ellipse("arrow-end", tail, w, Math.abs(towards), light) : "");
+    const tailHalf = (start: number, foot: boolean): string => rod(start, lo, -1, foot) + (towards < 0 ? ellipse("arrow-end", tail, w, Math.abs(towards), light) : "");
     const behind = centre[2] - 0.01;
     // 1. Both halves from the centre outwards, each no nearer than just behind the sphere: the sphere's outline cuts them.
-    drawn.push({ kind: "arrow", x1: tail[0], y1: tail[1], x2: centre[0], y2: centre[1], width: 2 * w, depth: Math.min((tail[2] + centre[2]) / 2, behind), svg: defs + tailHalf(0, false) });
-    drawn.push({ kind: "arrow", x1: centre[0], y1: centre[1], x2: base[0], y2: base[1], width: 2 * w, depth: Math.min((tip[2] + centre[2]) / 2, behind), head, svg: headHalf(0, false) });
+    if (!fromCentre) drawn.push({ kind: "arrow", x1: tail[0], y1: tail[1], x2: centre[0], y2: centre[1], width: 2 * w, depth: Math.min((tail[2] + centre[2]) / 2, behind), svg: defs + tailHalf(0, false) });
+    drawn.push({ kind: "arrow", x1: centre[0], y1: centre[1], x2: base[0], y2: base[1], width: 2 * w, depth: Math.min((tip[2] + centre[2]) / 2, behind), head, svg: (fromCentre ? defs : "") + headHalf(0, false) });
     // 2. The half that comes out of the sphere's face, over the sphere, from where it pierces the surface.
     const rho = Math.min(sizes.shaft / 2, radius);
     const pierce = Math.sqrt(Math.max(0, radius * radius - rho * rho));
-    if (Math.abs(towards) > 0.02) {
+    if (Math.abs(towards) > 0.02 && !(fromCentre && towards < 0)) {
       const sign = towards > 0 ? 1 : -1; // which half points at the viewer
       const foot = at(sign * pierce);
       const end = sign > 0 ? tip : tail;

@@ -34,6 +34,12 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
   and carried between atoms as m' = (time reversal) x det(R) x R m. Other forms and modulated
   structures are refused (2026-11-22).
 - Default lettering weight: regular (2026-11-22).
+- Distortion modes are read from ISODISTORT CIFs (2026-11-23): the distorted structure is drawn; each
+  arrow starts at the atom's centre and is the displacement from the parent, from the displacive
+  modes switched on (amplitude x norm x matrix, fractional), made angstrom with the undistorted
+  supercell and carried as a polar vector d' = R d; the largest gets the chosen length. Strain,
+  magnetic, rotational and occupancy modes are not drawn. A parent + distorted CIF pair is a
+  possible later input.
 - Licence: AGPL-3.0-or-later, as in NEBULA3D and RMCProfile Workbench (2026-11-22; switched
   from MIT while the repo was private, before any release).
 - Code from the user's own apps (MATERIA, NEBULA3D, RMCProfile Workbench) may be reused; rewrite

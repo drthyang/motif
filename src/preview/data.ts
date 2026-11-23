@@ -64,13 +64,15 @@ export function buildPreviewData(scene: Scene): PreviewData {
   for (const arrow of scene.arrows) {
     // The shaft from tail to the base of the head, then the head as a short, wider bar.
     const c = scene.spheres[arrow.sphere]!.centre;
-    const half = Math.hypot(arrow.vector[0], arrow.vector[1], arrow.vector[2]) / 2;
-    if (half === 0) continue;
-    const at = (t: number): Vec3 => [c[0] + (arrow.vector[0] / (2 * half)) * t, c[1] + (arrow.vector[1] / (2 * half)) * t, c[2] + (arrow.vector[2] / (2 * half)) * t];
+    const length = Math.hypot(arrow.vector[0], arrow.vector[1], arrow.vector[2]);
+    if (length === 0) continue;
+    // A displacement starts at the centre; a moment passes through it.
+    const [lo, hi] = arrow.start === "centre" ? [0, length] : [-length / 2, length / 2];
+    const at = (t: number): Vec3 => [c[0] + (arrow.vector[0] / length) * t, c[1] + (arrow.vector[1] / length) * t, c[2] + (arrow.vector[2] / length) * t];
     const sizes = arrowSizes(scene);
-    const head = Math.min(sizes.headLength, half);
-    lines.push(...at(-half), ...at(half - head), sizes.shaft, ...rgb(scene.arrowColour));
-    lines.push(...at(half - head), ...at(half - head * 0.35), sizes.headWidth * 0.75, ...rgb(scene.arrowColour));
+    const head = Math.min(sizes.headLength, hi);
+    lines.push(...at(lo), ...at(hi - head), sizes.shaft, ...rgb(scene.arrowColour));
+    lines.push(...at(hi - head), ...at(hi - head * 0.35), sizes.headWidth * 0.75, ...rgb(scene.arrowColour));
   }
   for (const [from, to] of scene.cellEdges) lines.push(...from, ...to, -3, ...rgb("#aab3ba"));
   return { spheres, lines: new Float32Array(lines), centre: scene.centre, reach: scene.extent * 1.05 + 1 };

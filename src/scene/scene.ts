@@ -5,7 +5,7 @@
  * The scene: what is drawn and how it is styled, as plain data (JSON-safe).
  * Positions are cartesian, in angstrom. The scene knows nothing about the view.
  */
-import { fractionalToCartesian } from "../structure/cell";
+import { fractionalToCartesian, mulVec, orthogonalizationMatrix } from "../structure/cell";
 import type { CellAtom, Component, Structure, Vec3 } from "../structure/types";
 import { defaultColour, defaultRadius } from "./elementStyle";
 import { angleKinds, anglesOfRule, bondAngles, DEFAULT_ANGLE_LOOK, type AngleKind, type AngleRule } from "./angles";
@@ -47,12 +47,19 @@ export interface Sphere {
   readonly added?: boolean;
   /** Magnetic moment in Bohr magnetons, as a vector in the same cartesian axes as `centre`. */
   readonly moment?: Vec3;
+  /** Displacement from the parent structure in angstrom, in the same cartesian axes as `centre`. */
+  readonly displacement?: Vec3;
 }
 
-/** An arrow drawn through an atom, centred on it (a magnetic moment). */
+/**
+ * An arrow on an atom. A magnetic moment is drawn through the atom, centred on it; an atomic displacement
+ * (a distortion mode) starts at the atom's centre (the user's rule).
+ */
 export interface Arrow {
   /** Index into Scene.spheres. */
   readonly sphere: number;
+  /** "centre": the arrow starts at the atom's centre. Absent: it passes through the atom, centred on it. */
+  readonly start?: "centre";
   /** From tail to tip, in angstrom: the direction is the moment's, the length is its size times the chosen scale. */
   readonly vector: Vec3;
 }
@@ -240,6 +247,10 @@ export interface SceneSpec {
   readonly angles: readonly AngleRule[];
   /** Draw the magnetic moments as arrows. */
   readonly showMoments: boolean;
+  /** Draw the displacements of a distortion (an ISODISTORT file) as arrows from the atoms' centres. */
+  readonly showDisplacements?: boolean;
+  /** Length in angstrom of the arrow of the largest displacement; the others are in proportion. */
+  readonly displacementLength?: number;
   /** Length in angstrom of the arrow of the largest moment in the structure; the others are in proportion. */
   readonly momentLength: number;
   readonly momentColour: string;
@@ -303,6 +314,9 @@ export interface Look {
 }
 
 export const VACANCY_COLOUR = "#ffffff";
+
+/** Length in angstrom of the arrow of the largest displacement, unless chosen. */
+export const DEFAULT_DISPLACEMENT_LENGTH = 1;
 
 /** Usual colours of the a, b, c arrows: a muted red, green and blue, in that order. */
 export const AXES_COLOURS: readonly [string, string, string] = ["#c4473f", "#3f8a4a", "#3567b0"];
@@ -375,6 +389,21 @@ export function momentToCartesian(structure: Structure, moment: Vec3): Vec3 {
   return [0, 1, 2].map((i) => moment[0] * a[i]! + moment[1] * b[i]! + moment[2] * c[i]!) as unknown as Vec3;
 }
 
+/** A displacement in fractional units of the file's cell, as angstrom in cartesian axes (with the undistorted supercell). */
+export function displacementToCartesian(structure: Structure, d: Vec3): Vec3 {
+  return mulVec(orthogonalizationMatrix(structure.distortion?.undistortedCell ?? structure.cell), d);
+}
+
+/** Size of the largest displacement in the file (with the modes switched on), in angstrom (0 when there is none). */
+export function largestDisplacement(structure: Structure): number {
+  let largest = 0;
+  for (const s of structure.sites) {
+    if (!s.displacement) continue;
+    largest = Math.max(largest, Math.hypot(...displacementToCartesian(structure, s.displacement)));
+  }
+  return largest;
+}
+
 /** Size of the largest moment in the file, in Bohr magnetons (0 when there is none). */
 export function largestMoment(structure: Structure): number {
   let largest = 0;
@@ -432,7 +461,8 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     const [key, style] = paleAtoms.has(index) ? [`${base.key}~pale`, pale(base.style)] : [base.key, base.style];
     styles[key] ??= style;
     const moment = atom.moment ? momentToCartesian(structure, atom.moment) : undefined;
-    return { style: key, species: atom.species, label: atom.label, frac: atom.frac, centre: atom.cart, ...(atom.added ? { added: true } : {}), ...(moment ? { moment } : {}) };
+    const displacement = atom.displacement ? displacementToCartesian(structure, atom.displacement) : undefined;
+    return { style: key, species: atom.species, label: atom.label, frac: atom.frac, centre: atom.cart, ...(atom.added ? { added: true } : {}), ...(moment ? { moment } : {}), ...(displacement ? { displacement } : {}) };
   });
   // Arrow length in proportion to the moment; the largest moment of the whole structure (not only of the
   // atoms shown) sets the scale, so changing the range never changes an arrow's length.
@@ -448,7 +478,18 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
       arrows.push({ sphere: index, vector });
     });
   }
-  const arrowNote = hidden > 0 ? [`${hidden} moment arrow${hidden > 1 ? "s are" : " is"} shorter than the atom and cannot be seen. Increase the arrow length or reduce the atom's radius.`] : [];
+  // Displacements: from the atom's centre, the largest of the file at the chosen length.
+  const largestShift = largestDisplacement(structure);
+  if ((spec.showDisplacements ?? true) && largestShift > 0) {
+    const k = (spec.displacementLength ?? DEFAULT_DISPLACEMENT_LENGTH) / largestShift;
+    spheres.forEach((s, index) => {
+      if (!s.displacement) return;
+      const vector: Vec3 = [s.displacement[0] * k, s.displacement[1] * k, s.displacement[2] * k];
+      if (Math.hypot(vector[0], vector[1], vector[2]) <= styles[s.style]!.radius) hidden++;
+      arrows.push({ sphere: index, vector, start: "centre" });
+    });
+  }
+  const arrowNote = hidden > 0 ? [`${hidden} arrow${hidden > 1 ? "s are" : " is"} shorter than the atom and cannot be seen. Increase the arrow length or reduce the atom's radius.`] : [];
   const cellEdges = spec.showCell ? cellEdgesInRange(structure, spec.range) : [];
   // Middle of the bounding box of everything drawn.
   const points = [...spheres.map((s) => s.centre), ...cellEdges.flat()];
@@ -460,7 +501,7 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
   const reach = (p: Vec3): number => Math.hypot(p[0] - centre[0], p[1] - centre[1], p[2] - centre[2]);
   let extent = 1;
   for (const s of spheres) extent = Math.max(extent, reach(s.centre) + styles[s.style]!.radius);
-  for (const a of arrows) extent = Math.max(extent, reach(spheres[a.sphere]!.centre) + Math.hypot(a.vector[0], a.vector[1], a.vector[2]) / 2);
+  for (const a of arrows) extent = Math.max(extent, reach(spheres[a.sphere]!.centre) + Math.hypot(a.vector[0], a.vector[1], a.vector[2]) / (a.start === "centre" ? 1 : 2));
   for (const p of cellEdges.flat()) extent = Math.max(extent, reach(p));
   // One legend entry per name, in the order the species first appear in the file.
   const legend: LegendEntry[] = [];
