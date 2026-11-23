@@ -58,7 +58,8 @@ writes the reference atom lists in `tests/reference/`.
 - The unit-cell outline is drawn for every whole cell inside the range (none for a slab).
 - The structure is fitted to the canvas in each view. While dragging, the placement of the moment
   the drag began is kept, and the figure is refitted on release.
-- The figure's canvas is 1440 px wide and takes the shape of its frame on the page, so the figure
+- A figure opens at the size of a Nature single column, 89 mm wide, 4:3 (8.9 x 6.675 cm), lettered in
+  Open Sans (the user's defaults, 2026-11-23). Otherwise the figure's canvas is 1440 px wide and takes the shape of its frame on the page, so the figure
   uses the whole frame and nothing is cut off at an unseen edge inside it (the user's choice,
   2026-11-22). Or it has a size on paper, width and height in cm or in (the user's choice,
   2026-11-23): the drawing is then 1440 units wide with that shape, the SVG states the size
@@ -98,7 +99,7 @@ writes the reference atom lists in `tests/reference/`.
   edges *a*, *b*, *c*; an arrow tilted out of the screen is drawn shorter, and one seen end on gets
   no letter. By default *a*, *b*, *c* are a muted red, green and blue (arrow and letter alike);
   each colour can be changed, or all three drawn grey. Filled bond triangles take the pale tint of
-  their atoms unless a colour is chosen for them. Lettering: Avenir, then Avenir Next (macOS), else Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). The font can be chosen
+  their atoms unless a colour is chosen for them. Lettering: Open Sans by default, then Avenir, Avenir Next (macOS), Helvetica Neue, Arial; the weight can be chosen (regular by default, the user's choice). The font can be chosen
   from a list (macOS fonts, and free ones from Google Fonts, IBM Plex and DejaVu; those not installed
   are marked) or typed by name; it must be a font of the computer (the PNG is drawn from the SVG
   alone, which cannot use a font loaded by the page), and the page says when it is missing. Text stays live
@@ -157,8 +158,11 @@ writes the reference atom lists in `tests/reference/`.
   and sizes of atoms, bonds, angle marks and moment arrows, the unit-cell lines, legend, axes,
   lettering) and Layout (canvas size and shape, view direction, scale, saved views, dragging, large
   structures). A bond or angle rule is set up under Structure and styled under Visual. The style
-  presets (Slide, Paper, Glossy, Metal, Glass) set surfaces, outlines, lettering weight and legend
+  quick styles (soft shading; flat colour, outlined; glossy highlight; metallic; clear glass atoms) set
+  surfaces, outlines, lettering weight and legend
   sizes together.
+- A range may hold up to 100,000 atoms (the user's limit). Grouping bonds into chains is near linear
+  (union-find), so a supercell of that size with its bonds is built in well under a second.
 - A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
 - Saved settings (Layout tab): a person's preferences, by name, kept in the browser, and exported to or
   imported from a small JSON file (`*.motif-settings.json`, format version 1). They hold everything under

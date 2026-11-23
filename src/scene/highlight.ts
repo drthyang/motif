@@ -10,16 +10,32 @@ import type { Bond, BondRule, PlacedAtom } from "./bonds";
  * so that "chain 2" means the same chain however the figure is turned.
  */
 export function connectedGroups(atoms: readonly PlacedAtom[], bonds: readonly Bond[]): number[][] {
+  // Union-find with path compression and union by size: near linear, so a supercell with a hundred thousand
+  // bonds is grouped in milliseconds.
   const parent = new Map<number, number>();
+  const size = new Map<number, number>();
   const find = (x: number): number => {
     let root = x;
     while (parent.get(root) !== root) root = parent.get(root)!;
-    parent.set(x, root);
+    while (x !== root) {
+      const next = parent.get(x)!;
+      parent.set(x, root);
+      x = next;
+    }
     return root;
   };
   for (const b of bonds) {
-    for (const x of [b.i, b.j]) if (!parent.has(x)) parent.set(x, x);
-    parent.set(find(b.i), find(b.j));
+    for (const x of [b.i, b.j]) {
+      if (!parent.has(x)) {
+        parent.set(x, x);
+        size.set(x, 1);
+      }
+    }
+    let [p, q] = [find(b.i), find(b.j)];
+    if (p === q) continue;
+    if (size.get(p)! < size.get(q)!) [p, q] = [q, p];
+    parent.set(q, p);
+    size.set(p, size.get(p)! + size.get(q)!);
   }
   const groups = new Map<number, number[]>();
   for (const x of parent.keys()) {
@@ -30,11 +46,12 @@ export function connectedGroups(atoms: readonly PlacedAtom[], bonds: readonly Bo
   }
   const middle = (group: number[]): number[] => [0, 1, 2].map((i) => Math.round((group.reduce((sum, x) => sum + atoms[x]!.frac[i]!, 0) / group.length) * 1e4));
   return [...groups.values()]
-    .map((g) => g.sort((p, q) => p - q))
-    .sort((p, q) => {
-      const [mp, mq] = [middle(p), middle(q)];
-      return mp[0]! - mq[0]! || mp[1]! - mq[1]! || mp[2]! - mq[2]! || p[0]! - q[0]!;
-    });
+    .map((g) => {
+      const sorted = g.sort((p, q) => p - q);
+      return { g: sorted, m: middle(sorted) };
+    })
+    .sort((p, q) => p.m[0]! - q.m[0]! || p.m[1]! - q.m[1]! || p.m[2]! - q.m[2]! || p.g[0]! - q.g[0]!)
+    .map((x) => x.g);
 }
 
 /** Every set of three atoms that are all bonded to one another, as index triples i < j < k. */

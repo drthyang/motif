@@ -79,20 +79,21 @@ export function App() {
   // The figure's canvas: by default 1440 px wide, as high as the shape of its frame on the page makes it;
   // or a size on paper chosen by the user (cm or in), drawn 1440 units wide and stated in the SVG.
   const [canvas, setCanvas] = useState<Canvas>(DEFAULT_CANVAS);
-  const [canvasFixed, setCanvasFixed] = useState(false);
+  // Default figure: a Nature single column, 89 mm wide, 4:3 (the user's choice, 2026-11-23).
+  const [canvasFixed, setCanvasFixed] = useState(true);
   const [canvasUnit, setCanvasUnit] = useState<PhysicalSize["unit"]>("cm");
-  const [canvasSizeText, setCanvasSizeText] = useState<[string, string]>(["8.5", "6.5"]);
+  const [canvasSizeText, setCanvasSizeText] = useState<[string, string]>(["8.9", "6.675"]);
   const canvasSize: [number, number] = [Number(canvasSizeText[0]), Number(canvasSizeText[1])];
   const [sideMin, sideMax] = canvasUnit === "cm" ? [1, 100] : [0.4, 40];
   const canvasSizeOk =
     canvasSize.every((x) => Number.isFinite(x) && x >= sideMin && x <= sideMax) && canvasSize[1] / canvasSize[0] >= 0.2 && canvasSize[1] / canvasSize[0] <= 5;
   // While a side is being typed (or is out of range) the canvas keeps the last valid size.
-  const lastPhysical = useRef<PhysicalSize>({ width: 8.5, height: 6.5, unit: "cm" });
+  const lastPhysical = useRef<PhysicalSize>({ width: 8.9, height: 6.675, unit: "cm" });
   if (canvasSizeOk) lastPhysical.current = { width: canvasSize[0], height: canvasSize[1], unit: canvasUnit };
   const physical: PhysicalSize | null = canvasFixed ? lastPhysical.current : null;
   // The shape of the canvas: free (the frame's shape, or the width and height as typed) or a chosen
   // width : height, turned upright with "portrait".
-  const [aspect, setAspect] = useState("free");
+  const [aspect, setAspect] = useState("4:3");
   const [portrait, setPortrait] = useState(false);
   const ratioOf = (key: string, upright: boolean): number | null => {
     const r = ASPECTS.find((a) => a.key === key)?.ratio ?? null;
@@ -1043,8 +1044,8 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             </>
           ) : (
             <div className="empty">
-              <p className="empty-title">Drop a CIF, mCIF or RMCProfile (.rmc6f) file here</p>
-              <p>or use <b>Open file…</b> above, or start from an example:</p>
+              <p className="empty-title">Drop a structure file here</p>
+              <p>CIF, magnetic CIF or RMCProfile configuration (.rmc6f). Or use <b>Open file…</b> above, or start from an example:</p>
               <div className="examples">
                 {EXAMPLES.map((x) => (
                   <button key={x.name} data-testid={`start-${x.name}`} onClick={() => load(x.text, x.file)}>
@@ -1208,7 +1209,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 </div>
               ))}
               <div className="row">
-                <select data-testid="new-pair" value={newPair} onChange={(e) => setNewPair(e.target.value)}>
+                <select className="grow" data-testid="new-pair" value={newPair} onChange={(e) => setNewPair(e.target.value)}>
                   <option value="">Add a bond between…</option>
                   {pairs.map((p) => (
                     <option key={p.key} value={p.key}>
@@ -1227,7 +1228,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                     <button title="Remove this angle" onClick={() => setAngleRules((all) => all.filter((_, i) => i !== index))}>×</button>
                   </div>
                   <div className="row">
-                    from
+                    <span className="lab">from</span>
                     <input type="number" step={0.5} min={0} max={180} data-testid={`angle-min-${index}`} value={r.minText} onChange={(e) => changeAngle(index, { minText: e.target.value })} />
                     to
                     <input type="number" step={0.5} min={0} max={180} data-testid={`angle-max-${index}`} value={r.maxText} onChange={(e) => changeAngle(index, { maxText: e.target.value })} />
@@ -1262,7 +1263,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 <p className="sub">No two drawn bonds meet at an atom yet. Add bonds first.</p>
               ) : (
                 <div className="row">
-                  <select data-testid="new-angle" value={newAngle} onChange={(e) => setNewAngle(e.target.value)}>
+                  <select className="grow" data-testid="new-angle" value={newAngle} onChange={(e) => setNewAngle(e.target.value)}>
                     <option value="">Mark an angle…</option>
                     {scene.angleKinds.map((k) => {
                       const key = `${k.ends[0]}|${k.centre}|${k.ends[1]}`;
@@ -1333,11 +1334,11 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 <p className="sub">Largest moment in the file: {largestMoment(structure).toFixed(2)} μB.</p>
               </Section>
             )}
-            <Section tab="visual" title="Look" hint="A preset sets the surfaces, outlines, lettering weight and legend sizes together; each can still be changed afterwards. The surfaces are vector shading only, so the figure stays an editable SVG.">
+            <Section tab="visual" title="Shading and outlines" hint="How the atoms, bonds and arrows are shaded, and which are outlined. A quick style sets the shading, outlines, lettering weight and legend size together; each can still be changed afterwards. All shading is vector gradients, so the figure stays an editable SVG.">
               <div className="row">
-                preset
+                <span className="lab">quick style</span>
                 <select data-testid="style-preset" value="" onChange={(e) => applyPreset(e.target.value)}>
-                  <option value="">choose…</option>
+                  <option value="">choose one…</option>
                   {Object.keys(PRESETS).map((name) => (
                     <option key={name} value={name}>
                       {name}
@@ -1346,26 +1347,26 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 </select>
               </div>
               <div className="row">
-                atoms
+                <span className="lab">atoms</span>
                 {materialChoice("atom-material", atomMaterial, setAtomMaterial)}
               </div>
               <div className="row" title="Bonds are drawn as round rods that meet the atoms as a real rod would. Above 1,500 bonds they are drawn as plain strokes, which is much faster.">
-                bonds
+                <span className="lab">bonds</span>
                 {materialChoice("bond-material", bondMaterial, setBondMaterial)}
               </div>
               <div className="row">
-                arrows
+                <span className="lab">arrows</span>
                 {materialChoice("arrow-material", arrowMaterial, setArrowMaterial)}
-                <span className="sub">moment and axis arrows</span>
+                <span className="sub">moments, axes</span>
               </div>
               {[atomMaterial, bondMaterial, arrowMaterial].includes("glass") && (
                 <div className="row slider" title="How solid the glass is: to the left clearer, to the right less see-through. One setting for every glass surface.">
-                  glass
+                  <span className="lab">glass</span>
                   <input type="range" min={0.05} max={1} step={0.05} data-testid="glass-solid" value={glassOpacity} onChange={(e) => setGlassOpacity(Number(e.target.value))} />
                   <span className="sub">{Math.round(glassOpacity * 100)}% solid</span>
                 </div>
               )}
-              <p className="sub">Outline</p>
+              <p className="sub group">Thin dark outline on</p>
               <label className="row">
                 <input type="checkbox" data-testid="bond-outline" checked={bondOutline} onChange={(e) => setBondOutline(e.target.checked)} />
                 bonds
@@ -1409,11 +1410,11 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
               {contents.species.filter((x) => x.components.length > 1).map((x) => (
                 <div className="rule" key={x.key} data-testid={`look-${x.key}`}>
                   <div className="row">
-                    name
+                    <span className="lab">name</span>
                     <input type="text" className="name" value={looks[x.key]?.name ?? x.key} onChange={(e) => setLook(x.key, { name: e.target.value })} />
                   </div>
                   <div className="row">
-                    wedges
+                    <span className="lab">wedges</span>
                     <input
                       type="text"
                       className="name"
@@ -1424,7 +1425,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                     />
                   </div>
                   <div className="row">
-                    radius
+                    <span className="lab">radius</span>
                     <input
                       type="number"
                       step={0.05}
@@ -1470,7 +1471,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                     </label>
                     {r.band && (scene?.ruleInfo[sceneRule(index)]?.groups ?? 0) > 1 && (
                       <div className="row">
-                        highlight
+                        <span className="lab">highlight</span>
                         <select
                           data-testid={`bond-chain-${index}`}
                           value={r.chain ?? "all"}
@@ -1491,7 +1492,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                     </label>
                     {r.fill && (scene?.ruleInfo[sceneRule(index)]?.triangles ?? 0) > 0 && (
                       <div className="row">
-                        triangle colour
+                        <span className="lab">triangle colour</span>
                         <input
                           type="color"
                           data-testid={`bond-fill-colour-${index}`}
@@ -1519,7 +1520,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                       <b>{nameOf(r.ends[0])}–{nameOf(r.centre)}–{nameOf(r.ends[1])}</b>
                     </div>
                     <div className="row">
-                      opacity
+                      <span className="lab">opacity</span>
                       <input type="number" step={0.05} min={0.05} max={1} value={r.opacityText} onChange={(e) => changeAngle(index, { opacityText: e.target.value })} />
                       size
                       <input type="number" step={0.1} min={0.1} max={5} value={r.radiusText} onChange={(e) => changeAngle(index, { radiusText: e.target.value })} />
@@ -1542,11 +1543,14 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   Å
                 </div>
                 <div className="row">
-                  thickness
+                  <span className="lab">thickness</span>
                   <input type="number" step={0.02} min={0.02} max={2} data-testid="moment-thickness" title="Thickness of the rod. The cone at the tip keeps its proportion to it." value={momentThicknessText} onChange={(e) => setMomentThicknessText(e.target.value)} />
-                  Å
-                  head
-                  <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
+                  <span className="unit">Å</span>
+                </div>
+                <div className="row">
+                  <span className="lab">head</span>
+                  <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />
+                  <span className="unit">×</span>
                 </div>
               </Section>
             )}
@@ -1559,16 +1563,17 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   Å
                 </div>
                 <div className="row">
-                  thickness
+                  <span className="lab">thickness</span>
                   <input type="number" step={0.02} min={0.02} max={2} data-testid="displacement-thickness" title="Thickness of the rod. The cone at the tip keeps its proportion to it." value={displacementThicknessText} onChange={(e) => setDisplacementThicknessText(e.target.value)} />
-                  Å
-                  {largestMoment(structure) === 0 && (
-                    <>
-                      head
-                      <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
-                    </>
-                  )}
+                  <span className="unit">Å</span>
                 </div>
+                {largestMoment(structure) === 0 && (
+                  <div className="row">
+                    <span className="lab">head</span>
+                    <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />
+                    <span className="unit">×</span>
+                  </div>
+                )}
               </Section>
             )}
             <Section tab="visual" title="Unit cell" hint="The outline is drawn for every whole cell inside the range shown (none for a slab). Near and far: the edges in front of the middle of the structure are solid, those behind it paler and dashed, so the box reads as a solid.">
@@ -1578,14 +1583,19 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
               </label>
               {showCell && (
                 <div className="row" title="Near and far: the edges in front of the middle of the structure are solid, those behind it paler and dashed, so the box reads as a solid. Or all dashed, or all solid.">
-                  cell lines
+                  <span className="lab">lines</span>
                   <select data-testid="cell-style" value={cellStyle} onChange={(e) => setCellStyle(e.target.value as CellStyle)}>
                     <option value="depth">near solid, far dashed</option>
                     <option value="dashed">all dashed</option>
                     <option value="solid">all solid</option>
                   </select>
+                </div>
+              )}
+              {showCell && (
+                <div className="row">
+                  <span className="lab">width</span>
                   <input type="number" step={0.5} min={0.5} max={12} data-testid="cell-width" title="Line width in px of the figure" value={cellWidthText} onChange={(e) => setCellWidthText(e.target.value)} />
-                  px
+                  <span className="unit">px</span>
                 </div>
               )}
             </Section>
@@ -1599,7 +1609,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 Legend follows the size of the structure
               </label>
               <div className="row" title="Size of the legend as a multiple of the usual size.">
-                size
+                <span className="lab">size</span>
                 <input type="number" step={0.1} min={0.2} max={4} data-testid="legend-size" value={legendSizeText} onChange={(e) => setLegendSizeText(e.target.value)} />×
               </div>
             </Section>
@@ -1630,10 +1640,14 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 )}
               </div>
               <div className="row" title="Size of the axis arrows with their letters, and of their cones, as multiples of the usual size.">
-                size
-                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-size" value={axesSizeText} onChange={(e) => setAxesSizeText(e.target.value)} />×
-                head
-                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-head" value={axesHeadText} onChange={(e) => setAxesHeadText(e.target.value)} />×
+                <span className="lab">size</span>
+                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-size" value={axesSizeText} onChange={(e) => setAxesSizeText(e.target.value)} />
+                <span className="unit">×</span>
+              </div>
+              <div className="row" title="Size of the cones of the axis arrows, as a multiple of the usual.">
+                <span className="lab">head</span>
+                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-head" value={axesHeadText} onChange={(e) => setAxesHeadText(e.target.value)} />
+                <span className="unit">×</span>
               </div>
               <label className="row" title="An axis that points mostly into or out of the page projects to a short stub. With this on it is drawn at least 0.45 of the full length, in its true direction on screen; with it off every arrow is the exact projection.">
                 <input type="checkbox" data-testid="axes-readable" checked={axesReadable} onChange={(e) => setAxesReadable(e.target.checked)} />
@@ -1642,8 +1656,9 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             </Section>
             <Section tab="visual" title="Lettering" hint="A text size in pt is exact in the saved figure: with a size on paper, 9 pt is 9 pt there; with Fit the frame, 1 px of the figure counts as 1 pt (as Keynote and Illustrator place an SVG). The font must be a font of this computer: the PNG is drawn from the SVG alone, which cannot use a font loaded by the page. Text stays live text in the SVG.">
               <div className="row">
-                font
+                <span className="lab">font</span>
                 <select
+                  className="grow"
                   data-testid="font-family"
                   value={customFont ? "other" : fontFamily}
                   onChange={(e) => {
@@ -1672,22 +1687,27 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 </p>
               )}
               <div className="row">
-                weight
+                <span className="lab">weight</span>
                 <select data-testid="letter-weight" value={letterWeight} onChange={(e) => setLetterWeight(Number(e.target.value))}>
                   <option value={400}>regular</option>
                   <option value={500}>medium</option>
                   <option value={800}>heavy</option>
                 </select>
               </div>
-              <p className="sub">Text size in pt (empty: in proportion to the legend or axes size; now {autoPt.legend}, {autoPt.axes}, {autoPt.angle} pt)</p>
-              <div className="row">
-                legend
-                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-legend" placeholder={`${autoPt.legend}`} value={fontPtText.legend} onChange={(e) => setFontPtText((t) => ({ ...t, legend: e.target.value }))} />
-                axes
-                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-axes" placeholder={`${autoPt.axes}`} value={fontPtText.axes} onChange={(e) => setFontPtText((t) => ({ ...t, axes: e.target.value }))} />
-                angles
-                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-angle" placeholder={`${autoPt.angle}`} value={fontPtText.angle} onChange={(e) => setFontPtText((t) => ({ ...t, angle: e.target.value }))} />
-                pt
+              <p className="sub group">Text size in pt; left empty, it follows the legend or axes size (shown greyed)</p>
+              <div className="trio">
+                <label>
+                  <span className="sub">legend</span>
+                  <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-legend" placeholder={`${autoPt.legend}`} value={fontPtText.legend} onChange={(e) => setFontPtText((t) => ({ ...t, legend: e.target.value }))} />
+                </label>
+                <label>
+                  <span className="sub">axes</span>
+                  <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-axes" placeholder={`${autoPt.axes}`} value={fontPtText.axes} onChange={(e) => setFontPtText((t) => ({ ...t, axes: e.target.value }))} />
+                </label>
+                <label>
+                  <span className="sub">angles</span>
+                  <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-angle" placeholder={`${autoPt.angle}`} value={fontPtText.angle} onChange={(e) => setFontPtText((t) => ({ ...t, angle: e.target.value }))} />
+                </label>
               </div>
             </Section>
             <Section tab="layout" title="Saved settings" hint="Your preferences for how figures look and are laid out: everything under Visual and Layout (surfaces, outlines, element colours and radii, arrows, unit cell, legend, axes, lettering, canvas size and shape, dpi, scale, dragging), your saved views, and whether bonds are added on opening. Not the structure: the cells shown, bond and angle rules, distortion modes and the current view stay with the file. Kept in this browser; export to a file to keep them elsewhere or use them on another computer.">
@@ -1802,7 +1822,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             </Section>
             <Section tab="layout" title="Canvas" hint="Fit the frame: the figure is 1440 px wide and as high as the frame on the page makes it. Size on paper: the width and height you give, in cm or in; the SVG states that size, so a drawing program places it at exactly that size, and the PNG is that size at the dpi given under Save. Lines, spheres and the legend keep their proportions to the figure; text given in pt under Lettering keeps its size.">
               <div className="row">
-                size
+                <span className="lab">size</span>
                 <select
                   data-testid="canvas-mode"
                   value={canvasFixed ? "fixed" : "frame"}
@@ -1810,7 +1830,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                     const fixed = e.target.value === "fixed";
                     // Start from a single-column width with the shape the figure has now.
                     if (fixed && !canvasFixed) {
-                      const w = canvasUnit === "cm" ? 8.5 : 3.35;
+                      const w = canvasUnit === "cm" ? 8.9 : 3.5; // a Nature single column (89 mm)
                       setCanvasSizeText([`${w}`, short(ratio !== null ? w / ratio : (w * canvas.height) / canvas.width)]);
                     }
                     setCanvasFixed(fixed);
@@ -1822,8 +1842,9 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 {!canvasFixed && <span className="sub">{canvas.width} × {canvas.height} px</span>}
               </div>
               <div className="row">
-                shape
+                <span className="lab">shape</span>
                 <select
+                  className="grow"
                   data-testid="canvas-aspect"
                   value={aspect}
                   title="Width : height of the figure. Free: the frame's shape, or the width and height as typed."
@@ -1882,7 +1903,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             </Section>
             <Section tab="layout" title="Direction" hint="The view is four numbers: the cell axis that is up, turn about it, tilt (from above when positive) and roll about the line of sight. The line under the figure always shows them, and the nearest low-index direction. A direction given here points at you.">
               <div className="row">
-                up
+                <span className="lab">up</span>
                 <select data-testid="view-up" value={upAxis} onChange={(e) => applyNumbers({ ...numbers, up: Number(e.target.value) as Axis, turn: Number(numberText.turn), tilt: Number(numberText.tilt), roll: Number(numberText.roll) })}>
                   <option value={0}>a</option>
                   <option value={1}>b</option>
@@ -1892,7 +1913,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 <input type="number" step={5} data-testid="view-az" value={numberText.turn} onChange={(e) => typeNumber("turn", e.target.value)} /><span className="deg">°</span>
               </div>
               <div className="row">
-                tilt
+                <span className="lab">tilt</span>
                 <input type="number" step={5} min={-90} max={90} data-testid="view-el" value={numberText.tilt} onChange={(e) => typeNumber("tilt", e.target.value)} /><span className="deg">°</span>
                 roll
                 <input type="number" step={5} data-testid="view-roll" value={numberText.roll} onChange={(e) => typeNumber("roll", e.target.value)} /><span className="deg">°</span>
@@ -1926,7 +1947,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
               </Section>
             <Section tab="layout" closed title="Scale" hint="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure of a series.">
               <div className="row">
-                scale
+                <span className="lab">scale</span>
                 <select data-testid="scale-mode" value={scaleMode} onChange={(e) => setScaleMode(e.target.value as "outline" | "steady" | "fixed")} title="Fit each view: the figure fills the canvas, so its scale changes as it turns. Steady: one scale at every angle. Fixed: a stated scale, the same in every figure.">
                   <option value="outline">fit each view</option>
                   <option value="steady">steady at every angle</option>
@@ -1984,7 +2005,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
               </Section>
             <Section tab="layout" closed title="Dragging" hint="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the axes of the screen, any way round. Alt + drag rolls the picture in both.">
               <div className="row">
-                drag
+                <span className="lab">drag</span>
                 <select data-testid="drag-mode" value={dragMode} onChange={(e) => setDragMode(e.target.value as "turntable" | "free")} title="Turntable: left-right turns about the up axis, up-down tilts, and the up axis stays upright. Free: turns about the screen's axes, any way round.">
                   <option value="turntable">turntable (up axis stays up)</option>
                   <option value="free">free</option>
@@ -2006,11 +2027,13 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
               </label>
               {smooth && !preview.failed && (
                 <div className="row">
-                  from
+                  <span className="lab">from</span>
                   <input type="number" min={0} step={100} data-testid="preview-from" title="Atoms plus bonds drawn. Below this the vector figure itself is redrawn while moving." value={previewFromText} onChange={(e) => setPreviewFromText(e.target.value)} />
-                  atoms and bonds
-                  {scene && <span className="sub">(now {scene.spheres.length + scene.sticks.length})</span>}
+                  <span className="unit">atoms + bonds</span>
                 </div>
+              )}
+              {smooth && !preview.failed && scene && (
+                <p className="sub">This structure: {scene.spheres.length + scene.sticks.length} atoms + bonds.</p>
               )}
               {preview.failed && <p className="sub" data-testid="preview-failed">Not available in this browser ({preview.failed}); the vector figure is redrawn instead.</p>}
             </Section>
@@ -2020,25 +2043,40 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
         )}
       </main>
       <footer className="foot">
-        <span>MOTIF {VERSION}</span>
+        <span>
+          MOTIF {VERSION} ·{" "}
+          <a href={`${REPO_URL}/blob/main/LICENSE`} target="_blank" rel="noopener noreferrer">
+            AGPL-3.0
+          </a>
+        </span>
+        <span className="links">
+          <a href={`${REPO_URL}#readme`} target="_blank" rel="noopener noreferrer" data-testid="link-docs">
+            Documentation
+          </a>
+          <a href={REPO_URL} target="_blank" rel="noopener noreferrer" data-testid="link-repo">
+            Source code
+          </a>
+        </span>
       </footer>
     </div>
   );
 }
 
 const VERSION = "0.1";
+/** Where the code and its documentation (the README) live. */
+const REPO_URL = "https://github.com/drthyang/motif";
 
 /**
  * One-click looks. Each sets the surfaces, the outlines, the lettering weight and the size of legend and axes.
- * `outlines` is for the arrows; bonds are outlined only in the flat "Paper" look, where the line is what
+ * `outlines` is for the arrows; bonds are outlined only in the flat style, where the line is what
  * separates a bond from the atom behind it.
  */
 const PRESETS: Record<string, { atoms: Material; bonds: Material; arrows: Material; outlines: boolean; bondOutline: boolean; weight: number; legendSize: number; axesSize: number }> = {
-  Slide: { atoms: "soft", bonds: "soft", arrows: "soft", outlines: true, bondOutline: false, weight: 400, legendSize: 1, axesSize: 1 },
-  Paper: { atoms: "flat", bonds: "flat", arrows: "flat", outlines: true, bondOutline: true, weight: 400, legendSize: 0.7, axesSize: 0.8 },
-  Glossy: { atoms: "glossy", bonds: "glossy", arrows: "glossy", outlines: true, bondOutline: false, weight: 500, legendSize: 1, axesSize: 1 },
-  Metal: { atoms: "metal", bonds: "metal", arrows: "metal", outlines: true, bondOutline: false, weight: 500, legendSize: 1, axesSize: 1 },
-  Glass: { atoms: "glass", bonds: "soft", arrows: "soft", outlines: false, bondOutline: false, weight: 400, legendSize: 1, axesSize: 1 },
+  "Soft shading": { atoms: "soft", bonds: "soft", arrows: "soft", outlines: true, bondOutline: false, weight: 400, legendSize: 1, axesSize: 1 },
+  "Flat colour, outlined": { atoms: "flat", bonds: "flat", arrows: "flat", outlines: true, bondOutline: true, weight: 400, legendSize: 0.7, axesSize: 0.8 },
+  "Glossy highlight": { atoms: "glossy", bonds: "glossy", arrows: "glossy", outlines: true, bondOutline: false, weight: 500, legendSize: 1, axesSize: 1 },
+  "Metallic": { atoms: "metal", bonds: "metal", arrows: "metal", outlines: true, bondOutline: false, weight: 500, legendSize: 1, axesSize: 1 },
+  "Clear glass atoms": { atoms: "glass", bonds: "soft", arrows: "soft", outlines: false, bondOutline: false, weight: 400, legendSize: 1, axesSize: 1 },
 };
 /** Shapes of the canvas, width : height (landscape; "portrait" turns them upright). */
 const ASPECTS: { key: string; label: string; ratio: number | null }[] = [

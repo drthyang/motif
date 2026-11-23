@@ -26,7 +26,7 @@ export const ONE_CELL: Range = { from: [0, 0, 0], to: [1, 1, 1], boundary: "both
 export const BOUNDARY_TOLERANCE = 1e-3;
 
 /** More atoms than this is refused: the figure would be unreadable and the page slow. */
-export const MAX_ATOMS = 20000;
+export const MAX_ATOMS = 100000;
 
 export function checkRange(range: Range): void {
   for (let i = 0; i < 3; i++) {
