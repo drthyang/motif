@@ -194,8 +194,9 @@ export function App() {
   };
   /** Change the view by a click: a short turn on screen (never part of the saved figure), or at once. */
   const turning = useRef(0);
-  const goTo = (target: View) => {
+  const goTo = (target: View, keepScale = false) => {
     cancelAnimationFrame(turning.current);
+    if (!keepScale) setTurnScale(null);
     const reduced = typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!animate || reduced) {
       setView(target);
@@ -213,6 +214,7 @@ export function App() {
   const applyNumbers = (n: ViewNumbers) => {
     if (!axes || ![n.turn, n.tilt, n.roll].every(Number.isFinite) || Math.abs(n.tilt) > 90) return;
     setUpAxis(n.up);
+    setTurnScale(null);
     setView(viewFromNumbers(axes, n));
   };
   const typeNumber = (key: "turn" | "tilt" | "roll", text: string) => {
@@ -381,6 +383,12 @@ export function App() {
   const last = useRef<{ x: number; y: number } | null>(null);
   // While dragging, the placement of the moment the drag began is kept, so the figure turns without jumping.
   const [heldFit, setHeldFit] = useState<Fit | null>(null);
+  // After a turn by dragging, the scale it had: the figure keeps it (centred on the new outline, smaller only if it
+  // would not fit) until a file is opened, a view is chosen, or the cells or canvas change.
+  const [turnScale, setTurnScale] = useState<number | null>(null);
+  const heldFitRef = useRef<Fit | null>(null);
+  heldFitRef.current = heldFit;
+  useEffect(() => setTurnScale(null), [rangeText.join(" "), canvas.width, canvas.height]);
   // Zoom and pan of the structure within its space; and whether the saved figure follows them.
   const [zoom, setZoom] = useState<Zoom>(NO_ZOOM);
   const [saveZoomed, setSaveZoomed] = useState(true);
@@ -406,6 +414,7 @@ export function App() {
       setView(viewFromNumbers(opening, keepViewRef.current ? lastNumbers.current : openingNumbers(opening)));
       setRangeText(ONE_CELL_TEXT);
       setZoom(NO_ZOOM);
+      setTurnScale(null);
       // Bonds to start from, unless that is switched off: nearest neighbours by simple rules (see autoBonds.ts).
       const suggested = autoBondsRef.current ? suggestBonds(read) : [];
       setBondRules(suggested.map((r) => ({ ...r, maxText: String(r.max) })));
@@ -538,9 +547,9 @@ export function App() {
   const fit = useMemo(() => {
     if (!scene) return null;
     // Fitted to the outline of each view (held still during a drag), or a scale that does not depend on the view.
-    const base = scaleMode === "outline" ? (heldFit ?? fitView(scene, view, canvas)) : steadyFit(scene, canvas, scaleMode === "fixed" ? fixedScale : undefined);
+    const base = scaleMode === "outline" ? (heldFit ?? fitView(scene, view, canvas, turnScale ?? undefined)) : steadyFit(scene, canvas, scaleMode === "fixed" ? fixedScale : undefined);
     return zoomedFit(base, zoom, structureCentre(scene, canvas));
-  }, [scene, view, heldFit, zoom, scaleMode, fixedScale]);
+  }, [scene, view, heldFit, turnScale, zoom, scaleMode, fixedScale]);
   // Ask the worker for each frame of the movement; `firstFrame` is the first of this movement.
   const [firstFrame, setFirstFrame] = useState(0);
   const wasPreviewing = useRef(false);
@@ -654,7 +663,7 @@ export function App() {
       e.preventDefault();
     } else {
       gesture.current = "turn";
-      setHeldFit(fitView(scene, view, canvas));
+      setHeldFit(fitView(scene, view, canvas, turnScale ?? undefined));
     }
     setActing(gesture.current);
   };
@@ -704,12 +713,13 @@ export function App() {
     if (pointers.current.size === 0) {
       // Released close to a low-index direction: click onto it exactly.
       if (gesture.current === "turn" && snap && near && near.angle > 0.02 && near.angle <= SNAP_DEGREES && structure) {
-        goTo(snapTo(view, directionVector(structure.cell, near.direction)));
+        goTo(snapTo(view, directionVector(structure.cell, near.direction)), true);
       }
+      if (gesture.current === "turn" && heldFitRef.current) setTurnScale(heldFitRef.current.scale);
       last.current = null;
       gesture.current = null;
       setActing(null);
-      setHeldFit(null); // refit to the new orientation
+      setHeldFit(null); // centre the new orientation, at the same scale
     }
   };
   // Ctrl/Cmd + wheel (which is also what a trackpad pinch sends) zooms about the pointer. A plain wheel is

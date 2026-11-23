@@ -705,11 +705,11 @@ export function structureCentre(scene: Scene, canvas: Canvas): [number, number] 
 
 /**
  * The placement that makes the structure, as seen in this view, fill the space above the band:
- * the outline of everything drawn is centred and scaled to touch the margins.
- * (While the user drags, the page keeps the placement of the moment the drag began, so nothing jumps;
- * the figure is refitted on release.)
+ * the outline of everything drawn is centred and scaled to touch the margins, but no larger than `maxScale`
+ * (px per angstrom). After the user turns the structure by dragging, the page keeps the scale it had and only
+ * centres the new outline (smaller only if it would not fit), so the size does not jump on release.
  */
-export function fitView(scene: Scene, view: View, canvas: Canvas): Fit {
+export function fitView(scene: Scene, view: View, canvas: Canvas, maxScale: number = MAX_SCALE): Fit {
   const box = { x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
   const include = (p: Vec3, r: number): void => {
     const q = mulVec(view, [p[0] - scene.centre[0], p[1] - scene.centre[1], p[2] - scene.centre[2]]);
@@ -729,7 +729,7 @@ export function fitView(scene: Scene, view: View, canvas: Canvas): Fit {
   if (box.x0 > box.x1) return { scale: 1, x: canvas.width / 2, y: height / 2 };
   // At least 1 A wide and high, so a single atom is not blown up to fill the canvas.
   const [w, h] = [Math.max(box.x1 - box.x0, 1), Math.max(box.y1 - box.y0, 1)];
-  const scale = Math.min((canvas.width - 2 * canvas.margin) / w, (height - 2 * canvas.margin) / h, MAX_SCALE);
+  const scale = Math.min((canvas.width - 2 * canvas.margin) / w, (height - 2 * canvas.margin) / h, maxScale, MAX_SCALE);
   // The middle of the outline goes to the middle of the space (screen y is up, SVG y is down).
   return { scale, x: canvas.width / 2 - ((box.x0 + box.x1) / 2) * scale, y: height / 2 + ((box.y0 + box.y1) / 2) * scale };
 }
