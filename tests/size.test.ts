@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { crc32 as zlibCrc32 } from "node:zlib";
 import { describe, expect, it } from "vitest";
 import { crc32, withResolution } from "../src/render/png";
-import { AXES_FONT, AXIS_LENGTH, axisArrows, BAND, bandHeight, DEFAULT_CANVAS, LEGEND_FONT, legendLayout, ptPerUnit, renderSvg, structureHeight, type Canvas } from "../src/render/svg";
+import { AXES_FONT, AXIS_LENGTH, axisArrows, BAND, bandHeight, DEFAULT_CANVAS, fitView, LEGEND_FONT, legendLayout, ptPerUnit, renderSvg, structureHeight, type Canvas } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
 import { buildScene, DEFAULT_SPEC } from "../src/scene/scene";
 import { readCif } from "../src/structure/readCif";
@@ -73,6 +73,17 @@ describe("legend and axes follow their text size in pt", () => {
     const longest = Math.max(...axisArrows(scene, DEFAULT_VIEW, paper).map((a) => Math.hypot(a.dx, a.dy)));
     expect(longest).toBeLessThanOrEqual((AXIS_LENGTH * fontUnits) / AXES_FONT + 1e-9);
     expect(longest).toBeGreaterThan(0.5 * (AXIS_LENGTH * fontUnits) / AXES_FONT);
+  });
+
+  it("a legend that follows the structure draws its largest sphere as large as that atom is drawn, whatever the text size", () => {
+    for (const pt of [null, 7]) {
+      const scene = buildScene(halite, { ...DEFAULT_SPEC, legendFollowsZoom: true, legendFontPt: pt });
+      const fit = fitView(scene, DEFAULT_VIEW, paper);
+      const largestAtom = Math.max(...Object.values(scene.styles).map((st) => st.radius)) * fit.scale;
+      const items = legendLayout(scene, paper, 1e9, fit.scale);
+      expect(Math.max(...items.map((i) => i.r))).toBeCloseTo(largestAtom, 6);
+      if (pt) expect(items[0]!.fontSize * unitPt).toBeCloseTo(7, 9); // the text keeps its own size
+    }
   });
 
   it("the band under the structure shrinks with them, and the structure gets the room", () => {

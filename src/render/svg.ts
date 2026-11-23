@@ -290,6 +290,9 @@ export const BAND = 200;
  */
 export function legendScale(scene: Scene, canvas: Canvas): number {
   const k = scene.legendSize ?? 1;
+  // A legend that follows the structure takes its spheres' size from the atoms drawn (see legendLayout), not
+  // from its text: only the size setting scales it here.
+  if (scene.legendFollowsZoom) return k;
   return scene.legendFontPt ? (textSize(scene.legendFontPt, LEGEND_FONT, canvas) / LEGEND_FONT) * k : k;
 }
 export function axesScale(scene: Scene, canvas: Canvas): number {
@@ -299,7 +302,9 @@ export function axesScale(scene: Scene, canvas: Canvas): number {
 
 /** Height of the band under the structure: its usual height, scaled with the larger of the legend and the axes. */
 export function bandHeight(scene: Scene, canvas: Canvas): number {
-  const scales = [...(scene.legend.length > 0 ? [legendScale(scene, canvas)] : []), ...(scene.axes.length > 0 ? [axesScale(scene, canvas)] : [])];
+  // A legend that follows the structure may be as large as its atoms are drawn: it keeps the usual band.
+  const legendPart = scene.legendFollowsZoom ? Math.max(1, legendScale(scene, canvas)) : legendScale(scene, canvas);
+  const scales = [...(scene.legend.length > 0 ? [legendPart] : []), ...(scene.axes.length > 0 ? [axesScale(scene, canvas)] : [])];
   return scales.length ? BAND * Math.min(1.5, Math.max(...scales)) : 0;
 }
 
