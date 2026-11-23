@@ -9,7 +9,7 @@ import { AnglePlot } from "./AnglePlot";
 import { DEFAULT_CANVAS, fitView, renderSvg, steadyFit, structureCentre, structureHeight, type Canvas, type Fit, type PhysicalSize, PT_PER, ptPerUnit, LEGEND_FONT, AXES_FONT, ANGLE_LABEL_SIZE } from "../render/svg";
 import { NO_ZOOM, isZoomed, panBy, zoomAbout, zoomToBox, zoomedFit, type Zoom } from "../render/zoom";
 import {
-  between, directAxes, directionVector, fromBehind, lowIndexDirections, nearestDirection, openingNumbers, numbersFromView, readView, rolled, snapTo, viewAlong, viewFromNumbers,
+  between, directAxes, presetView, VIEW_PRESETS, type ViewPreset, directionVector, fromBehind, lowIndexDirections, nearestDirection, openingNumbers, numbersFromView, readView, rolled, snapTo, viewAlong, viewFromNumbers,
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, dragView, type View } from "../render/view";
@@ -814,6 +814,24 @@ goTo(axes ? viewFromNumbers(axes, openingNumbers(axes)) : DEFAULT_VIEW);
 >
 Reset
 </button>
+<select
+data-testid="view-preset"
+className="view-preset"
+value=""
+title="Ready-made views, each with c up"
+onChange={(e) => {
+if (!structure || !e.target.value) return;
+setUpAxis(2);
+goTo(presetView(structure.cell, e.target.value as ViewPreset));
+}}
+>
+<option value="">Views…</option>
+{VIEW_PRESETS.map((p) => (
+<option key={p.id} value={p.id} title={p.title}>
+{p.label}
+</option>
+))}
+</select>
 </div>
               </div>
               <div className="figure-wrap">

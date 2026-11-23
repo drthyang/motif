@@ -237,3 +237,44 @@ export function openingNumbers(axes: Axes): ViewNumbers {
   }
   return best.n;
 }
+
+/** Ready-made views. Each has c up and is defined from the cell's own axes, so it means the same in any cell. */
+export const VIEW_PRESETS = [
+  { id: "standard", label: "Standard", title: "The opening view: c up, a towards you on the left, b to the right, seen a little from above" },
+  { id: "clinographic", label: "Clinographic", title: "The textbook crystal drawing: from in front of a, turned atan(1/3) = 18.43° towards b and raised atan(1/6) = 9.46°" },
+  { id: "isometric", label: "Isometric", title: "a, b and c equally foreshortened: looking along the sum of their unit vectors, c up" },
+  { id: "110", label: "Along [110]", title: "Along [110], pointing at you, c up" },
+  { id: "1-10", label: "Along [1-10]", title: "Along [1-10], pointing at you, c up" },
+] as const;
+export type ViewPreset = (typeof VIEW_PRESETS)[number]["id"];
+
+/** The view of a preset (c up in every one). */
+export function presetView(cell: Cell, preset: ViewPreset): View {
+  const axes = directAxes(cell);
+  const [a, b, c] = axes;
+  const add = (...vs: [number, Vec3][]): Vec3 => [0, 1, 2].map((i) => vs.reduce((s, [k, v]) => s + k * v[i]!, 0)) as unknown as Vec3;
+  let towards: Vec3;
+  switch (preset) {
+    case "standard":
+      return viewFromNumbers(axes, openingNumbers(axes));
+    case "clinographic": {
+      // The front is a's part perpendicular to c; turning towards c x front brings b into view on the right.
+      const front = unit(add([1, a], [-dot(a, c), c]));
+      const side = cross(c, front);
+      const [turn, raise] = [Math.atan(1 / 3), Math.atan(1 / 6)];
+      towards = add([Math.cos(raise) * Math.cos(turn), front], [Math.cos(raise) * Math.sin(turn), side], [Math.sin(raise), c]);
+      break;
+    }
+    case "isometric":
+      towards = add([1, a], [1, b], [1, c]);
+      break;
+    case "110":
+      towards = directionVector(cell, { kind: "uvw", indices: [1, 1, 0] });
+      break;
+    case "1-10":
+      towards = directionVector(cell, { kind: "uvw", indices: [1, -1, 0] });
+      break;
+  }
+  // None of these lies along c, so c can always be up.
+  return viewAlong(towards, c)!;
+}

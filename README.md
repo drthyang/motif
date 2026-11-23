@@ -170,6 +170,11 @@ writes the reference atom lists in `tests/reference/`.
   - Saved views are the four numbers, kept in the browser, so a view means the same axes in
     another structure; a switch keeps the view when another file is loaded.
   - Scale: fitted to each view (default), steady at every angle, or a fixed number of px per A.
+  - Preset views (the toolbar's "Views…" menu), each with c up and built from the cell's own axes:
+    standard (the opening view), clinographic (the textbook crystal drawing: from in front of a,
+    turned atan(1/3) = 18.43 degrees towards b and raised atan(1/6) = 9.46 degrees), isometric (along
+    the sum of the unit vectors of a, b, c, so all three are equally foreshortened), along [110] and
+    along [1-10].
   - A change of view by a click is shown as a short turn on screen (can be switched off; skipped
     when the system asks for reduced motion). It is never part of the saved figure.
 - An axis arrow that points mostly into or out of the page is drawn at least 0.45 of the full
