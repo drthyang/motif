@@ -288,6 +288,7 @@ function orbitalLobes(
   faces: readonly OrbitalFace[],
   centre: Vec3,
   centreDepth: number,
+  atomRadius: number,
   project: (p: Vec3) => Vec3,
   o: { readonly colours: readonly [string, string]; readonly opacity: number; readonly texture: OrbitalTexture },
   id: string,
@@ -358,18 +359,38 @@ function orbitalLobes(
     const opacity = o.opacity < 1 ? ` opacity="${o.opacity}"` : "";
     const edge = mixHex(base, "#000000", 0.3);
     if (lobe.ring !== undefined) {
-      const key = `${lobe.ring}|${cz < centreDepth ? "back" : "front"}`;
-      const list = ringParts.get(key) ?? [];
-      list.push({ depth: cz, svg: `${defs}<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${fill}" stroke-width="0.6"/>` });
-      ringParts.set(key, list);
+      // Every segment in the ring's one layer; a segment in front of the atom also in its clipped copy (see below).
+      const segment = `<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${fill}" stroke-width="0.6"/>`;
+      const all = ringParts.get(`${lobe.ring}|all`) ?? [];
+      all.push({ depth: cz, svg: `${defs}${segment}` });
+      ringParts.set(`${lobe.ring}|all`, all);
+      if (cz >= centreDepth) {
+        const front = ringParts.get(`${lobe.ring}|front`) ?? [];
+        front.push({ depth: cz, svg: segment });
+        ringParts.set(`${lobe.ring}|front`, front);
+      }
       continue;
     }
     out.push({ kind: "orbital", depth: cz, svg: `${defs}<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${edge}" stroke-width="0.8" stroke-opacity="0.5"${opacity}/>` });
   }
+  // A ring is drawn as one see-through layer just behind its atom, so its near and far halves, which overlap at the
+  // ring's ends seen from the side, never lie over one another. Its near half is drawn once more just in front of the
+  // atom, clipped to the atom's disc: only there does it pass in front of the atom, and there the atom hides the layer
+  // behind, so nothing is doubled.
   const opacity = o.opacity < 1 ? ` opacity="${o.opacity}"` : "";
+  const [ax, ay] = project(centre);
   for (const [key, parts] of ringParts) {
     const svg = parts.sort((p, q) => p.depth - q.depth).map((p) => p.svg).join("");
-    out.push({ kind: "orbital", depth: key.endsWith("back") ? centreDepth - 0.02 : centreDepth + 0.02, svg: `<g class="orbital-ring"${opacity}>${svg}</g>` });
+    if (key.endsWith("|all")) {
+      out.push({ kind: "orbital", depth: centreDepth - 0.02, svg: `<g class="orbital-ring"${opacity}>${svg}</g>` });
+    } else {
+      const clip = `${id}-${key.split("|")[0]}-atom`;
+      out.push({
+        kind: "orbital",
+        depth: centreDepth + 0.02,
+        svg: `<defs><clipPath id="${clip}"><circle cx="${n1(ax)}" cy="${n1(ay)}" r="${n1(atomRadius)}"/></clipPath></defs><g class="orbital-ring" clip-path="url(#${clip})"${opacity}>${svg}</g>`,
+      });
+    }
   }
   return out;
 }
@@ -575,7 +596,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const centreDepth = project(sphere.centre)[2];
     if (o.texture !== "mesh") {
       // Each lobe one smooth shape: its outline seen from the viewer, filled with a gradient as an atom is shaded.
-      drawn.push(...orbitalLobes(faces, sphere.centre, centreDepth, project, o, `orb-${orbitalIndex}`));
+      drawn.push(...orbitalLobes(faces, sphere.centre, centreDepth, scene.styles[sphere.style]!.radius * scale, project, o, `orb-${orbitalIndex}`));
       orbitalIndex += 1;
       continue;
     }

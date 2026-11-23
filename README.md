@@ -196,8 +196,9 @@ writes the reference atom lists in `tests/reference/`.
   surface, resampled evenly and drawn as a smooth curve; a lobe is nearly convex, so only a slight dent at the
   nucleus is filled), filled with a gradient
   as atoms are, see-through (60 % by default), at the depth of its centre. A ring (the band of dz², the cones
-  of fz³) is cut into 12 segments drawn in two see-through groups, behind and in front of the atom, so it
-  has no seams. Surfaces are kept once placed, so turning the view only projects them (16 ms a frame for
+  of fz³) is cut into 12 segments, shaded with one gradient for the whole ring, and drawn as one see-through
+  layer behind its atom (so its halves never lie over one another), with its near half drawn again in front
+  of the atom, clipped to the atom's disc. Surfaces are kept once placed, so turning the view only projects them (16 ms a frame for
   two orbitals on 8 atoms, 0.6 MB of SVG). Surfaces: soft, flat, glossy, or mesh (grid lines, drawn face by
   face, slower); colour schemes for the two lobes, or own colours. The harmonics are checked to be
   mutually orthogonal over the sphere (`tests/orbitals.test.ts`).

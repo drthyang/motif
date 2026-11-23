@@ -96,7 +96,11 @@ describe("orbitals: the real spherical harmonics", () => {
     expect(scene.orbitals!.length).toBe(2 * ti);
     const svg = renderSvg(scene, DEFAULT_VIEW);
     // One smooth see-through shape per lobe: dz2 has 2 lobes and a ring cut into 12 segments, dxy 4 lobes.
-    expect((svg.match(/<path class="orbital-lobe"/g) ?? []).length).toBe((14 + 4) * ti);
+    // Every lobe and ring segment once, plus the ring's near segments again in the copy clipped to the atom.
+    const shapes = (svg.match(/<path class="orbital-lobe"/g) ?? []).length;
+    expect(shapes).toBeGreaterThanOrEqual((14 + 4) * ti);
+    expect(shapes).toBeLessThanOrEqual((14 + 4 + 12) * ti);
+    expect((svg.match(/<g class="orbital-ring" clip-path="url\(#/g) ?? []).length).toBeLessThanOrEqual(ti);
     // A lobe carries its own opacity; a ring's segments share it in two groups per atom (behind, in front).
     expect((svg.match(/<path class="orbital-lobe"[^>]* opacity="0.6"/g) ?? []).length).toBe((2 + 4) * ti);
     expect((svg.match(/<g class="orbital-ring" opacity="0.6">/g) ?? []).length).toBeLessThanOrEqual(2 * ti);
