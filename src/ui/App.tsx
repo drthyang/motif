@@ -102,7 +102,7 @@ export function App() {
   const ratio = ratioOf(aspect, portrait);
   const short = (x: number): string => `${+x.toFixed(3)}`;
   // Text sizes in pt; empty = automatic.
-  const [fontPtText, setFontPtText] = useState<{ legend: string; axes: string; angle: string }>({ legend: "", axes: "", angle: "" });
+  const [fontPtText, setFontPtText] = useState<{ legend: string; axes: string; angle: string }>(DEFAULT_TEXT_PT);
   const fontPt = (text: string): number | null => {
     const x = Number(text);
     return text.trim() !== "" && Number.isFinite(x) && x >= 1 && x <= 400 ? x : null;
@@ -2063,6 +2063,8 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
 }
 
 const VERSION = "0.1";
+/** Text sizes a figure opens with, in pt: Nature asks for 5 to 7 pt (the user's choice, 2026-11-23). */
+const DEFAULT_TEXT_PT = { legend: "7", axes: "7", angle: "7" };
 /** Where the code and its documentation (the README) live. */
 const REPO_URL = "https://github.com/drthyang/motif";
 

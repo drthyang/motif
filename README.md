@@ -59,7 +59,8 @@ writes the reference atom lists in `tests/reference/`.
 - The structure is fitted to the canvas in each view. While dragging, the placement of the moment
   the drag began is kept, and the figure is refitted on release.
 - A figure opens at the size of a Nature single column, 89 mm wide, 4:3 (8.9 x 6.675 cm), lettered in
-  Open Sans (the user's defaults, 2026-11-23). Otherwise the figure's canvas is 1440 px wide and takes the shape of its frame on the page, so the figure
+  Open Sans, with legend, axis letters and angle labels at 7 pt (Nature asks for 5 to 7 pt; the user's
+  defaults, 2026-11-23). Otherwise the figure's canvas is 1440 px wide and takes the shape of its frame on the page, so the figure
   uses the whole frame and nothing is cut off at an unseen edge inside it (the user's choice,
   2026-11-22). Or it has a size on paper, width and height in cm or in (the user's choice,
   2026-11-23): the drawing is then 1440 units wide with that shape, the SVG states the size
