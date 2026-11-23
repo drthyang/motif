@@ -13,7 +13,7 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
   MOTIF is a visualizer, not a scientific computation. Still stop and ask when something is a real
   scientific judgement (how a quantity in a file is to be interpreted, for example).
 
-- One step at a time (the steps are in README.md). Before a step, state in a few lines what
+- One step at a time (the steps are in docs/CONVENTIONS.md). Before a step, state in a few lines what
   will be built and which conventions are chosen. After it, show the check (screenshot or
   exported figure, the one command that runs it, what is and is not verified) and stop until
   the user says to continue. Split a step that grows.

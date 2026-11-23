@@ -1,7 +1,7 @@
 # MOTIF handoff (2026-11-23, evening)
 
 For the next session, on any computer. Read `CLAUDE.md` first: it has the working rules and the decisions
-already taken by the user. This note is the state of play. README.md lists every convention.
+already taken by the user. This note is the state of play. docs/CONVENTIONS.md lists every convention.
 
 ## Start
 
@@ -25,7 +25,7 @@ It was not run on 2026-11-23 (no Playwright on that computer).
 ## What MOTIF is now
 
 A browser-only tool for vector figures of crystal structures. The user said on 2026-11-23 that the app is
-in good shape. Every step of the README's table is done.
+in good shape. Every step of the table in docs/CONVENTIONS.md is done.
 
 - Reads CIF, magnetic CIF, ISODISTORT CIFs (distortion modes) and RMCProfile `.rmc6f` configurations
   (whole supercell as P1, or folded into one cell with each site the plain average of its copies).
