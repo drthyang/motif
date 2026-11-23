@@ -23,8 +23,8 @@ In crystallography the *motif* is the group of atoms repeated at every lattice p
 - **Reads the files you have:** CIF; magnetic CIF, with moments carried by the magnetic group and time
   reversal; ISODISTORT CIFs, with distortion modes drawn as displacement arrows; RMCProfile `.rmc6f`
   configurations, as the whole supercell or folded into one averaged cell.
-- **Figures sized for a journal:** the size on paper (a Nature single column, 89 mm, 4:3, by default), text
-  in pt, an SVG that opens at exactly that size in Illustrator or Keynote, and a PNG at the dpi you choose,
+- **Figures sized for a journal:** the size on paper (a Nature single column, 89 mm, 4:3, by default), with
+  templates for Nature, Science, Physical Review and ACS journals; text in pt; an SVG that opens at exactly that size in Illustrator or Keynote, and a PNG at the dpi you choose,
   drawn from the same SVG.
 - **Shows the chemistry:** cells or a slab, bonds by distance, bond angles, chains and filled polygons, shared
   sites as pie spheres, and s, p, d and f orbitals as schematic isosurfaces.

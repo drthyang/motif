@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 282 tests, about two seconds
+npx tsc -b && npx vitest run    # 284 tests, about two seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -42,6 +42,8 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
 - Defaults (the user's): a Nature single column, 89 mm, 4:3; Open Sans; text 7 pt, with the legend and
   axes in proportion to it; displacement arrows green, 1.5 A; moment arrows with the tail 80 % of the head
   side; up to 100,000 atoms.
+- Journal templates (Layout tab, Canvas): Nature, Science, Physical Review and ACS widths and text sizes,
+  from `src/ui/journals.ts` (commit 83550d6). After a turn by dragging the figure keeps its scale (664d6e8).
 
 ## Documentation
 

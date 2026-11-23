@@ -264,6 +264,23 @@ Structure tab; the user's choices of 2026-11-23.
   at exactly that size, and the PNG is that size at a chosen dpi (300 by default), with the dpi written in
   the file.
 - The page shows the whole canvas, as large as the frame allows.
+- **Journal templates** (Layout tab, Canvas, "journal"; 2026-11-23). Choosing one sets the size on paper to
+  the width the journal asks for, keeping the chosen shape, sets the legend, axis and angle text to the
+  journal's size in pt, and shows the journal's limits. Values and their sources (each journal's own author
+  pages, read 2026-11-23) are in the header of `src/ui/journals.ts`:
+
+  | Journal | Widths | Text |
+  |---------|--------|------|
+  | Nature | 89 mm (single column), 120 mm (one and a half, of 120 to 136), 183 mm (double) | 7 pt (5 to 7 asked) |
+  | Science | 5.7, 12.1, 18.4 cm (1, 2, 3 columns) | 7 pt (not smaller than 5) |
+  | Physical Review | 8.5 cm (1 column), 17.8 cm (2 columns) | capitals and numerals 2 mm high |
+  | ACS journals | 3.33 in (single), 7 in (double) | 7 pt (at least 4.5) |
+
+  Science gives two sets of widths; the user chose those of its "initial manuscript" page over the 3.5, 5.0
+  and 7.3 in of another Science page. APS gives no number for two columns: 17.8 cm (7 in) is the REVTeX
+  two-column page width. For Physical Review the text size is 2 mm over the cap height of the chosen font
+  (measured in the browser), rounded up to half a point: 8 pt in Open Sans. Checked in `tests/journals.test.ts`:
+  the widths against the journals' numbers, and capitals at least 2 mm high whatever the font's cap height.
 - **Shape.** A shape can be chosen in either case (1:1, 5:4, 4:3, 3:2, √2:1, 16:10, 16:9, 2:1, landscape or
   portrait); with a size on paper the height then follows the width and the width the height.
 - **Text in pt.** Text sizes (legend names, axis letters, angle labels) can each be given in pt, and are then
@@ -305,7 +322,11 @@ Structure tab; the user's choices of 2026-11-23.
   - A change of view by a click is shown as a short turn on screen (can be switched off; skipped
     when the system asks for reduced motion). It is never part of the saved figure.
 - **Fitting.** The structure is fitted to the canvas in each view. While dragging, the placement of the moment
-  the drag began is kept, and the figure is refitted on release.
+  the drag began is kept.
+- **After a turn by dragging** (2026-11-23; the user disliked the size jumping when a drag ended), the figure
+  keeps its scale, centred on the new outline, and shrinks only if it would not fit; a snap at the end of the
+  drag keeps it too. Fit (double-click or the 0 key), Reset, a preset or typed view, opening a file, or
+  changing the cells or the canvas fit it afresh.
 - **Zoom and move** act on the structure; the legend and axes stay put and are drawn over a structure that
   reaches them. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the buttons; move: Shift + drag, middle-button
   drag, arrow keys; fit again: double-click, 0, or "Fit"; "Box" then a drag zooms to a rectangle (Esc
@@ -366,6 +387,7 @@ Each step is checked against an independent reference before the next one starts
 | CIF reader and symmetry expansion | gemmi: `scripts/gemmi_reference.py` writes the reference atom lists | `tests/reference/` |
 | Magnetic moments | pymatgen, on hexagonal structures with time-reversed operations | `scripts/pymatgen_moments.py`, `tests/fixtures` |
 | Distortion modes | a hand calculation from the published BaTiO3 coordinates | `tests/distortion.test.ts` |
+| Journal templates | the widths and text rules on the journals' author pages | `tests/journals.test.ts` |
 | Orbitals | orthogonality of the harmonics; the solid against the drawn surface; cuts against atoms | `tests/orbitals.test.ts` |
 | GPU preview | the same atom placement as the SVG; in a real browser, the saved SVG is identical with the preview on, off and showing, the two pictures of one view agree, and the page works without worker drawing | `scripts/browser_check.cjs` |
 
