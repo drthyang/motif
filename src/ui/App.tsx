@@ -94,7 +94,22 @@ export function App() {
   const [pngWidth, setPngWidth] = useState(2880);
   const [over, setOver] = useState(false);
   const [tab, setTab] = useState<TabId>("crystal");
-  const [showHelp, setShowHelp] = useState(false);
+  const [showHelp, setShowHelp] = useState(true);
+  // What the hands are doing now, so the control strip under the figure can light up the matching control.
+  const [held, setHeld] = useState({ alt: false, shift: false, zoomKey: false });
+  const [acting, setActing] = useState<"turn" | "move" | "box" | "pinch" | null>(null);
+  useEffect(() => {
+    const read = (e: globalThis.KeyboardEvent) => setHeld({ alt: e.altKey, shift: e.shiftKey, zoomKey: e.ctrlKey || e.metaKey });
+    const clear = () => setHeld({ alt: false, shift: false, zoomKey: false });
+    window.addEventListener("keydown", read);
+    window.addEventListener("keyup", read);
+    window.addEventListener("blur", clear);
+    return () => {
+      window.removeEventListener("keydown", read);
+      window.removeEventListener("keyup", read);
+      window.removeEventListener("blur", clear);
+    };
+  }, []);
   const [rangeText, setRangeText] = useState<string[]>(ONE_CELL_TEXT);
   const [repeatBoundary, setRepeatBoundary] = useState(true);
   const [bondRules, setBondRules] = useState<(BondRule & { maxText: string; widthText?: string })[]>([]);
@@ -546,6 +561,7 @@ export function App() {
     last.current = { x: e.clientX, y: e.clientY };
     if (pointers.current.size === 2) {
       gesture.current = "pinch";
+      setActing("pinch");
       setHeldFit(null);
       return;
     }
@@ -560,6 +576,7 @@ export function App() {
       gesture.current = "turn";
       setHeldFit(fitView(scene, view, canvas));
     }
+    setActing(gesture.current);
   };
   const onPointerMove = (e: PointerEvent) => {
     if (!last.current || !gesture.current) return;
@@ -611,6 +628,7 @@ export function App() {
       }
       last.current = null;
       gesture.current = null;
+      setActing(null);
       setHeldFit(null); // refit to the new orientation
     }
   };
@@ -751,7 +769,7 @@ export function App() {
                 <button
                   className={`help${showHelp ? " on" : ""}`}
                   data-testid="help"
-                  title="Drag to turn · Alt + drag to roll · Shift + drag to move · Ctrl/⌘ + wheel or pinch to zoom · double-click to fit"
+                  title={showHelp ? "Hide the controls under the figure" : "Show the controls under the figure"}
                   aria-pressed={showHelp}
                   onClick={() => setShowHelp((x) => !x)}
                 >
@@ -837,10 +855,26 @@ Reset
                   {viewLine}
                   <button className="plain copy" title="Copy the view" onClick={() => void navigator.clipboard?.writeText(writeView(numbers))}>⧉</button>
                 </p>
-                <p className="hint" style={{ visibility: showHelp ? "visible" : "hidden" }}>
-                  Drag to turn · Alt + drag to roll · Shift + drag to move · Ctrl/⌘ + wheel or pinch to zoom · double-click to fit.
-                  {transparent && " The checker marks where the figure is transparent."}
-                </p>
+                {showHelp && (
+                  <Controls
+                    active={
+                      acting === "box" || boxMode
+                        ? "box"
+                        : acting === "pinch" || held.zoomKey
+                          ? "zoom"
+                          : acting === "move" || held.shift
+                            ? "move"
+                            : held.alt
+                              ? "roll"
+                              : acting === "turn"
+                                ? "turn"
+                                : null
+                    }
+                    turntable={dragMode === "turntable"}
+                    snap={snap}
+                  />
+                )}
+                {showHelp && transparent && <p className="hint">The checker pattern marks where the figure is transparent; it is not saved.</p>}
                 {/* Always there, hidden when not zoomed: the frame must not change height when it appears, or the figure would jump. */}
                 <label className="check" data-testid="save-zoomed-label" style={{ visibility: isZoomed(zoom) ? "visible" : "hidden" }}>
                   <input type="checkbox" data-testid="save-zoomed" checked={saveZoomed} disabled={!isZoomed(zoom)} onChange={(e) => setSaveZoomed(e.target.checked)} />
@@ -1687,6 +1721,64 @@ function fontInstalled(family: string): boolean {
   const installed = ["monospace", "serif"].some((generic) => Math.abs(width(`'${name}', ${generic}`) - width(generic)) > 0.01);
   fontChecks.set(name, installed);
   return installed;
+}
+
+const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const KEY = { alt: IS_MAC ? "⌥ Option" : "Alt", shift: "⇧ Shift", zoom: IS_MAC ? "⌘ Cmd" : "Ctrl" };
+
+/** A small mouse, with the button that is pressed (left, middle) or the wheel marked. */
+function Mouse({ part }: { part: "left" | "middle" | "wheel" }) {
+  return (
+    <svg className="mouse" viewBox="0 0 14 20" width="11" height="16" aria-hidden="true">
+      <rect x="1" y="1" width="12" height="18" rx="6" fill="none" stroke="currentColor" strokeWidth="1.3" />
+      <line x1="7" y1="1.5" x2="7" y2="8" stroke="currentColor" strokeWidth="1" />
+      {part === "left" && <path d="M1.7 7.6 V7 A5.3 5.3 0 0 1 6.5 1.7 V7.6 Z" fill="currentColor" />}
+      {part !== "left" && <rect x="5.6" y="3" width="2.8" height="4.6" rx="1.4" fill="currentColor" />}
+    </svg>
+  );
+}
+
+type ControlId = "turn" | "roll" | "move" | "zoom" | "box" | "fit";
+
+/**
+ * The ways to handle the figure, each as what to press and what it does, always in view under the figure.
+ * The control being used lights up (held modifier keys count), so the strip also confirms what a drag will do.
+ */
+function Controls({ active, turntable, snap }: { active: ControlId | null; turntable: boolean; snap: boolean }) {
+  const drag = (
+    <kbd>
+      <Mouse part="left" /> drag
+    </kbd>
+  );
+  const items: { id: ControlId; keys: ReactNode; does: string; also?: ReactNode }[] = [
+    { id: "turn", keys: drag, does: turntable ? "turn (left–right) and tilt (up–down)" : "turn freely", also: snap ? "on release it snaps to a nearby crystal direction" : undefined },
+    { id: "roll", keys: <><kbd>{KEY.alt}</kbd>+{drag}</>, does: "roll in the screen plane" },
+    {
+      id: "move",
+      keys: <><kbd>{KEY.shift}</kbd>+{drag}</>,
+      does: "move",
+      also: <>or <kbd><Mouse part="middle" /> drag</kbd> or <kbd>← ↑ → ↓</kbd></>,
+    },
+    {
+      id: "zoom",
+      keys: <><kbd>{KEY.zoom}</kbd>+<kbd><Mouse part="wheel" /> scroll</kbd></>,
+      does: "zoom at the pointer",
+      also: <>or pinch, or <kbd>+</kbd> <kbd>−</kbd></>,
+    },
+    { id: "box", keys: <><kbd>Box</kbd> then {drag}</>, does: "zoom to a rectangle", also: <><kbd>Esc</kbd> cancels</> },
+    { id: "fit", keys: <kbd>double-click</kbd>, does: "fit the whole structure again", also: <>or <kbd>0</kbd></> },
+  ];
+  return (
+    <ul className="controls" data-testid="controls" aria-label="How to handle the figure">
+      {items.map((x) => (
+        <li key={x.id} className={active === x.id ? "on" : ""} data-testid={`control-${x.id}`}>
+          <span className="keys">{x.keys}</span>
+          <span className="does">{x.does}</span>
+          {x.also && <span className="also">{x.also}</span>}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 /** A card of the side column that can be folded away. The "?" holds the longer explanation. */

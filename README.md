@@ -67,6 +67,9 @@ writes the reference atom lists in `tests/reference/`.
   over a structure that reaches them. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the
   buttons; move: Shift + drag, middle-button drag, arrow keys; fit again: double-click, 0, or
   "Fit"; "Box" then a drag zooms to a rectangle (Esc cancels). A plain wheel scrolls the page.
+  These controls are listed under the figure (the "?" hides the list): each as the keys or mouse
+  action and what it does, with the key names of the computer (⌥ Option and ⌘ Cmd on a Mac); the
+  one in use, or whose key is held, is lit.
   A switch says whether Save writes the zoomed view (the default; the user's answer of 2026-11-22,
   relayed by the hub) or the whole structure.
 - Moving a large structure (1,200 drawn atoms and bonds or more; the number can be changed under
