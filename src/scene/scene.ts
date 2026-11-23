@@ -160,6 +160,8 @@ export interface Scene {
   /** Size of the arrows' cone relative to its usual proportion to the rod (absent = 1); the same for the axis arrows. */
   readonly arrowHeadSize?: number;
   readonly axesHeadSize?: number;
+  /** Colours of the a, b, c arrows and their letters (absent = all grey). */
+  readonly axesColours?: readonly [string, string, string] | undefined;
   /** The surface of the atoms and of the arrows (absent = soft). */
   readonly atomMaterial?: Material;
   readonly arrowMaterial?: Material;
@@ -246,6 +248,9 @@ export interface SceneSpec {
   /** Size of the cone at the tip of a moment arrow, and of an axis arrow, as multiples of the usual proportion to the rod (1 = usual). */
   readonly momentHeadSize: number;
   readonly axesHeadSize: number;
+  /** Draw the a, b, c arrows each in its own colour (axesColours); otherwise all three are grey. */
+  readonly axesColoured: boolean;
+  readonly axesColours: readonly [string, string, string];
   /** The surface of the atoms, and of the arrows (moment arrows and axis arrows). */
   readonly atomMaterial: Material;
   readonly arrowMaterial: Material;
@@ -299,7 +304,10 @@ export interface Look {
 
 export const VACANCY_COLOUR = "#ffffff";
 
-export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, momentOutline: true, axesOutline: true, axesKeepReadable: true, atomMaterial: "soft", arrowMaterial: "soft", bondMaterial: "soft", bondOutline: false, cellStyle: "depth", cellWidth: 3, glassOpacity: 0.75, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, legendFontPt: null, axesFontPt: null, angleFontPt: null, showLegend: true, showAxes: true };
+/** Usual colours of the a, b, c arrows: a muted red, green and blue, in that order. */
+export const AXES_COLOURS: readonly [string, string, string] = ["#c4473f", "#3f8a4a", "#3567b0"];
+
+export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: true, looks: {}, showVacancy: true, angles: [], showMoments: true, momentLength: 3, momentColour: "#c2343c", momentThickness: 0.16, momentHeadSize: 1, axesHeadSize: 1, axesColoured: true, axesColours: AXES_COLOURS, momentOutline: true, axesOutline: true, axesKeepReadable: true, atomMaterial: "soft", arrowMaterial: "soft", bondMaterial: "soft", bondOutline: false, cellStyle: "depth", cellWidth: 3, glassOpacity: 0.75, letterWeight: 400, fontFamily: "Avenir", legendFollowsZoom: false, legendSize: 1, axesSize: 1, legendFontPt: null, axesFontPt: null, angleFontPt: null, showLegend: true, showAxes: true };
 
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
@@ -494,5 +502,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     colour: mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
     opacity: 0.55,
   }));
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, glassOpacity: spec.glassOpacity, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legendFontPt: spec.legendFontPt, axesFontPt: spec.axesFontPt, angleFontPt: spec.angleFontPt, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, axesColours: spec.axesColoured ? spec.axesColours : undefined, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, glassOpacity: spec.glassOpacity, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legendFontPt: spec.legendFontPt, axesFontPt: spec.axesFontPt, angleFontPt: spec.angleFontPt, legend, axes, warnings: [...warnings, ...arrowNote] };
 }

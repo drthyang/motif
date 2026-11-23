@@ -791,9 +791,9 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     `<radialGradient id="axis-ball" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="${light}"/>` +
     `<stop offset="0.55" stop-color="${AXIS_COLOUR}"/><stop offset="1" stop-color="${dark}"/></radialGradient>\n`;
   let svg = "";
+  const colourOf = (name: string): string => scene.axesColours?.[["a", "b", "c"].indexOf(name)] ?? AXIS_COLOUR;
   // Back to front: the arrow pointing most away from the viewer first, then the ball at the origin.
   const order = arrows.map((a, i) => ({ a, letter: letters[i]! })).sort((p, q) => p.a.depth - q.a.depth);
-  const baseShade = mixHex(AXIS_COLOUR, "#000000", 0.18);
   const ballRadius = shaftPx * 0.95;
   const ball = (): string => `<circle class="axis-origin" cx="${n1(ox)}" cy="${n1(oy)}" r="${n1(ballRadius)}" fill="url(#axis-ball)"/>\n`;
   let ballDrawn = false;
@@ -817,10 +817,14 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     const headOnScreen = headPx * Math.sqrt(Math.max(0, 1 - tilt * tilt));
     const [bx, by] = [tx - ux * headOnScreen, ty - uy * headOnScreen]; // centre of the cone's base
     const id = `axis-${a.name}`;
+    const colour = colourOf(a.name);
+    const baseShade = mixHex(colour, "#000000", 0.18);
+    // Each arrow's outline is a darker shade of its own colour (the outline group sets only the width).
+    if (scene.axesOutline) svg += `<g stroke="${mixHex(colour, "#000000", 0.45)}">`;
     // Shading across the arrow: lightest a third of the way in from the lit side, darkest on the far side.
     const across = (name: string, width: number, cx: number, cy: number, turned = ""): string =>
       `<linearGradient id="${name}" gradientUnits="userSpaceOnUse"${turned} x1="${n1(cx + (px * width) / 2)}" y1="${n1(cy + (py * width) / 2)}" x2="${n1(cx - (px * width) / 2)}" y2="${n1(cy - (py * width) / 2)}">` +
-      `${rodStops(AXIS_COLOUR, scene.arrowMaterial ?? "soft")}</linearGradient>\n`;
+      `${rodStops(colour, scene.arrowMaterial ?? "soft")}</linearGradient>\n`;
     const angle = (Math.atan2(uy, ux) * 180) / Math.PI;
     // The base ellipse is turned to the arrow's direction, which would turn its shading too; turn that back.
     const turnedBack = ` gradientTransform="rotate(${n1(-angle)} ${n1(bx)} ${n1(by)})"`;
@@ -860,8 +864,9 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
       // The baseline is set 0.3 em below the wanted centre, so no reader needs to support "dominant-baseline".
       svg +=
         `<text x="${n1(ox + letter.x)}" y="${n1(oy + letter.y + 0.3 * fontSize)}" text-anchor="middle" font-family="${fontList(scene.fontFamily)}" ` +
-        `font-weight="${scene.letterWeight}" font-style="italic" font-size="${fontSize}" fill="${AXIS_COLOUR}" fill-opacity="1" stroke="none">${a.name}</text>`;
+        `font-weight="${scene.letterWeight}" font-style="italic" font-size="${fontSize}" fill="${colour}" fill-opacity="1" stroke="none">${a.name}</text>`;
     }
+    if (scene.axesOutline) svg += "</g>";
     svg += "\n";
   }
   if (!ballDrawn) svg += ball();

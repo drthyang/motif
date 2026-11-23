@@ -7,7 +7,7 @@ import { DEFAULT_CANVAS, glassAlpha, renderSvg, wedgePaths } from "../src/render
 import { DEFAULT_VIEW } from "../src/render/view";
 import { atomsAndBonds } from "../src/scene/bonds";
 import { defaultColour, defaultRadius } from "../src/scene/elementStyle";
-import { buildScene, DEFAULT_SPEC, MATERIALS, VACANCY_COLOUR, type Material } from "../src/scene/scene";
+import { AXES_COLOURS, buildScene, DEFAULT_SPEC, MATERIALS, VACANCY_COLOUR, type Material } from "../src/scene/scene";
 import { ONE_CELL } from "../src/scene/select";
 import { fractionalToCartesian } from "../src/structure/cell";
 import { expandToUnitCell } from "../src/structure/expand";
@@ -220,5 +220,20 @@ describe("colour and size", () => {
     const a = buildScene(olivine, DEFAULT_SPEC).spheres.map((s) => s.centre);
     const b = buildScene(olivine, { ...DEFAULT_SPEC, looks: { O: { radius: 1.2 }, "Fe/Mg": { name: "M" } } }).spheres.map((s) => s.centre);
     expect(b).toEqual(a);
+  });
+
+  it("the a, b, c arrows have their own colours by default, letters too; switched off they are all grey", () => {
+    const svg = renderSvg(buildScene(olivine), DEFAULT_VIEW);
+    const letter = (name: string, text: string): string => new RegExp(`<text [^>]*fill="(#[0-9a-f]{6})"[^>]*>${name}</text>`).exec(text)![1]!;
+    expect(["a", "b", "c"].map((n) => letter(n, svg))).toEqual([...AXES_COLOURS]);
+    expect(new Set(AXES_COLOURS).size).toBe(3);
+    const grey = renderSvg(buildScene(olivine, { ...DEFAULT_SPEC, axesColoured: false }), DEFAULT_VIEW);
+    expect(new Set(["a", "b", "c"].map((n) => letter(n, grey))).size).toBe(1);
+    const own = renderSvg(buildScene(olivine, { ...DEFAULT_SPEC, axesColours: ["#112233", "#445566", "#778899"] }), DEFAULT_VIEW);
+    expect(letter("b", own)).toBe("#445566");
+    // Each arrow is outlined in a darker shade of its own colour.
+    expect((svg.match(/<g stroke="#[0-9a-f]{6}">/g) ?? []).length).toBe(3);
+    const plain = renderSvg(buildScene(olivine, { ...DEFAULT_SPEC, axesOutline: false }), DEFAULT_VIEW);
+    expect(plain).not.toMatch(/<g stroke="#[0-9a-f]{6}">/);
   });
 });

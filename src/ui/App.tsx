@@ -13,7 +13,7 @@ import {
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
+import { AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestMoment, speciesRadius, type Look, type Scene } from "../scene/scene";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
@@ -238,6 +238,8 @@ export function App() {
   const [momentOutline, setMomentOutline] = useState(DEFAULT_SPEC.momentOutline);
   const [axesOutline, setAxesOutline] = useState(DEFAULT_SPEC.axesOutline);
   const [axesReadable, setAxesReadable] = useState(DEFAULT_SPEC.axesKeepReadable);
+  const [axesColoured, setAxesColoured] = useState(DEFAULT_SPEC.axesColoured);
+  const [axesColours, setAxesColours] = useState(DEFAULT_SPEC.axesColours);
   const [atomMaterial, setAtomMaterial] = useState<Material>(DEFAULT_SPEC.atomMaterial);
   const [arrowMaterial, setArrowMaterial] = useState<Material>(DEFAULT_SPEC.arrowMaterial);
   const [bondMaterial, setBondMaterial] = useState<Material>(DEFAULT_SPEC.bondMaterial);
@@ -388,11 +390,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -1379,6 +1381,27 @@ Reset
                 <input type="checkbox" data-testid="show-axes" checked={showAxes} onChange={(e) => setShowAxes(e.target.checked)} />
                 Axes a, b, c
               </label>
+              <div className="row">
+                <label className="row" title="Draw a, b and c each in its own colour, the letters too. Off: all three grey.">
+                  <input type="checkbox" data-testid="axes-coloured" checked={axesColoured} onChange={(e) => setAxesColoured(e.target.checked)} />
+                  in colour
+                </label>
+                {axesColoured &&
+                  (["a", "b", "c"] as const).map((name, i) => (
+                    <span className="row" key={name}>
+                      <span className="axis">{name}</span>
+                      <input
+                        type="color"
+                        data-testid={`axis-colour-${name}`}
+                        value={axesColours[i]}
+                        onChange={(e) => setAxesColours((old) => old.map((c, j) => (j === i ? e.target.value : c)) as unknown as typeof old)}
+                      />
+                    </span>
+                  ))}
+                {axesColoured && axesColours.some((c, i) => c !== AXES_COLOURS[i]) && (
+                  <button className="plain" title="Back to the usual red, green, blue" data-testid="axes-colours-reset" onClick={() => setAxesColours(AXES_COLOURS)}>↺</button>
+                )}
+              </div>
               <div className="row" title="Size of the axis arrows with their letters, and of their cones, as multiples of the usual size.">
                 size
                 <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-size" value={axesSizeText} onChange={(e) => setAxesSizeText(e.target.value)} />×
