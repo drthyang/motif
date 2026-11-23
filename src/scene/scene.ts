@@ -318,7 +318,7 @@ export interface Look {
 export const VACANCY_COLOUR = "#ffffff";
 
 /** Length in angstrom of the arrow of the largest displacement, unless chosen. */
-export const DEFAULT_DISPLACEMENT_LENGTH = 1;
+export const DEFAULT_DISPLACEMENT_LENGTH = 2.5;
 
 /** Usual colours of the a, b, c arrows: a muted red, green and blue, in that order. */
 export const AXES_COLOURS: readonly [string, string, string] = ["#c4473f", "#3f8a4a", "#3567b0"];
