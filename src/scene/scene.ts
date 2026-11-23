@@ -65,6 +65,11 @@ export interface Arrow {
   readonly thickness?: number;
   /** Its cone relative to the usual proportion to the rod (displacements: smaller, so a thick short arrow keeps a shaft). */
   readonly headScale?: number;
+  /**
+   * An arrow through the atom: the length of its tail side as a fraction of its head side (1 = exactly centred).
+   * The head side always runs half the arrow's length from the atom's centre.
+   */
+  readonly tail?: number;
   /** From tail to tip, in angstrom: the direction is the moment's, the length is its size times the chosen scale. */
   readonly vector: Vec3;
 }
@@ -268,6 +273,12 @@ export interface SceneSpec {
    * centre, in the displacement colour and thickness). Absent: as the file's own kind.
    */
   readonly arrowStyle?: ArrowStyle;
+  /**
+   * A moment arrow's tail side as a fraction of its head side (absent: DEFAULT_MOMENT_TAIL). The cone narrows to a
+   * point, so an exactly centred arrow looks longer on its tail side; a shorter tail balances it (the user's
+   * choice, 2026-11-23). The head side, from the atom's centre, keeps half the chosen length.
+   */
+  readonly momentTail?: number;
   /** Draw the displacements of a distortion (an ISODISTORT file) as arrows from the atoms' centres. */
   readonly showDisplacements?: boolean;
   /** Length in angstrom of the arrow of the largest displacement; the others are in proportion. */
@@ -341,6 +352,8 @@ export const VACANCY_COLOUR = "#ffffff";
 
 /** Length in angstrom of the arrow of the largest displacement, unless chosen. */
 export const DEFAULT_DISPLACEMENT_LENGTH = 1.5;
+/** A moment arrow's tail side, as a fraction of its head side, unless chosen. */
+export const DEFAULT_MOMENT_TAIL = 0.8;
 /** Displacement arrows look apart from moment arrows: green and thicker (the user's choice). */
 export const DEFAULT_DISPLACEMENT_COLOUR = "#27a33a";
 /** The cone of a displacement arrow, relative to the usual proportion to its rod. */
@@ -520,7 +533,7 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
       const size = Math.hypot(vector[0], vector[1], vector[2]);
       if (style === "moment") {
         if (size / 2 <= styles[s.style]!.radius) hidden++;
-        arrows.push({ sphere: index, vector });
+        arrows.push({ sphere: index, vector, tail: spec.momentTail ?? DEFAULT_MOMENT_TAIL });
       } else {
         if (size <= styles[s.style]!.radius) hidden++;
         arrows.push({

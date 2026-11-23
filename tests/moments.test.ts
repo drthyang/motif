@@ -179,7 +179,31 @@ describe("moment arrows", () => {
     }
   });
 
+  const tailToTip = (sc: typeof scene): number[] => {
+    const drawn = layoutAll(sc, viewFromAngles(25, 15), DEFAULT_CANVAS);
+    const out: number[] = [];
+    for (const s of drawn) {
+      if (s.kind !== "sphere" || s.style !== "Mn") continue;
+      const parts = drawn.filter((d) => d.kind === "arrow" && Math.abs((d.x2 - d.x1) * (s.y - d.y1) - (d.y2 - d.y1) * (s.x - d.x1)) < 1e-3 && Math.hypot(d.x1 - s.x, d.y1 - s.y) < 400);
+      const tail = parts.find((d) => d.kind === "arrow" && d.head === undefined);
+      const front = parts.find((d) => d.kind === "arrow" && d.head !== undefined);
+      if (!tail || !front || tail.kind !== "arrow" || front.kind !== "arrow") continue;
+      const [tx, ty] = front.head!.split(" ")[0]!.split(",").map(Number) as [number, number];
+      out.push(Math.hypot(tail.x1 - s.x, tail.y1 - s.y) / Math.hypot(tx - s.x, ty - s.y));
+    }
+    return out;
+  };
+
+  it("with the tail at 100 % the arrow is centred on the atom; by default (80 %) the tail side is 0.8 of the head side", () => {
+    const centred = tailToTip(buildScene(mnf2, { ...DEFAULT_SPEC, range: { from: [0, 0, 0], to: [1, 1, 1], boundary: "once" }, momentLength: 3, momentTail: 1 }));
+    expect(centred.length).toBeGreaterThan(0);
+    for (const r of centred) expect(r).toBeCloseTo(1, 2);
+    const balanced = tailToTip(buildScene(mnf2, { ...DEFAULT_SPEC, range: { from: [0, 0, 0], to: [1, 1, 1], boundary: "once" }, momentLength: 3 }));
+    for (const r of balanced) expect(r).toBeCloseTo(0.8, 2);
+  });
+
   it("the arrow passes through the atom, centred on it: tail and tip are equally far from the centre, on opposite sides", () => {
+    const scene = buildScene(mnf2, { ...DEFAULT_SPEC, range: { from: [0, 0, 0], to: [1, 1, 1], boundary: "once" }, momentLength: 3, momentTail: 1 });
     const drawn = layoutAll(scene, viewFromAngles(25, 15), DEFAULT_CANVAS);
     for (const s of drawn) {
       if (s.kind !== "sphere" || s.style !== "Mn") continue;

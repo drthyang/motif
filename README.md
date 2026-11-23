@@ -139,6 +139,9 @@ writes the reference atom lists in `tests/reference/`.
 - The moment arrows, and the axis arrows, each have a thin darker outline, which can be switched off
   (on by default, the user's choice).
 - Arrow length is proportional to the moment; the largest moment in the file gets the chosen length.
+- A moment arrow's tail side is 80 % of its head side by default (adjustable, 100 % = exactly centred): the
+  cone narrows to a point, so an exactly centred arrow looks longer on its tail side. The head side always
+  runs half the chosen length from the atom's centre (the user's choice, 2026-11-23).
 - Highlights belong to a bond rule. Its bonds form connected groups (chains, nets), numbered by
   the position of their middle along *a*, then *b*, then *c*, so the numbering does not depend on
   the view. A band is a wide translucent stroke behind one group or all of them; with one group

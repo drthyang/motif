@@ -341,7 +341,7 @@ export function fitView(scene: Scene, view: View, canvas: Canvas): Fit {
   for (const edge of scene.cellEdges) for (const p of edge) include(p, 0);
   for (const a of scene.arrows) {
     const c = scene.spheres[a.sphere]!.centre;
-    for (const sign of a.start === "centre" ? [0, 1] : [-0.5, 0.5]) include([c[0] + sign * a.vector[0], c[1] + sign * a.vector[1], c[2] + sign * a.vector[2]], arrowSizes(scene, a).headWidth / 2);
+    for (const sign of a.start === "centre" ? [0, 1] : [-0.5 * (a.tail ?? 1), 0.5]) include([c[0] + sign * a.vector[0], c[1] + sign * a.vector[1], c[2] + sign * a.vector[2]], arrowSizes(scene, a).headWidth / 2);
   }
   const height = structureHeight(scene, canvas);
   if (box.x0 > box.x1) return { scale: 1, x: canvas.width / 2, y: height / 2 };
@@ -583,7 +583,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     // A displacement arrow (start "centre") has no tail half: it runs from the centre (lo = 0) to its tip.
     const length = Math.hypot(arrow.vector[0], arrow.vector[1], arrow.vector[2]);
     const fromCentre = arrow.start === "centre";
-    const [lo, hi] = fromCentre ? [0, length] : [-length / 2, length / 2];
+    const [lo, hi] = fromCentre ? [0, length] : [-(length / 2) * (arrow.tail ?? 1), length / 2];
     if (hi <= radius) return;
     const unit: Vec3 = [arrow.vector[0] / length, arrow.vector[1] / length, arrow.vector[2] / length];
     const at = (t: number): Vec3 => project([sphere.centre[0] + unit[0] * t, sphere.centre[1] + unit[1] * t, sphere.centre[2] + unit[2] * t]);
@@ -659,7 +659,8 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     // 2. The half that comes out of the sphere's face, over the sphere, from where it pierces the surface.
     const rho = Math.min(sizes.shaft / 2, radius);
     const pierce = Math.sqrt(Math.max(0, radius * radius - rho * rho));
-    if (Math.abs(towards) > 0.02 && !(fromCentre && towards < 0)) {
+    // (A tail that ends inside the atom has no part over it: the atom hides it.)
+    if (Math.abs(towards) > 0.02 && !(fromCentre && towards < 0) && !(towards < 0 && -lo <= pierce)) {
       const sign = towards > 0 ? 1 : -1; // which half points at the viewer
       const foot = at(sign * pierce);
       const end = sign > 0 ? tip : tail;

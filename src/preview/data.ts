@@ -67,7 +67,7 @@ export function buildPreviewData(scene: Scene): PreviewData {
     const length = Math.hypot(arrow.vector[0], arrow.vector[1], arrow.vector[2]);
     if (length === 0) continue;
     // A displacement starts at the centre; a moment passes through it.
-    const [lo, hi] = arrow.start === "centre" ? [0, length] : [-length / 2, length / 2];
+    const [lo, hi] = arrow.start === "centre" ? [0, length] : [-(length / 2) * (arrow.tail ?? 1), length / 2];
     const at = (t: number): Vec3 => [c[0] + (arrow.vector[0] / length) * t, c[1] + (arrow.vector[1] / length) * t, c[2] + (arrow.vector[2] / length) * t];
     const sizes = arrowSizes(scene, arrow);
     const head = Math.min(sizes.headLength, hi);
