@@ -125,9 +125,12 @@ writes the reference atom lists in `tests/reference/`.
 - The unit cell is drawn with the edges in front of the middle of the structure solid and those
   behind it paler and dashed, so the box reads as a solid; all dashed or all solid can be chosen,
   and the line width set.
-- The page: four tabs, a view toolbar over the figure, less-used controls folded under "More
-  options", and style presets (Slide, Paper, Glossy, Metal, Glass) that set surfaces, outlines,
-  lettering weight and legend sizes together.
+- The page: a view toolbar over the figure and four tabs. The first three say what is drawn, the
+  last how it looks (the user's choice, 2026-11-23): Crystal (the file, the range shown, the unit
+  cell), Content (atoms, bonds and highlights, angles, moments), View, and Style (presets, the
+  surfaces and outlines of atoms, bonds and arrows, legend, axes, lettering). Less-used controls
+  are folded under "More options". The style presets (Slide, Paper, Glossy, Metal, Glass) set
+  surfaces, outlines, lettering weight and legend sizes together.
 - A species can be hidden: its atoms, its bonds and any neighbours added for it are left out.
 - A file opens with c up, a towards the viewer on the left and b to the right, seen a little from
   above (turn -120, tilt 15): all three axes read well and none is a stub (the user's choice).

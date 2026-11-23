@@ -68,7 +68,7 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
     const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
     await setUp(page, "?preview=all&settle=2500");
     await page.uncheck("label.check input"); // white background
-    await page.click("[data-testid=tab-atoms]");
+    await page.click("[data-testid=tab-crystal]");
     await page.uncheck("[data-testid=show-cell]");
     await page.waitForTimeout(3000);
     const box = await page.locator(".figure-wrap").boundingBox();

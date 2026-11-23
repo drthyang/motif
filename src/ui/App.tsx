@@ -59,7 +59,7 @@ export function App() {
   const [transparent, setTransparent] = useState(true);
   const [pngWidth, setPngWidth] = useState(2880);
   const [over, setOver] = useState(false);
-  const [tab, setTab] = useState<TabId>("structure");
+  const [tab, setTab] = useState<TabId>("crystal");
   const [showHelp, setShowHelp] = useState(false);
   const [rangeText, setRangeText] = useState<string[]>(ONE_CELL_TEXT);
   const [repeatBoundary, setRepeatBoundary] = useState(true);
@@ -213,12 +213,6 @@ export function App() {
         </option>
       ))}
     </select>
-    {value === "glass" && (
-      <span className="row slider" title="How solid the glass is: to the left clearer, to the right less see-through. One setting for every glass surface.">
-        <input type="range" min={0.05} max={1} step={0.05} data-testid={`${testId}-glass`} value={glassOpacity} onChange={(e) => setGlassOpacity(Number(e.target.value))} />
-        <span className="sub">{Math.round(glassOpacity * 100)}%</span>
-      </span>
-    )}
     </>
   );
   const [fontFamily, setFontFamily] = useState(DEFAULT_SPEC.fontFamily);
@@ -644,15 +638,6 @@ export function App() {
           </select>
           {scene && (
             <>
-              <select data-testid="style-preset" value="" title="Sets the surfaces, outlines, lettering weight and legend sizes together. Every one of them can still be changed afterwards." onChange={(e) => applyPreset(e.target.value)}>
-                <option value="">Style…</option>
-                {Object.keys(PRESETS).map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-              <span className="divider" />
               <label className="check" title="Leave the background of the saved figure transparent">
                 <input type="checkbox" checked={transparent} onChange={(e) => setTransparent(e.target.checked)} />
                 Transparent
@@ -831,7 +816,7 @@ Reset
             </div>
             <TabContext.Provider value={tab}>
             <div className="tab-body">
-            <Section tab="structure" title="Structure" hint="What the file says. Nothing here changes the figure.">
+            <Section tab="crystal" title="File" hint="What the file says. Nothing here changes the figure.">
               <table data-testid="info">
                 <tbody>
                   <tr><td>Name</td><td>{structure.name}</td></tr>
@@ -847,7 +832,7 @@ Reset
                 </tbody>
               </table>
             </Section>
-            <Section tab="structure" title="Shown" hint="The part of the crystal that is drawn: a range along each cell axis, in units of the cell edge. Whole numbers give whole cells; a narrow range gives a slab. An atom within 0.001 of a limit counts as on it.">
+            <Section tab="crystal" title="Shown" hint="The part of the crystal that is drawn: a range along each cell axis, in units of the cell edge. Whole numbers give whole cells; a narrow range gives a slab. An atom within 0.001 of a limit counts as on it.">
               {AXES.map((axis, i) => (
                 <div className="row" key={axis}>
                   <i className="axis">{axis}</i> from
@@ -883,7 +868,25 @@ Reset
               </p>
               {rangeError && <p className="error" data-testid="range-error">{rangeError}</p>}
             </Section>
-            <Section tab="atoms" title="Atoms" hint="Colour and size of each element. A site shared by several elements is drawn as a pie whose wedges are the occupancies. Untick an element to leave it out.">
+            <Section tab="crystal" title="Unit cell" hint="The outline is drawn for every whole cell inside the range shown (none for a slab). Near and far: the edges in front of the middle of the structure are solid, those behind it paler and dashed, so the box reads as a solid.">
+              <label className="row">
+                <input type="checkbox" data-testid="show-cell" checked={showCell} onChange={(e) => setShowCell(e.target.checked)} />
+                Outline of the unit cell
+              </label>
+              {showCell && (
+                <div className="row" title="Near and far: the edges in front of the middle of the structure are solid, those behind it paler and dashed, so the box reads as a solid. Or all dashed, or all solid.">
+                  cell lines
+                  <select data-testid="cell-style" value={cellStyle} onChange={(e) => setCellStyle(e.target.value as CellStyle)}>
+                    <option value="depth">near solid, far dashed</option>
+                    <option value="dashed">all dashed</option>
+                    <option value="solid">all solid</option>
+                  </select>
+                  <input type="number" step={0.5} min={0.5} max={12} data-testid="cell-width" title="Line width in px of the figure" value={cellWidthText} onChange={(e) => setCellWidthText(e.target.value)} />
+                  px
+                </div>
+              )}
+            </Section>
+            <Section tab="content" title="Atoms" hint="Colour and size of each element. A site shared by several elements is drawn as a pie whose wedges are the occupancies. Untick an element to leave it out.">
               {contents.elements.map((element) => {
                 const pure = contents.species.find((x) => x.key === element);
                 return (
@@ -962,15 +965,11 @@ Reset
                   Show a vacant share as an empty wedge
                 </label>
                 <div className="row">
-                  surface
-                  {materialChoice("atom-material", atomMaterial, setAtomMaterial)}
-                </div>
-                <div className="row">
                   <button data-testid="reset-looks" onClick={() => setLooks({})}>Reset colours and sizes</button>
                 </div>
               </More>
             </Section>
-            <Section tab="atoms" title="Bonds" hint="A bond joins every pair of the two chosen atoms that are no further apart than the distance given. The list shows the distances found in the structure, shortest first.">
+            <Section tab="content" title="Bonds" hint="A bond joins every pair of the two chosen atoms that are no further apart than the distance given. The list shows the distances found in the structure, shortest first.">
               {autoNote && bondRules.length > 0 && (
                 <p className="sub" data-testid="auto-note">
                   Added when the file was opened: {autoNote}. Change or remove them as you like.
@@ -1086,34 +1085,8 @@ Reset
                 </select>
                 <button data-testid="add-bond" disabled={!newPair} onClick={addBond}>Add</button>
               </div>
-              <label className="row">
-                <input type="checkbox" data-testid="show-cell" checked={showCell} onChange={(e) => setShowCell(e.target.checked)} />
-                Unit cell outline
-              </label>
-              {showCell && (
-                <div className="row" title="Near and far: the edges in front of the middle of the structure are solid, those behind it paler and dashed, so the box reads as a solid. Or all dashed, or all solid.">
-                  cell lines
-                  <select data-testid="cell-style" value={cellStyle} onChange={(e) => setCellStyle(e.target.value as CellStyle)}>
-                    <option value="depth">near solid, far dashed</option>
-                    <option value="dashed">all dashed</option>
-                    <option value="solid">all solid</option>
-                  </select>
-                  <input type="number" step={0.5} min={0.5} max={12} data-testid="cell-width" title="Line width in px of the figure" value={cellWidthText} onChange={(e) => setCellWidthText(e.target.value)} />
-                  px
-                </div>
-              )}
-              <More label="More options">
-                <div className="row" title="Bonds are drawn as round rods that meet the atoms as a real rod would. Above 1,500 bonds they are drawn as plain strokes, which is much faster.">
-                  bond surface
-                  {materialChoice("bond-material", bondMaterial, setBondMaterial)}
-                </div>
-                <label className="row">
-                  <input type="checkbox" data-testid="bond-outline" checked={bondOutline} onChange={(e) => setBondOutline(e.target.checked)} />
-                  Outline the bonds
-                </label>
-              </More>
             </Section>
-            <Section tab="atoms" title="Angles" hint="Marks the angle between two drawn bonds that meet at an atom, so add the bonds first. The list shows the kinds of angle found and their sizes. Every angle of the chosen kind whose size lies in the range is marked.">
+            <Section tab="content" title="Angles" hint="Marks the angle between two drawn bonds that meet at an atom, so add the bonds first. The list shows the kinds of angle found and their sizes. Every angle of the chosen kind whose size lies in the range is marked.">
               {angleRules.map((r, index) => (
                 <div key={index} className="rule" data-testid={`angle-${index}`}>
                   <div className="row">
@@ -1205,7 +1178,7 @@ Reset
               )}
             </Section>
             {largestMoment(structure) > 0 && (
-              <Section tab="atoms" title="Magnetic moments" hint="A moment is drawn as an arrow through its atom, centred on it. The arrow of the largest moment in the file has the length given here; the others are in proportion.">
+              <Section tab="content" title="Magnetic moments" hint="A moment is drawn as an arrow through its atom, centred on it. The arrow of the largest moment in the file has the length given here; the others are in proportion.">
                 <label className="row">
                   <input type="checkbox" data-testid="show-moments" checked={showMoments} onChange={(e) => setShowMoments(e.target.checked)} />
                   Arrows through the atoms
@@ -1224,19 +1197,58 @@ Reset
                     head
                     <input type="number" step={0.1} min={0.2} max={4} data-testid="moment-head" title="Size of the cone at the tip, as a multiple of its usual proportion to the rod." value={momentHeadText} onChange={(e) => setMomentHeadText(e.target.value)} />×
                   </div>
-                  <label className="row">
-                    <input type="checkbox" data-testid="moment-outline" checked={momentOutline} onChange={(e) => setMomentOutline(e.target.checked)} />
-                    Outline the arrows
-                  </label>
-                  <div className="row">
-                    surface
-                    {materialChoice("arrow-material", arrowMaterial, setArrowMaterial)}
-                    <span className="sub">also the axis arrows</span>
-                  </div>
                 </More>
               </Section>
             )}
-            <Section tab="look" title="Legend and axes" hint="The arrows are the directions of the cell edges a, b, c. An arrow tilted out of the screen is drawn shorter.">
+            <Section tab="style" title="Look" hint="A preset sets the surfaces, outlines, lettering weight and legend sizes together; each can still be changed afterwards. The surfaces are vector shading only, so the figure stays an editable SVG.">
+              <div className="row">
+                preset
+                <select data-testid="style-preset" value="" onChange={(e) => applyPreset(e.target.value)}>
+                  <option value="">choose…</option>
+                  {Object.keys(PRESETS).map((name) => (
+                    <option key={name} value={name}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="row">
+                atoms
+                {materialChoice("atom-material", atomMaterial, setAtomMaterial)}
+              </div>
+              <div className="row" title="Bonds are drawn as round rods that meet the atoms as a real rod would. Above 1,500 bonds they are drawn as plain strokes, which is much faster.">
+                bonds
+                {materialChoice("bond-material", bondMaterial, setBondMaterial)}
+              </div>
+              <div className="row">
+                arrows
+                {materialChoice("arrow-material", arrowMaterial, setArrowMaterial)}
+                <span className="sub">moment and axis arrows</span>
+              </div>
+              {[atomMaterial, bondMaterial, arrowMaterial].includes("glass") && (
+                <div className="row slider" title="How solid the glass is: to the left clearer, to the right less see-through. One setting for every glass surface.">
+                  glass
+                  <input type="range" min={0.05} max={1} step={0.05} data-testid="glass-solid" value={glassOpacity} onChange={(e) => setGlassOpacity(Number(e.target.value))} />
+                  <span className="sub">{Math.round(glassOpacity * 100)}% solid</span>
+                </div>
+              )}
+              <p className="sub">Outline</p>
+              <label className="row">
+                <input type="checkbox" data-testid="bond-outline" checked={bondOutline} onChange={(e) => setBondOutline(e.target.checked)} />
+                bonds
+              </label>
+              {largestMoment(structure) > 0 && (
+                <label className="row">
+                  <input type="checkbox" data-testid="moment-outline" checked={momentOutline} onChange={(e) => setMomentOutline(e.target.checked)} />
+                  moment arrows
+                </label>
+              )}
+              <label className="row">
+                <input type="checkbox" data-testid="axes-outline" checked={axesOutline} onChange={(e) => setAxesOutline(e.target.checked)} />
+                axis arrows
+              </label>
+            </Section>
+            <Section tab="style" title="Legend" hint="The elements with a sphere of each colour, in the band under the structure.">
               <label className="row">
                 <input type="checkbox" data-testid="show-legend" checked={showLegend} onChange={(e) => setShowLegend(e.target.checked)} />
                 Legend
@@ -1245,67 +1257,62 @@ Reset
                 <input type="checkbox" data-testid="legend-follows" checked={legendFollows} onChange={(e) => setLegendFollows(e.target.checked)} />
                 Legend follows the size of the structure
               </label>
+              <div className="row" title="Size of the legend as a multiple of the usual size.">
+                size
+                <input type="number" step={0.1} min={0.2} max={4} data-testid="legend-size" value={legendSizeText} onChange={(e) => setLegendSizeText(e.target.value)} />×
+              </div>
+            </Section>
+            <Section tab="style" title="Axes" hint="The arrows are the directions of the cell edges a, b, c. An arrow tilted out of the screen is drawn shorter.">
               <label className="row">
                 <input type="checkbox" data-testid="show-axes" checked={showAxes} onChange={(e) => setShowAxes(e.target.checked)} />
                 Axes a, b, c
               </label>
-              <More label="More options">
-                <div className="row" title="Size of the legend, and of the axis arrows with their letters, as multiples of the usual size.">
-                  legend size
-                  <input type="number" step={0.1} min={0.2} max={4} data-testid="legend-size" value={legendSizeText} onChange={(e) => setLegendSizeText(e.target.value)} />×
-                  axes size
-                  <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-size" value={axesSizeText} onChange={(e) => setAxesSizeText(e.target.value)} />×
-                  axes head
-                  <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-head" title="Size of the cones of the axis arrows, as a multiple of the usual." value={axesHeadText} onChange={(e) => setAxesHeadText(e.target.value)} />×
-                </div>
-                <label className="row">
-                  <input type="checkbox" data-testid="axes-outline" checked={axesOutline} onChange={(e) => setAxesOutline(e.target.checked)} />
-                  Outline the axis arrows
-                </label>
-                <label className="row" title="An axis that points mostly into or out of the page projects to a short stub. With this on it is drawn at least 0.45 of the full length, in its true direction on screen; with it off every arrow is the exact projection.">
-                  <input type="checkbox" data-testid="axes-readable" checked={axesReadable} onChange={(e) => setAxesReadable(e.target.checked)} />
-                  Keep short axis arrows readable
-                </label>
-                <div className="row">
-                  arrow surface
-                  {materialChoice("axes-material", arrowMaterial, setArrowMaterial)}
-                  <span className="sub">also the moment arrows</span>
-                </div>
-                <div className="row">
-                  font
-                  <select
-                    data-testid="font-family"
-                    value={customFont ? "other" : fontFamily}
-                    onChange={(e) => {
-                      setCustomFont(e.target.value === "other");
-                      if (e.target.value !== "other") setFontFamily(e.target.value);
-                    }}
-                  >
-                    {FONTS.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                    <option value="other">Other…</option>
-                  </select>
-                  {customFont && (
-                    <input type="text" className="name" data-testid="font-custom" placeholder="Font name" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} />
-                  )}
-                </div>
-                {!fontInstalled(fontFamily) && (
-                  <p className="sub" data-testid="font-missing">
-                    “{fontFamily}” is not installed on this computer, so another font is shown here and in the PNG. The SVG keeps the name.
-                  </p>
+              <div className="row" title="Size of the axis arrows with their letters, and of their cones, as multiples of the usual size.">
+                size
+                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-size" value={axesSizeText} onChange={(e) => setAxesSizeText(e.target.value)} />×
+                head
+                <input type="number" step={0.1} min={0.2} max={4} data-testid="axes-head" value={axesHeadText} onChange={(e) => setAxesHeadText(e.target.value)} />×
+              </div>
+              <label className="row" title="An axis that points mostly into or out of the page projects to a short stub. With this on it is drawn at least 0.45 of the full length, in its true direction on screen; with it off every arrow is the exact projection.">
+                <input type="checkbox" data-testid="axes-readable" checked={axesReadable} onChange={(e) => setAxesReadable(e.target.checked)} />
+                Keep short axis arrows readable
+              </label>
+            </Section>
+            <Section tab="style" title="Lettering" hint="The font must be a font of this computer: the PNG is drawn from the SVG alone, which cannot use a font loaded by the page. Text stays live text in the SVG.">
+              <div className="row">
+                font
+                <select
+                  data-testid="font-family"
+                  value={customFont ? "other" : fontFamily}
+                  onChange={(e) => {
+                    setCustomFont(e.target.value === "other");
+                    if (e.target.value !== "other") setFontFamily(e.target.value);
+                  }}
+                >
+                  {FONTS.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                  <option value="other">Other…</option>
+                </select>
+                {customFont && (
+                  <input type="text" className="name" data-testid="font-custom" placeholder="Font name" value={fontFamily} onChange={(e) => setFontFamily(e.target.value)} />
                 )}
-                <div className="row">
-                  weight
-                  <select data-testid="letter-weight" value={letterWeight} onChange={(e) => setLetterWeight(Number(e.target.value))}>
-                    <option value={400}>regular</option>
-                    <option value={500}>medium</option>
-                    <option value={800}>heavy</option>
-                  </select>
-                </div>
-              </More>
+              </div>
+              {!fontInstalled(fontFamily) && (
+                <p className="sub" data-testid="font-missing">
+                  “{fontFamily}” is not installed on this computer, so another font is shown here and in the PNG. The SVG keeps the name.
+                </p>
+              )}
+              <div className="row">
+                weight
+                <select data-testid="letter-weight" value={letterWeight} onChange={(e) => setLetterWeight(Number(e.target.value))}>
+                  <option value={400}>regular</option>
+                  <option value={500}>medium</option>
+                  <option value={800}>heavy</option>
+                </select>
+              </div>
             </Section>
             <Section tab="view" title="Direction" hint="The view is four numbers: the cell axis that is up, turn about it, tilt (from above when positive) and roll about the line of sight. The line under the figure always shows them, and the nearest low-index direction. A direction given here points at you.">
               <div className="row">
@@ -1518,14 +1525,14 @@ function More({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-type TabId = "structure" | "atoms" | "view" | "look";
+type TabId = "crystal" | "content" | "view" | "style";
 const TABS: { id: TabId; label: string }[] = [
-  { id: "structure", label: "Structure" },
-  { id: "atoms", label: "Atoms & bonds" },
+  { id: "crystal", label: "Crystal" },
+  { id: "content", label: "Content" },
   { id: "view", label: "View" },
-  { id: "look", label: "Legend & axes" },
+  { id: "style", label: "Style" },
 ];
-const TabContext = createContext<TabId>("structure");
+const TabContext = createContext<TabId>("crystal");
 
 /**
  * A group of controls in the side column, shown when its tab is the open one. It can be folded away, and
