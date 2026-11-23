@@ -879,7 +879,9 @@ export function App() {
                 {physical ? (
                   <>
                     <input type="number" min={30} max={2400} step={50} data-testid="png-dpi" title="Resolution of the PNG, in dots per inch" value={dpiText} onChange={(e) => setDpiText(e.target.value)} />
-                    <span className="unit" data-testid="png-size">dpi ({pngSize[0]} × {pngSize[1]} px)</span>
+                    <span className="unit" title={`The PNG will be ${pngSize[0]} × ${pngSize[1]} px`}>
+                      dpi<span className="px-size" data-testid="png-size"> ({pngSize[0]} × {pngSize[1]} px)</span>
+                    </span>
                   </>
                 ) : (
                   <>
