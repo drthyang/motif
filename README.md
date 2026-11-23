@@ -193,8 +193,9 @@ writes the reference atom lists in `tests/reference/`.
   computed once per orbital and isovalue and shared by every atom and redraw. Axes: MOTIF's (x along a, y in
   the a–b plane, z along c*), or a local frame with z along [u v w] and x along a second direction.
   Each lobe is drawn as one smooth shape: its outline seen from the viewer (the convex hull of the projected points of its
-  surface, resampled evenly and drawn as a smooth curve; a lobe is nearly convex, so only a slight dent at the
-  nucleus is filled), filled with a gradient
+  surface, resampled evenly and drawn as a smooth curve; a lobe is nearly convex, so only a slight dent is filled).
+  An ordinary lobe is drawn running into the nucleus, as in the textbook picture (the isosurface of a p, d or
+  f orbital stops short of it, its radial part being zero there); a ring keeps its own shape, filled with a gradient
   as atoms are, see-through (60 % by default), at the depth of its centre. A ring (the band of dz², the cones
   of fz³) is cut into 12 segments, shaded with one gradient for the whole ring, and drawn as one see-through
   layer behind its atom (so its halves never lie over one another), with its near half drawn again in front

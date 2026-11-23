@@ -322,7 +322,12 @@ function orbitalLobes(
     // The outline: the convex hull of the projected points (a lobe, or a segment of a ring, is nearly convex, so this
     // is its outline up to a slight dent at the nucleus, and it cannot be ragged), resampled evenly along its length
     // and drawn as a smooth closed curve.
-    const hull = convexHull(pts.map((p) => [p[0], p[1]] as const));
+    // An ordinary lobe runs into the nucleus, as in the textbook picture: the isosurface of a p, d or f orbital stops
+    // short of it (the radial part is zero there), which would leave a hollow closed off by a flat edge, so the atom's
+    // centre is part of the outline. A ring circles the nucleus and keeps its own shape.
+    const [ax, ay] = project(centre);
+    const outline = lobe.ring === undefined ? [...pts.map((p) => [p[0], p[1]] as const), [ax, ay] as const] : pts.map((p) => [p[0], p[1]] as const);
+    const hull = convexHull(outline);
     if (hull.length < 3) continue;
     const xy = resampleClosed(hull, LOBE_STEPS);
     const radius = Math.max(...xy.map((p) => Math.hypot(p[0] - cx, p[1] - cy)));
