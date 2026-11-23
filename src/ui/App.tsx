@@ -1639,7 +1639,6 @@ Reset
         )}
       </main>
       <footer className="foot">
-        <span>Your file stays on this computer.</span>
         <span>MOTIF {VERSION}</span>
       </footer>
     </div>
