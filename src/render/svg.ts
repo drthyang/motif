@@ -119,7 +119,7 @@ export interface DrawnArrow {
 /** A filled polygon, or a highlight band (several wide strokes drawn as one translucent shape). */
 interface Shape<K extends string> {
   readonly kind: K;
-  /** Polygon: its corners "x,y x,y ...". Band: one "x1,y1 x2,y2" per segment. */
+  /** Polygon: its outline as SVG path data. Band: one "x1,y1 x2,y2" per segment. */
   readonly parts: readonly string[];
   readonly colour: string;
   readonly opacity: number;
@@ -129,6 +129,63 @@ interface Shape<K extends string> {
 }
 
 export type DrawnPolygon = Shape<"polygon">;
+
+/** How far, in px, a filled triangle reaches under the atoms and bonds it is drawn behind. */
+export const FILL_TUCK = 0.4;
+
+/**
+ * The outline of a filled polygon (a triangle of mutually bonded atoms) cut to the gap its atoms and bonds
+ * leave, in screen px: each side runs parallel to its bond at half the bond's drawn width inside it, and at
+ * each corner the outline follows the atom's round outline. The fill then meets every atom and bond exactly,
+ * at any angle of view, and covers none of them. In an orthographic view a sphere is drawn as a circle of its
+ * radius and a round rod as a band of constant width, so this is exact. Returns SVG path data, or null when
+ * the polygon is seen edge on or its atoms and bonds leave no gap.
+ */
+export function fillOutline(corners: readonly { x: number; y: number; r: number }[], halfWidth: number): string | null {
+  const n = corners.length;
+  if (n < 3) return null;
+  const area = corners.reduce((sum, p, i) => {
+    const q = corners[(i + 1) % n]!;
+    return sum + p.x * q.y - q.x * p.y;
+  }, 0) / 2;
+  if (Math.abs(area) < 1e-6) return null; // edge on
+  const turn = area > 0 ? 1 : -1;
+  // For each side i (corner i to corner i+1): direction, inward normal, length.
+  const sides = corners.map((p, i) => {
+    const q = corners[(i + 1) % n]!;
+    const length = Math.hypot(q.x - p.x, q.y - p.y);
+    const [dx, dy] = [(q.x - p.x) / length, (q.y - p.y) / length];
+    // The inside lies to the left of each side for a positive area, to the right for a negative one.
+    return { dx, dy, nx: -dy * turn, ny: dx * turn, length };
+  });
+  // Where the side, moved inward by halfWidth, leaves the outline of corner i (start) and meets that of corner i+1 (end).
+  const ends = sides.map((s, i) => {
+    const [p, q] = [corners[i]!, corners[(i + 1) % n]!];
+    const along = (r: number): number => (r > halfWidth ? Math.sqrt(r * r - halfWidth * halfWidth) : 0);
+    const [t0, t1] = [along(p.r), s.length - along(q.r)];
+    return {
+      ok: t1 > t0,
+      start: { x: p.x + s.nx * halfWidth + s.dx * t0, y: p.y + s.ny * halfWidth + s.dy * t0 },
+      end: { x: p.x + s.nx * halfWidth + s.dx * t1, y: p.y + s.ny * halfWidth + s.dy * t1 },
+    };
+  });
+  if (ends.some((e) => !e.ok)) return null; // the atoms cover a whole side: no gap is left to fill
+  let path = `M${n1(ends[0]!.start.x)},${n1(ends[0]!.start.y)}`;
+  for (let i = 0; i < n; i++) {
+    const e = ends[i]!;
+    const next = ends[(i + 1) % n]!;
+    const c = corners[(i + 1) % n]!;
+    path += ` L${n1(e.end.x)},${n1(e.end.y)}`;
+    if (c.r > halfWidth) {
+      // Round the atom's outline, the short way: from where this side meets it to where the next side leaves it.
+      const cross = (e.end.x - c.x) * (next.start.y - c.y) - (e.end.y - c.y) * (next.start.x - c.x);
+      path += ` A${n1(c.r)},${n1(c.r)} 0 0 ${cross > 0 ? 1 : 0} ${n1(next.start.x)},${n1(next.start.y)}`;
+    } else {
+      path += ` L${n1(next.start.x)},${n1(next.start.y)}`;
+    }
+  }
+  return `${path} Z`;
+}
 export type DrawnBand = Shape<"band">;
 
 /** A marked bond angle: the outline of its sector "x,y x,y ...", and where its label goes. */
@@ -364,10 +421,19 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     half(false);
   });
   for (const polygon of scene.polygons) {
-    // Just behind its own atoms and bonds.
+    // Just behind its own atoms and bonds, and cut to the gap between them, so it touches them without
+    // covering any part of them (see fillOutline).
     const corners = polygon.corners.map((c) => project(scene.spheres[c]!.centre));
     const depth = corners.reduce((sum, c) => sum + c[2], 0) / corners.length - 0.4;
-    drawn.push({ kind: "polygon", parts: [corners.map((c) => `${n1(c[0])},${n1(c[1])}`).join(" ")], colour: polygon.colour, opacity: polygon.opacity, width: 0, depth });
+    const look = polygon.rule !== undefined ? scene.stickStyles[polygon.rule] : undefined;
+    // The fill reaches FILL_TUCK px under its atoms and bonds (it is drawn behind them), so no hairline of
+    // background shows along an edge where the two would only touch.
+    const halfWidth = Math.max(0, ((look?.width ?? BOND_WIDTH) * scale) / 2 - FILL_TUCK);
+    const outline = fillOutline(
+      polygon.corners.map((c, k) => ({ x: corners[k]![0], y: corners[k]![1], r: Math.max(0, scene.styles[scene.spheres[c]!.style]!.radius * scale - FILL_TUCK) })),
+      halfWidth,
+    );
+    if (outline) drawn.push({ kind: "polygon", parts: [outline], colour: polygon.colour, opacity: polygon.opacity, width: 0, depth });
   }
   for (const sector of scene.sectors) {
     // The sector lies in the plane of the two bonds, between the surface of the apex atom and `radius`.
@@ -928,7 +994,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
         `<polygon class="angle" points="${d.points}" fill="${d.colour}" fill-opacity="${d.opacity}"/>` +
         `<polyline class="angle-arc" points="${d.arc}" fill="none" stroke="${d.colour}" stroke-width="3" stroke-linecap="round"/>\n`;
     } else if (d.kind === "polygon") {
-      out += `<polygon class="fill" points="${d.parts[0]}" fill="${d.colour}" fill-opacity="${d.opacity}"/>\n`;
+      out += `<path class="fill" d="${d.parts[0]}" fill="${d.colour}" fill-opacity="${d.opacity}"/>\n`;
     } else if (d.kind === "band") {
       // A group, so that where two strokes of the band overlap the colour does not double.
       out += `<g class="band" opacity="${d.opacity}" stroke="${d.colour}" stroke-width="${n1(d.width)}" stroke-linecap="round">`;

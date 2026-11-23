@@ -116,7 +116,9 @@ writes the reference atom lists in `tests/reference/`.
   the position of their middle along *a*, then *b*, then *c*, so the numbering does not depend on
   the view. A band is a wide translucent stroke behind one group or all of them; with one group
   chosen, the rule's other atoms and bonds are drawn pale. "Fill triangles" fills every three
-  mutually bonded atoms (a kagome net). Each rule has its own bond colour and thickness.
+  mutually bonded atoms (a kagome net). The fill is cut to the gap its atoms and bonds leave: each side runs half a bond width inside
+  its bond and each corner follows the atom's outline, so it meets them at any angle and covers none of them
+  (it reaches 0.4 px under them, where it is hidden, so no hairline shows). Each rule has its own bond colour and thickness.
 - A bond angle is the angle between two drawn bonds that meet at an atom. An angle rule names
   the atom at the apex and the two at the ends, and a range in degrees; every such angle in the
   range is marked with a translucent sector lying in the plane of the two bonds, between the

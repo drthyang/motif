@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CANVAS, layoutAll, renderSvg } from "../src/render/svg";
+import { DEFAULT_CANVAS, fillOutline, layoutAll, renderSvg } from "../src/render/svg";
 import { DEFAULT_VIEW, viewFromAngles } from "../src/render/view";
 import { atomsAndBonds, type BondRule } from "../src/scene/bonds";
 import { connectedGroups, triangles } from "../src/scene/highlight";
@@ -188,5 +188,47 @@ describe("leaving atoms out by a bond rule", () => {
     // The triangles are at the same places as before.
     const places = (sc: typeof all) => sc.polygons.map((p) => p.corners.map((c) => sc.spheres[c]!.centre.map((x) => x.toFixed(4)).join(",")).sort().join(" ")).sort();
     expect(places(tidy)).toEqual(places(all));
+  });
+});
+
+describe("filled triangles meet their atoms and bonds without covering them", () => {
+  /** The path's points: the start, each straight side's end, each arc's end (not the arc radii). */
+  const pathPoints = (d: string): [number, number][] =>
+    [...d.matchAll(/([MLA])([^MLAZ]*)/g)].map((m) => {
+      const numbers = m[2]!.trim().split(/[\s,]+/).map(Number);
+      return [numbers[numbers.length - 2]!, numbers[numbers.length - 1]!];
+    });
+
+  it("each side runs half a bond width inside the bond line and each corner follows the atom's outline (equilateral triangle, by hand)", () => {
+    // Corners of an equilateral triangle of side 300 px, atoms of radius 40 px, bonds 12 px wide (half 6).
+    const [r, h] = [40, 6];
+    const corners = [
+      { x: 0, y: 0, r },
+      { x: 300, y: 0, r },
+      { x: 150, y: 150 * Math.sqrt(3), r },
+    ];
+    const d = fillOutline(corners, h)!;
+    // Three straight sides and three arcs of the atom's radius.
+    expect(d.match(/L/g)?.length).toBe(3);
+    expect([...d.matchAll(/A([\d.]+),([\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])])).toEqual([[r, r], [r, r], [r, r]]);
+    const points = pathPoints(d);
+    expect(points.length).toBe(7); // start, then side end and arc end three times (the last arc returns to the start)
+    const distanceToLine = (p: [number, number], a: { x: number; y: number }, b: { x: number; y: number }): number =>
+      Math.abs((b.x - a.x) * (a.y - p[1]) - (a.x - p[0]) * (b.y - a.y)) / Math.hypot(b.x - a.x, b.y - a.y);
+    for (const p of points) {
+      // On an atom's outline (to the 0.1 px the SVG is written with) ...
+      expect(Math.min(...corners.map((c) => Math.abs(Math.hypot(p[0] - c.x, p[1] - c.y) - r)))).toBeLessThan(0.11);
+      // ... and h from the nearest bond line, on the inside.
+      const lines = corners.map((c, k) => distanceToLine(p, c, corners[(k + 1) % 3]!));
+      expect(Math.abs(Math.min(...lines) - h)).toBeLessThan(0.11);
+    }
+    // The first side lies along the bond y = 0: it starts sqrt(r^2 - h^2) from the first atom, h inside.
+    expect(points[0]![0]).toBeCloseTo(Math.sqrt(r * r - h * h), 1);
+    expect(points[0]![1]).toBeCloseTo(h, 1);
+  });
+
+  it("gives nothing when the atoms cover a whole side, or the triangle is seen edge on", () => {
+    expect(fillOutline([{ x: 0, y: 0, r: 60 }, { x: 100, y: 0, r: 60 }, { x: 50, y: 80, r: 60 }], 6)).toBeNull();
+    expect(fillOutline([{ x: 0, y: 0, r: 10 }, { x: 100, y: 0, r: 10 }, { x: 200, y: 0, r: 10 }], 6)).toBeNull();
   });
 });

@@ -107,6 +107,8 @@ export interface Band {
 export interface Polygon {
   /** Indices into Scene.spheres. */
   readonly corners: readonly number[];
+  /** The bond rule whose bonds are its sides (their thickness sets how far the fill stays off them). */
+  readonly rule?: number;
   readonly colour: string;
   readonly opacity: number;
 }
@@ -542,6 +544,7 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     .map((b) => ({ segments: b.segments, colour: BAND_COLOUR, width: 2.4 * Math.max(...b.segments.flat().map(radiusOf)), opacity: 0.5 }));
   const polygons: Polygon[] = polygonSpecs.map((p) => ({
     corners: p.corners,
+    rule: p.rule,
     colour: spec.bonds[p.rule]!.fillColour ?? mixHex(styles[spheres[p.corners[0]!]!.style]!.colour, "#ffffff", 0.55),
     opacity: 0.55,
   }));
