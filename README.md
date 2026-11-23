@@ -52,7 +52,15 @@ writes the reference atom lists in `tests/reference/`.
   the drag began is kept, and the figure is refitted on release.
 - The figure's canvas is 1440 px wide and takes the shape of its frame on the page, so the figure
   uses the whole frame and nothing is cut off at an unseen edge inside it (the user's choice,
-  2026-11-22). Zoom and move act on the structure; the legend and axes stay put and are drawn
+  2026-11-22). Or it has a size on paper, width and height in cm or in (the user's choice,
+  2026-11-23): the drawing is then 1440 units wide with that shape, the SVG states the size
+  (`width="8.5cm"`), so a drawing program places it at exactly that size, and the PNG is that size at
+  a chosen dpi (300 by default), with the dpi written in the file. The page shows the whole canvas,
+  as large as the frame allows.
+- Text sizes (legend names, axis letters, angle labels) can each be given in pt, and are then exact
+  in the saved figure, whatever the legend or axes size and the paper size. Left empty, a text size
+  follows the legend or axes size as before. Without a size on paper, 1 px of the figure counts as
+  1 pt (as Keynote and Illustrator place an SVG). Zoom and move act on the structure; the legend and axes stay put and are drawn
   over a structure that reaches them. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the
   buttons; move: Shift + drag, middle-button drag, arrow keys; fit again: double-click, 0, or
   "Fit"; "Box" then a drag zooms to a rectangle (Esc cancels). A plain wheel scrolls the page.

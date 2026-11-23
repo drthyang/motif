@@ -6,7 +6,7 @@ import { svgToPng } from "../render/png";
 import { previewFrame } from "../preview/data";
 import { PREVIEW_FROM, usePreview } from "../preview/usePreview";
 import { AnglePlot } from "./AnglePlot";
-import { DEFAULT_CANVAS, fitView, renderSvg, steadyFit, structureCentre, structureHeight, type Canvas, type Fit } from "../render/svg";
+import { DEFAULT_CANVAS, fitView, renderSvg, steadyFit, structureCentre, structureHeight, type Canvas, type Fit, type PhysicalSize, PT_PER, ptPerUnit, LEGEND_FONT, AXES_FONT, ANGLE_LABEL_SIZE } from "../render/svg";
 import { NO_ZOOM, isZoomed, panBy, zoomAbout, zoomToBox, zoomedFit, type Zoom } from "../render/zoom";
 import {
   between, directAxes, directionVector, fromBehind, lowIndexDirections, nearestDirection, openingNumbers, numbersFromView, readView, rolled, snapTo, viewAlong, viewFromNumbers,
@@ -54,8 +54,32 @@ export function App() {
   const [fileName, setFileName] = useState("");
   const [error, setError] = useState("");
   const [view, setView] = useState<View>(DEFAULT_VIEW);
-  // The figure's canvas: 1440 px wide, as high as the shape of its frame on the page makes it.
+  // The figure's canvas: by default 1440 px wide, as high as the shape of its frame on the page makes it;
+  // or a size on paper chosen by the user (cm or in), drawn 1440 units wide and stated in the SVG.
   const [canvas, setCanvas] = useState<Canvas>(DEFAULT_CANVAS);
+  const [canvasFixed, setCanvasFixed] = useState(false);
+  const [canvasUnit, setCanvasUnit] = useState<PhysicalSize["unit"]>("cm");
+  const [canvasSizeText, setCanvasSizeText] = useState<[string, string]>(["8.5", "6.5"]);
+  const canvasSize: [number, number] = [Number(canvasSizeText[0]), Number(canvasSizeText[1])];
+  const [sideMin, sideMax] = canvasUnit === "cm" ? [1, 100] : [0.4, 40];
+  const canvasSizeOk =
+    canvasSize.every((x) => Number.isFinite(x) && x >= sideMin && x <= sideMax) && canvasSize[1] / canvasSize[0] >= 0.2 && canvasSize[1] / canvasSize[0] <= 5;
+  // While a side is being typed (or is out of range) the canvas keeps the last valid size.
+  const lastPhysical = useRef<PhysicalSize>({ width: 8.5, height: 6.5, unit: "cm" });
+  if (canvasSizeOk) lastPhysical.current = { width: canvasSize[0], height: canvasSize[1], unit: canvasUnit };
+  const physical: PhysicalSize | null = canvasFixed ? lastPhysical.current : null;
+  // Text sizes in pt; empty = automatic.
+  const [fontPtText, setFontPtText] = useState<{ legend: string; axes: string; angle: string }>({ legend: "", axes: "", angle: "" });
+  const fontPt = (text: string): number | null => {
+    const x = Number(text);
+    return text.trim() !== "" && Number.isFinite(x) && x >= 1 && x <= 400 ? x : null;
+  };
+  const [legendFontPt, axesFontPt, angleFontPt] = [fontPt(fontPtText.legend), fontPt(fontPtText.axes), fontPt(fontPtText.angle)];
+  const [dpiText, setDpiText] = useState("300");
+  const dpi = Math.max(30, Math.min(2400, Number(dpiText) || 300));
+  // A PNG of a size on paper: exactly that size at the dpi given.
+  const perInch = physical ? (physical.unit === "in" ? 1 : 1 / 2.54) : 0;
+  const pngSize: [number, number] = physical ? [Math.round(physical.width * perInch * dpi), Math.round(physical.height * perInch * dpi)] : [0, 0];
   const [transparent, setTransparent] = useState(true);
   const [pngWidth, setPngWidth] = useState(2880);
   const [over, setOver] = useState(false);
@@ -177,6 +201,12 @@ export function App() {
   const [axesSizeText, setAxesSizeText] = useState("1");
   const sizeOf = (text: string): number => (Number(text) >= 0.2 && Number(text) <= 4 ? Number(text) : 1);
   const [legendSize, axesSize] = [sizeOf(legendSizeText), sizeOf(axesSizeText)];
+  // The automatic text sizes, in pt, for the placeholders (the legend's may shrink further to fit its row).
+  const autoPt = ((u: number) => ({
+    legend: +(LEGEND_FONT * legendSize * u).toFixed(1),
+    axes: +(AXES_FONT * axesSize * u).toFixed(1),
+    angle: +(ANGLE_LABEL_SIZE * u).toFixed(1),
+  }))(ptPerUnit(canvas));
   const [momentHeadText, setMomentHeadText] = useState("1");
   const [axesHeadText, setAxesHeadText] = useState("1");
   const [momentHeadSize, axesHeadSize] = [sizeOf(momentHeadText), sizeOf(axesHeadText)];
@@ -333,11 +363,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, showLegend, showAxes]);
+  }, [structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -426,23 +456,29 @@ export function App() {
   // Where the drawing sits inside its frame, in screen px: centred, with the canvas's own shape.
   const [drawingBox, setDrawingBox] = useState({ left: 0, top: 0, width: 0, height: 0 });
   useEffect(() => {
-    const el = figureRef.current;
+    const el = figureRef.current?.parentElement;
     if (!el) return;
     const measure = () => {
       if (el.clientWidth < 10 || el.clientHeight < 10) return;
-      // The canvas takes the shape of its frame, so the figure uses all of it and has no unseen edge inside
-      // the frame. Its width in px of the figure stays the same; its height follows the frame.
-      const height = Math.max(CANVAS_MIN_HEIGHT, Math.min(CANVAS_MAX_HEIGHT, Math.round((DEFAULT_CANVAS.width * el.clientHeight) / el.clientWidth)));
-      setCanvas((c) => (c.height === height ? c : { ...c, height }));
-      const k = Math.min(el.clientWidth / DEFAULT_CANVAS.width, el.clientHeight / height);
-      const [w, h] = [DEFAULT_CANVAS.width * k, height * k];
-      setDrawingBox({ left: (el.clientWidth - w) / 2 + el.clientLeft, top: (el.clientHeight - h) / 2 + el.clientTop, width: w, height: h });
+      // By default the canvas takes the shape of its frame, so the figure uses all of it. Its width in px of
+      // the figure stays the same; its height follows the frame. A fixed canvas keeps its own shape and is
+      // shown as large as the frame allows, centred; the frame shows exactly the canvas.
+      const width = DEFAULT_CANVAS.width;
+      const height = physical
+        ? Number(((width * physical.height) / physical.width).toFixed(2))
+        : Math.max(CANVAS_MIN_HEIGHT, Math.min(CANVAS_MAX_HEIGHT, Math.round((width * el.clientHeight) / el.clientWidth)));
+      setCanvas((c) =>
+        c.width === width && c.height === height && c.physical === (physical ?? undefined) ? c : { ...c, width, height, physical: physical ?? undefined },
+      );
+      const k = Math.min(el.clientWidth / width, el.clientHeight / height);
+      const [w, h] = [width * k, height * k];
+      setDrawingBox({ left: (el.clientWidth - w) / 2, top: (el.clientHeight - h) / 2, width: w, height: h });
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [scene !== null]);
+  }, [scene !== null, physical]);
   // The preview is shown once the worker has drawn a frame of this movement; until then the last full figure stays.
   const previewLive = previewing && firstFrame > 0 && preview.drawn >= firstFrame;
   // The page shows the figure as two layers: the structure, and on top of it the legend and axes. While the
@@ -648,9 +684,9 @@ export function App() {
               <span className="joined">
                 <button
                   data-testid="export-png"
-                  title="Image made from the same SVG, at the width given"
+                  title={physical ? "Image made from the same SVG, at the size on paper and the dpi given" : "Image made from the same SVG, at the width given"}
                   onClick={() => {
-                    svgToPng(figureToSave(), pngWidth).then(
+                    (physical ? svgToPng(figureToSave(), pngSize[0], pngSize[1], dpi) : svgToPng(figureToSave(), pngWidth)).then(
                       (blob) => download(blob, `${baseName}.png`),
                       (e: unknown) => setError(e instanceof Error ? e.message : String(e)),
                     );
@@ -658,8 +694,17 @@ export function App() {
                 >
                   Save PNG
                 </button>
-                <input type="number" min={100} step={10} title="Width of the PNG in pixels" value={pngWidth} onChange={(e) => setPngWidth(Number(e.target.value))} />
-                <span className="unit">px ({(pngWidth / canvas.width).toFixed(2)}×)</span>
+                {physical ? (
+                  <>
+                    <input type="number" min={30} max={2400} step={50} data-testid="png-dpi" title="Resolution of the PNG, in dots per inch" value={dpiText} onChange={(e) => setDpiText(e.target.value)} />
+                    <span className="unit" data-testid="png-size">dpi ({pngSize[0]} × {pngSize[1]} px)</span>
+                  </>
+                ) : (
+                  <>
+                    <input type="number" min={100} step={10} title="Width of the PNG in pixels" value={pngWidth} onChange={(e) => setPngWidth(Number(e.target.value))} />
+                    <span className="unit">px ({(pngWidth / canvas.width).toFixed(2)}×)</span>
+                  </>
+                )}
               </span>
             </>
           )}
@@ -732,6 +777,7 @@ Reset
                   ref={figureRef}
                   className={`figure${transparent ? "" : " white"}${boxMode ? " boxing" : ""}`}
                   data-testid="figure"
+                  style={drawingBox.width > 0 ? { left: drawingBox.left, top: drawingBox.top, width: drawingBox.width, height: drawingBox.height, right: "auto", bottom: "auto" } : undefined}
                   tabIndex={0}
                   aria-label="The figure. Drag to turn; Shift and drag to move; Control or Command and the wheel to zoom; 0 resets the zoom."
                   onPointerDown={onPointerDown}
@@ -1200,6 +1246,57 @@ Reset
                 </More>
               </Section>
             )}
+            <Section tab="style" title="Canvas" hint="Fit the frame: the figure is 1440 px wide and as high as the frame on the page makes it. Size on paper: the width and height you give, in cm or in; the SVG states that size, so a drawing program places it at exactly that size, and the PNG is that size at the dpi given under Save. Lines, spheres and the legend keep their proportions to the figure; text given in pt under Lettering keeps its size.">
+              <div className="row">
+                size
+                <select
+                  data-testid="canvas-mode"
+                  value={canvasFixed ? "fixed" : "frame"}
+                  onChange={(e) => {
+                    const fixed = e.target.value === "fixed";
+                    // Start from a single-column width with the shape the figure has now.
+                    if (fixed && !canvasFixed) {
+                      const w = canvasUnit === "cm" ? 8.5 : 3.35;
+                      setCanvasSizeText([`${w}`, `${+((w * canvas.height) / canvas.width).toFixed(2)}`]);
+                    }
+                    setCanvasFixed(fixed);
+                  }}
+                >
+                  <option value="frame">fit the frame</option>
+                  <option value="fixed">size on paper</option>
+                </select>
+                {!canvasFixed && <span className="sub">{canvas.width} × {canvas.height} px</span>}
+              </div>
+              {canvasFixed && (
+                <div className="row">
+                  <input type="number" step={0.1} min={sideMin} max={sideMax} data-testid="canvas-width" title="Width of the figure" value={canvasSizeText[0]} onChange={(e) => setCanvasSizeText((t) => [e.target.value, t[1]])} />
+                  ×
+                  <input type="number" step={0.1} min={sideMin} max={sideMax} data-testid="canvas-height" title="Height of the figure" value={canvasSizeText[1]} onChange={(e) => setCanvasSizeText((t) => [t[0], e.target.value])} />
+                  <select
+                    data-testid="canvas-unit"
+                    value={canvasUnit}
+                    title="Changing the unit converts the numbers"
+                    onChange={(e) => {
+                      const unit = e.target.value as PhysicalSize["unit"];
+                      const f = PT_PER[canvasUnit] / PT_PER[unit];
+                      setCanvasSizeText((t) => [`${+(Number(t[0]) * f).toFixed(3)}`, `${+(Number(t[1]) * f).toFixed(3)}`]);
+                      setCanvasUnit(unit);
+                    }}
+                  >
+                    <option value="cm">cm</option>
+                    <option value="in">in</option>
+                  </select>
+                  <button title="Swap width and height" data-testid="canvas-swap" onClick={() => setCanvasSizeText((t) => [t[1], t[0]])}>
+                    ⇄
+                  </button>
+                </div>
+              )}
+              {canvasFixed && !canvasSizeOk && (
+                <p className="error" data-testid="canvas-error">
+                  Each side must be between {sideMin} and {sideMax} {canvasUnit}, and the height between 0.2 and 5 times the width.
+                </p>
+              )}
+            </Section>
             <Section tab="style" title="Look" hint="A preset sets the surfaces, outlines, lettering weight and legend sizes together; each can still be changed afterwards. The surfaces are vector shading only, so the figure stays an editable SVG.">
               <div className="row">
                 preset
@@ -1278,7 +1375,7 @@ Reset
                 Keep short axis arrows readable
               </label>
             </Section>
-            <Section tab="style" title="Lettering" hint="The font must be a font of this computer: the PNG is drawn from the SVG alone, which cannot use a font loaded by the page. Text stays live text in the SVG.">
+            <Section tab="style" title="Lettering" hint="A text size in pt is exact in the saved figure: with a size on paper, 9 pt is 9 pt there; with Fit the frame, 1 px of the figure counts as 1 pt (as Keynote and Illustrator place an SVG). The font must be a font of this computer: the PNG is drawn from the SVG alone, which cannot use a font loaded by the page. Text stays live text in the SVG.">
               <div className="row">
                 font
                 <select
@@ -1312,6 +1409,16 @@ Reset
                   <option value={500}>medium</option>
                   <option value={800}>heavy</option>
                 </select>
+              </div>
+              <p className="sub">Text size in pt (empty: in proportion to the legend or axes size; now {autoPt.legend}, {autoPt.axes}, {autoPt.angle} pt)</p>
+              <div className="row">
+                legend
+                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-legend" placeholder={`${autoPt.legend}`} value={fontPtText.legend} onChange={(e) => setFontPtText((t) => ({ ...t, legend: e.target.value }))} />
+                axes
+                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-axes" placeholder={`${autoPt.axes}`} value={fontPtText.axes} onChange={(e) => setFontPtText((t) => ({ ...t, axes: e.target.value }))} />
+                angles
+                <input type="number" step={0.5} min={1} max={400} data-testid="font-pt-angle" placeholder={`${autoPt.angle}`} value={fontPtText.angle} onChange={(e) => setFontPtText((t) => ({ ...t, angle: e.target.value }))} />
+                pt
               </div>
             </Section>
             <Section tab="view" title="Direction" hint="The view is four numbers: the cell axis that is up, turn about it, tilt (from above when positive) and roll about the line of sight. The line under the figure always shows them, and the nearest low-index direction. A direction given here points at you.">
@@ -1478,6 +1585,7 @@ const PRESETS: Record<string, { atoms: Material; bonds: Material; arrows: Materi
 /** Limits of the canvas height (its width is 1440): a very flat or very tall window still gives a usable figure. */
 const CANVAS_MIN_HEIGHT = 620;
 const CANVAS_MAX_HEIGHT = 2600;
+
 /** A drag released within this many degrees of a low-index direction snaps onto it. */
 const SNAP_DEGREES = 4;
 /** Length of the turn shown when the view changes by a click, ms. */

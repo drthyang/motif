@@ -18,9 +18,41 @@ export interface Canvas {
   readonly margin: number;
   /** Background colour, or null for a transparent figure. */
   readonly background: string | null;
+  /**
+   * The size of the figure on paper, if one is chosen. The SVG then states it (width="8.5cm"), and the
+   * drawing's own units (`width` by `height`, which must have the same shape) are scaled to it.
+   */
+  readonly physical?: PhysicalSize | undefined;
+}
+
+export interface PhysicalSize {
+  readonly width: number;
+  readonly height: number;
+  readonly unit: "cm" | "in";
 }
 
 export const DEFAULT_CANVAS: Canvas = { width: 1440, height: 1100, margin: 50, background: null };
+
+/** Points per inch and per centimetre. */
+export const PT_PER: Record<PhysicalSize["unit"], number> = { in: 72, cm: 72 / 2.54 };
+
+/**
+ * Points of the figure per unit of the drawing. With a size on paper this is exact. Without one the SVG's
+ * width is in px, and one px is taken as one pt (as Keynote and Illustrator place an SVG).
+ */
+export function ptPerUnit(canvas: Canvas): number {
+  const p = canvas.physical;
+  return p ? (p.width * PT_PER[p.unit]) / canvas.width : 1;
+}
+
+/** A text size in units of the drawing: the size in pt if one is given, else the automatic size. */
+export function textSize(pt: number | null | undefined, automatic: number, canvas: Canvas): number {
+  return pt !== null && pt !== undefined && pt > 0 ? pt / ptPerUnit(canvas) : automatic;
+}
+
+/** Automatic text sizes, in units of the drawing (multiplied by the legend or axes size). */
+export const LEGEND_FONT = 92;
+export const AXES_FONT = 76;
 
 /** Look of the parts that are not atoms. Lengths in angstrom scale with the drawing; px do not. */
 export const BOND_COLOUR = "#b4bbc1";
@@ -364,7 +396,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const back = Array.from({ length: pieces + 1 }, (_, k) => at(1 - k / pieces, inner));
     const text = (pts: Vec3[]): string => pts.map((p) => `${n1(p[0])},${n1(p[1])}`).join(" ");
     const middle = at(0.5, (inner + sector.radius) / 2);
-    const labelAt = at(0.5, sector.radius + (0.62 * ANGLE_LABEL_SIZE) / scale);
+    const labelAt = at(0.5, sector.radius + (0.62 * textSize(scene.angleFontPt, ANGLE_LABEL_SIZE, canvas)) / scale);
     drawn.push({
       kind: "sector",
       points: text([...outer, ...back]),
@@ -672,7 +704,8 @@ export function legendLayout(scene: Scene, canvas: Canvas, available: number, px
     let x = 60 * k;
     for (const e of scene.legend) {
       const r = Math.max(14, (44 * scene.styles[e.style]!.radius) / largest) * k;
-      const fontSize = 92 * k;
+      // A text size given in pt is kept exactly; only the spheres and gaps shrink if the row does not fit.
+      const fontSize = textSize(scene.legendFontPt, LEGEND_FONT * k, canvas);
       const textX = x + 2 * r + 22 * k;
       items.push({ style: e.style, name: e.name, x: x + r, y: canvas.height - 92, r, textX, fontSize });
       x = textX + textWidth(e.name, fontSize) + 70 * k;
@@ -741,7 +774,8 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
   const k = scene.axesSize ?? 1;
   const headSize = k * (scene.axesHeadSize ?? 1);
   const [lengthPx, shaftPx, headPx, headWidthPx] = [AXIS_LENGTH * k, AXIS_SHAFT * k, AXIS_HEAD * headSize, AXIS_HEAD_WIDTH * headSize];
-  const [labelGap, fontSize] = [42 * k, 76 * k];
+  const fontSize = textSize(scene.axesFontPt, AXES_FONT * k, canvas);
+  const labelGap = 42 * k * Math.max(1, fontSize / (AXES_FONT * k));
   // Where each letter goes, relative to the origin; an axis seen end on has no direction on screen and gets no letter.
   const letters = arrows.map((a) => {
     const n = Math.hypot(a.dx, a.dy);
@@ -842,7 +876,10 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
 export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CANVAS, fit?: Fit, part: "all" | "structure" | "band" = "all"): string {
   const drawn = part === "band" ? [] : layoutAll(scene, view, canvas, fit);
   const { width, height } = canvas;
-  let out = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">\n<defs>\n`;
+  // With a size on paper the SVG states it, so a drawing program places the figure at exactly that size.
+  const p = canvas.physical;
+  const size = p ? `width="${+p.width.toFixed(3)}${p.unit}" height="${+p.height.toFixed(3)}${p.unit}"` : `width="${width}" height="${height}"`;
+  let out = `<svg xmlns="http://www.w3.org/2000/svg" ${size} viewBox="0 0 ${width} ${height}">\n<defs>\n`;
   const used = new Set([...drawn.flatMap((d) => (d.kind === "sphere" ? [d.style] : [])), ...scene.legend.map((e) => e.style)]);
   const plain = new Set<string>();
   let pies = false;
@@ -909,9 +946,10 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
   // Angle labels go on top of the structure, so that no atom hides a number.
   for (const d of drawn) {
     if (d.kind !== "sector" || !d.label) continue;
+    const angleFont = textSize(scene.angleFontPt, ANGLE_LABEL_SIZE, canvas);
     out +=
-      `<text class="angle-label" x="${n1(d.label.x)}" y="${n1(d.label.y + 0.35 * ANGLE_LABEL_SIZE)}" text-anchor="middle" font-family="${fontList(scene.fontFamily)}" font-weight="${Math.min(scene.letterWeight, 600)}" ` +
-      `font-size="${ANGLE_LABEL_SIZE}" fill="${mixHex(d.colour, "#000000", 0.35)}" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${d.label.text}</text>\n`;
+      `<text class="angle-label" x="${n1(d.label.x)}" y="${n1(d.label.y + 0.35 * angleFont)}" text-anchor="middle" font-family="${fontList(scene.fontFamily)}" font-weight="${Math.min(scene.letterWeight, 600)}" ` +
+      `font-size="${n1(angleFont)}" fill="${mixHex(d.colour, "#000000", 0.35)}" stroke="#ffffff" stroke-width="5" stroke-linejoin="round" paint-order="stroke">${d.label.text}</text>\n`;
   }
   if (fit?.clip) out += "</g>\n";
   if (part === "structure") return `${out}</svg>\n`;
