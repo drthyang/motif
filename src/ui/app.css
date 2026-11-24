@@ -228,3 +228,34 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .orbital-row .lab { width: 18px; padding-top: 3px; }
 .orbital-row .picks { display: flex; flex-wrap: wrap; gap: 4px 12px; min-width: 0; padding-top: 3px; }
 .pick { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; }
+/* Phones and tablets: controls large enough for a finger, and inputs at 16 px so the page does not zoom in when
+   one is tapped. The figure takes no long-press menu or text selection. */
+.figure { -webkit-touch-callout: none; -webkit-user-select: none; }
+@media (hover: none) and (pointer: coarse) {
+  button, .button, select, input[type="number"], input[type="text"] { height: 40px; font-size: 16px; }
+  input[type="number"] { width: 80px; }
+  input[type="checkbox"] { width: 20px; height: 20px; }
+  input[type="color"] { width: 36px; height: 36px; }
+  .row { min-height: 40px; }
+  .tools button { min-width: 40px; height: 40px; }
+  .zoom-bar button { min-width: 40px; height: 38px; }
+  .tabs button { padding: 16px 0 13px; font-size: 15px; }
+  .section > summary { padding: 20px 0 14px; }
+  .help, .info { width: 30px; height: 30px; }
+  button.plain { min-width: 32px; min-height: 32px; justify-content: center; }
+  .controls { font-size: 13px; }
+}
+/* Phones: the header's buttons and the toolbar each stay on one line that scrolls sideways, so the figure
+   starts near the top of the screen; the zoom bar is smaller. */
+@media (max-width: 600px) {
+  :root { --edge: 14px; }
+  .topbar { padding: 10px var(--edge); gap: 8px; }
+  .mark { font-size: 24px; }
+  .actions, .toolbar, .tools { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  .actions::-webkit-scrollbar, .toolbar::-webkit-scrollbar, .tools::-webkit-scrollbar { display: none; }
+  .actions > *, .toolbar > *, .tools > * { flex: none; }
+  .stage { padding-top: 10px; gap: 8px; }
+  .zoom-bar { right: 6px; top: 6px; }
+  .zoom-bar button { min-width: 34px; height: 32px; font-size: 14px; padding: 2px 6px; }
+  .zoom-value { min-width: 40px; }
+}

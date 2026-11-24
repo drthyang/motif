@@ -43,6 +43,7 @@ import {
   type SavedSettings,
   type SettingField,
 } from "./settings";
+import { isDoubleTap, rollFor, twoFingerStep, type Touch } from "./touch";
 import { PARTS, PUBLISHERS, journalsOf, partWidth, journalSize, journalTextPt, type PartId } from "./journals";
 import { type FeatureExample, readFeatures } from "./examples";
 import featuresText from "../../examples/features.json?raw";
@@ -668,6 +669,11 @@ export function App() {
   const figureRef = useRef<HTMLDivElement>(null);
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const gesture = useRef<"turn" | "move" | "box" | "pinch" | null>(null);
+  // Touch: where and when each finger went down, the last finished one-finger touch (for a double tap), and how
+  // far the two fingers of a pinch have turned so far (the roll starts only after a clear turn; see touch.ts).
+  const touchDown = useRef(new Map<number, { x: number; y: number; at: number }>());
+  const lastTouch = useRef<Touch | null>(null);
+  const twistGathered = useRef(0);
   const [boxMode, setBoxMode] = useState(false);
   const [box, setBox] = useState<{ from: [number, number]; to: [number, number] } | null>(null);
   const centre = scene ? structureCentre(scene, canvas) : ([0, 0] as [number, number]);
@@ -693,9 +699,11 @@ export function App() {
     if (!scene) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (e.pointerType === "touch") touchDown.current.set(e.pointerId, { x: e.clientX, y: e.clientY, at: e.timeStamp });
     last.current = { x: e.clientX, y: e.clientY };
     if (pointers.current.size === 2) {
       gesture.current = "pinch";
+      twistGathered.current = 0;
       setActing("pinch");
       setHeldFit(null);
       return;
@@ -720,9 +728,18 @@ export function App() {
     if (gesture.current === "pinch") {
       const other = [...pointers.current.entries()].find(([id]) => id !== e.pointerId)?.[1];
       if (!before || !other) return;
-      const [was, now] = [Math.hypot(before.x - other.x, before.y - other.y), Math.hypot(e.clientX - other.x, e.clientY - other.y)];
-      const middle = toCanvas((e.clientX + other.x) / 2, (e.clientY + other.y) / 2);
-      if (was > 0) setZoom((z) => zoomAbout(z, now / was, middle, centre));
+      // Two fingers: spread to zoom about their middle, drag to move, twist to roll (see touch.ts).
+      const step = twoFingerStep(before, { x: e.clientX, y: e.clientY }, other);
+      const about = toCanvas(step.about.x, step.about.y);
+      const k = canvasScale();
+      setZoom((z) => panBy(zoomAbout(z, step.scale, about, centre), step.dx * k, step.dy * k));
+      const roll = rollFor(twistGathered.current, step.turn);
+      twistGathered.current += step.turn;
+      // A clockwise twist turns the picture clockwise (as Alt + drag to the right does).
+      if (roll !== 0) {
+        cancelAnimationFrame(turning.current);
+        setView((v) => rolled(v, -roll));
+      }
       return;
     }
     const [dx, dy] = [e.clientX - last.current.x, e.clientY - last.current.y];
@@ -751,6 +768,16 @@ export function App() {
   };
   const onPointerUp = (e: PointerEvent) => {
     pointers.current.delete(e.pointerId);
+    const down = touchDown.current.get(e.pointerId);
+    touchDown.current.delete(e.pointerId);
+    if (down && gesture.current === "turn" && pointers.current.size === 0) {
+      // A double tap fits the whole structure again, as a double click does.
+      const t: Touch = { down, up: { x: e.clientX, y: e.clientY }, downAt: down.at, upAt: e.timeStamp };
+      if (isDoubleTap(lastTouch.current, t)) {
+        lastTouch.current = null;
+        resetZoom();
+      } else lastTouch.current = t;
+    }
     if (gesture.current === "box" && box && scene) {
       setZoom((z) => zoomToBox(z, box.from, box.to, centre, canvas.width, structureHeight(scene, canvas)));
       setBoxMode(false);
@@ -1135,6 +1162,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                     }
                     turntable={dragMode === "turntable"}
                     snap={snap}
+                    touch={TOUCH_SCREEN}
                   />
                 )}
                 {/* Always there, hidden when not zoomed: the frame must not change height when it appears, or the figure would jump. */}
@@ -2562,6 +2590,9 @@ function fontInstalled(family: string): boolean {
   return installed;
 }
 
+/** A phone or tablet: the main pointer is a finger and nothing hovers. The hints under the figure then name gestures. */
+const TOUCH_SCREEN = typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+
 const IS_MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
 /** "Pm-3m[0,0,0]GM4-(0,0,a)[Ti:a:dsp]T1u(a)" -> irrep "GM4-", part "Ti T1u" (the full label stays in the tooltip). */
@@ -2577,9 +2608,16 @@ type ControlId = "turn" | "roll" | "move" | "zoom" | "box" | "fit";
  * The ways to handle the figure, in one quiet line under it: a key, then what it does. The fuller
  * explanation is in each item's tooltip. The control in use (or whose key is held) is lit.
  */
-function Controls({ active, turntable, snap }: { active: ControlId | null; turntable: boolean; snap: boolean }) {
-  const items: { id: ControlId; key: string; does: string; more: string }[] = [
-    { id: "turn", key: "Drag", does: "turn", more: (turntable ? "Left–right turns, up–down tilts." : "Turns freely.") + (snap ? " On release it snaps to a nearby crystal direction." : "") },
+function Controls({ active, turntable, snap, touch }: { active: ControlId | null; turntable: boolean; snap: boolean; touch: boolean }) {
+  const turnMore = (turntable ? "Left–right turns, up–down tilts." : "Turns freely.") + (snap ? " On release it snaps to a nearby crystal direction." : "");
+  const items: { id: ControlId; key: string; does: string; more: string }[] = touch ? [
+    { id: "turn", key: "1 finger", does: "turn", more: turnMore },
+    { id: "move", key: "2 fingers", does: "move", more: "Drag with two fingers to move the structure." },
+    { id: "zoom", key: "Pinch", does: "zoom", more: "Pinch to zoom about the middle of your fingers. Box, then a drag, zooms to a rectangle." },
+    { id: "roll", key: "Twist", does: "roll", more: "Turn two fingers to roll the picture in the screen plane; it starts after a clear twist, so a pinch does not roll." },
+    { id: "fit", key: "Double-tap", does: "fit", more: "Fits the whole structure again." },
+  ] : [
+    { id: "turn", key: "Drag", does: "turn", more: turnMore },
     { id: "roll", key: IS_MAC ? "⌥" : "Alt", does: "roll", more: `${IS_MAC ? "Option" : "Alt"} + drag rolls the picture in the screen plane.` },
     { id: "move", key: "⇧", does: "move", more: "Shift + drag moves the structure; so do a middle-button drag and the arrow keys." },
     { id: "zoom", key: IS_MAC ? "⌘" : "Ctrl", does: "zoom", more: `${IS_MAC ? "Command" : "Ctrl"} + scroll zooms at the pointer; so do a pinch and the + and − keys. Box, then a drag, zooms to a rectangle.` },

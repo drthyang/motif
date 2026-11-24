@@ -360,6 +360,14 @@ Structure tab; the user's choices of 2026-11-23.
   reaches them. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the buttons; move: Shift + drag, middle-button
   drag, arrow keys; fit again: double-click, 0, or "Fit"; "Box" then a drag zooms to a rectangle (Esc
   cancels). A plain wheel scrolls the page.
+- **Phones and tablets** (2026-11-23; `src/ui/touch.ts`, `tests/touch.test.ts`). One finger turns, as a drag
+  does. Two fingers do three things at once, as in a map app: spreading them zooms about their middle, moving
+  them moves the structure, and twisting them rolls the picture (clockwise twist, clockwise roll). The roll
+  starts only after the fingers have turned 12° in one gesture, then catches up and follows them, so a pinch
+  does not roll by accident. A double tap (two taps within 320 ms, each under 300 ms and 10 px) fits again. On a
+  touch screen (no hover, coarse pointer) the controls line names these gestures, controls are 40 px high and
+  inputs 16 px, so the page does not zoom when one is tapped. Below 600 px wide the header buttons and the
+  toolbar each stay on one line that scrolls sideways, so the figure starts near the top of the screen.
 - **The controls line.** One quiet line under the figure names the main controls (Drag turn, ⌥ roll, ⇧ move,
   ⌘ zoom, Double-click fit; Alt and Ctrl off a Mac), with the details in each one's tooltip; the one in use,
   or whose key is held, is lit. The "?" hides the line.
