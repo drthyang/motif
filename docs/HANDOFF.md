@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 292 tests, about two seconds
+npx tsc -b && npx vitest run    # 298 tests, about two seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -34,7 +34,9 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   9e32821 orbitals and atoms cut through one another as true 3D solids: where a lobe passes in front of an
   atom's surface, the edge is traced from the exact orbital (not its mesh) and drawn as a smooth curve. While
   the view moves the edge is found on a coarser grid (a draft); once the view is still, and in every saved
-  figure, it is drawn in full. Details and checks in docs/CONVENTIONS.md, "Orbitals".
+  figure, it is drawn in full. Since f239ef1 an orbital's local z can come from each atom's own bonds
+  ("longest bond to" a species, or "line through two" atoms of it), so an orbital order shows. Details and
+  checks in docs/CONVENTIONS.md, "Orbitals".
 - SVG is the source of truth; PNG is drawn from the same SVG. Three parts: `src/structure` (file to
   atoms), `src/scene` (what is shown, plain data), `src/render` (scene + view to SVG), plus `src/preview`
   (GPU drawing while a large structure moves) and `src/ui`.
@@ -43,8 +45,10 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
 - Defaults (the user's): a Nature single column, 89 mm, 4:3; Open Sans; text 7 pt, with the legend and
   axes in proportion to it; displacement arrows green, 1.5 A; moment arrows with the tail 80 % of the head
   side; up to 100,000 atoms.
-- Journal templates (Layout tab, Canvas): Nature, Science, Physical Review and ACS widths and text sizes,
-  from `src/ui/journals.ts` (commit 83550d6). After a turn by dragging the figure keeps its scale (664d6e8).
+- Journal templates (Layout tab, Canvas): widths and text sizes for Nature, Science, Physical Review and ACS
+  (commit 83550d6), and Nature Communications, Nature Materials, RSC, Elsevier, J. Phys.: Condens. Matter and
+  American Mineralogist (ef9dde5), each from the publisher's own page; sources in `src/ui/journals.ts`. The IUCr
+  journals, Science Advances and Wiley's journals are not included: their pages refuse automated access. After a turn by dragging the figure keeps its scale (664d6e8).
 
 ## Documentation
 
@@ -59,10 +63,11 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   set up). The user's choice (2026-11-23): keep the link in the README, with a grey "app: not yet live" badge
   and a line saying it will work once published. When the app goes live, change the badge back to "app: live"
   and drop that line.
-- Five feature examples (commits 6547441 and 2329288): atomic structure, magnetic structure, distortion mode,
-  orbitals and an RMC configuration (opened folded), listed in `examples/features.json` and described in
+- Five feature examples (commits 6547441, 2329288 and f239ef1): atomic structure, magnetic structure, distortion
+  mode, orbital order and an RMC configuration (opened folded), listed in `examples/features.json` and described in
   `examples/README.md`; the format is in docs/CONVENTIONS.md. The distortion mode is SrTiO3 I4/mcm (COD 2310687,
-  the octahedra turned about c, the user's choice), seen down c. The RMC file
+  the octahedra turned about c, the user's choice), seen down c. The orbital order is LaMnO3 (COD 1006141): Mn
+  dz² along each Mn's long bond, O pz along each Mn–O–Mn line (the user's choice). The RMC file
   `examples/SrTiO3-supercell_generated.rmc6f` is generated for MOTIF by `scripts/make_rmc_example.py`, not a
   fit to data. Since ed88c53 the page offers only these five (numbered cards on the
   start page, and the Examples menu); the other files in `examples/` stay because the tests use them. A Close

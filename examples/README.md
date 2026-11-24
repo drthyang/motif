@@ -16,7 +16,7 @@ gives the plain defaults.
 | Atomic structure | `quartz_COD-9009666.cif` | nothing: quartz with the bonds MOTIF suggests (Si–O) |
 | Magnetic structure | `MnF2-antiferromagnet_handwritten.mcif` | nothing: MnF2 with its moments along +*c* and −*c* |
 | Distortion mode | `SrTiO3-octahedral-rotation_COD-2310687.cif` | one TiO2 layer, 2 × 2 cells (cells 0 to 2 along *a* and *b*, −0.01 to 0.01 along *c*), seen down *c*: the octahedra turned about *c* by the mode R4+ |
-| Orbitals | `perovskite-SrTiO3_COD-9006864.cif` | one TiO6 octahedron (cells −0.5 to 0.5 along *a*, *b*, *c*), Sr hidden, the two e_g orbitals of Ti (dz², dx²−y²), pointing at the O atoms, size 2.4 Å (the farthest point of the surface from the nucleus) |
+| Orbital order | `LaMnO3-orbital-order_COD-1006141.cif` | one MnO2 layer, 2 × 2 cells (cells 0 to 2 along *a* and *b*, −0.06 to 0.06 along *c*), seen down *c*, bonds not completed outside the slab; dz² on each Mn along its own longest Mn–O bond (size 1.9 Å), pz on each O along the line through its two Mn (size 0.9 Å, green and gold) |
 | RMC configuration | `SrTiO3-supercell_generated.rmc6f` | the 6 × 6 × 6 configuration, opened folded into one averaged cell |
 
 Only one TiO2 layer is shown in the distortion-mode example: seen down *c*, the layers at *z* = 0 and *z* = 1/2,
@@ -38,6 +38,7 @@ and can still be opened with **Open file…**.
 | `CoSn-type-kagome_handwritten.cif` | CoSn structure type, a kagome net of Co; written by hand for MOTIF from the textbook description (illustrative cell lengths) | none |
 | `MnF2-antiferromagnet_handwritten.mcif` | MnF2, moments along ±*c*; written by hand for MOTIF from the textbook description (illustrative numbers) | none |
 | `olivine-FeMg_COD-1541262.cif` | olivine with two sites shared by Fe and Mg | COD 1541262 |
+| `LaMnO3-orbital-order_COD-1006141.cif` | LaMnO3, orthorhombic Pbnm, 298 K (Rodríguez-Carvajal et al. 1998), unchanged from the COD | COD 1006141 |
 | `SrTiO3-octahedral-rotation_COD-2310687.cif` | SrTiO3, tetragonal I4/mcm, as the mode R4+ of the cubic perovskite: ISODISTORT's mode decomposition (see below) | COD 2310687 |
 | `BaTiO3-ferroelectric-distortion_COD-2100858.cif` | BaTiO3, tetragonal P4mm, as the polar mode GM4- of the cubic perovskite: ISODISTORT's mode decomposition of COD 2100858 against the cubic cell of 2100862 (Buttner & Maslen 1992) | COD 2100858 |
 | `SrTiO3-supercell_generated.rmc6f` | an illustrative RMCProfile configuration of cubic SrTiO3, made for MOTIF (see below) | generated from COD 9006864 |
@@ -65,6 +66,26 @@ also worked by hand (2026-11-23): 0.07654 × 0.06402 = 0.00490; atan(0.0383 / 1.
 
 BaTiO3 (`BaTiO3-ferroelectric-distortion_COD-2100858.cif`) is no longer a feature example; it stays here
 because `tests/distortion.test.ts` uses it.
+
+## The orbital-order example
+
+`LaMnO3-orbital-order_COD-1006141.cif` is COD 1006141, unchanged: J. Rodríguez-Carvajal et al., Phys. Rev. B 57,
+R3189 (1998), doi:10.1103/PhysRevB.57.R3189; Pbnm, 298 K. What it shows was chosen by the user (2026-11-23):
+each atom's orbital along its own bonds, and O 2p along each Mn–O–Mn line.
+
+- Each Mn carries dz² with its *z* along its longest Mn–O bond (the orbital rule's "longest bond to O").
+- Each O carries pz with its *z* along the line through its two Mn ("line through two").
+- One MnO2 layer is shown, seen down *c*; bond rules do not add atoms outside the slab (`completeBonds: false`).
+
+Checked against a hand calculation from the published sites (`tests/orbitals.test.ts`): the Mn–O bonds are
+1.906, 1.968 (apical) and 2.180 Å. The long bond about Mn (1/2, 0, 0) is ±(1.249, 1.762, 0.295) Å and about
+Mn (0, 1/2, 0) is ±(1.249, −1.762, −0.295) Å, so it alternates in the *ab* plane; its tilt of 0.295 Å out of the
+plane is opposite in the *z* = 0 and *z* = 1/2 layers. The p axis of the apical O1 is along *c*, that of O2 lies in
+the *ab* plane. The symmetry expansion is checked against a gemmi reference (20 atoms, `tests/reference/`). The
+bond lengths and vectors were also recomputed by hand on 2026-11-23 from the file's cell, sites and operations.
+
+The cubic SrTiO3 file (COD 9006864) is no longer an orbital example; it stays because other tests and the
+generated RMC configuration use it.
 
 ## The generated RMC configuration
 

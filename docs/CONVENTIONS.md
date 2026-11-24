@@ -155,6 +155,12 @@ Structure tab; the user's choices of 2026-11-23.
   and shared by every atom and redraw.
 - **Axes.** MOTIF's (x along a, y in the a–b plane, z along c*), or a local frame with z along [u v w] and x
   along a second direction.
+- **Axes from each atom's bonds** (the orbital rule's "local z"; the user's choice, 2026-11-23, so that an
+  orbital order shows). z is taken from the atom's own bonds to a chosen species, within its first shell (out
+  to 1.25 times the nearest of that species): "longest bond to" puts z along the atom's longest such bond,
+  "line through two" along the line through its two nearest atoms of that species (as for an O between two
+  metals). Checked on LaMnO3 against a hand calculation from the published sites (`tests/orbitals.test.ts`;
+  [examples/README.md](../examples/README.md#the-orbital-order-example)).
 - **A lobe.** Each lobe is drawn as one smooth shape: its outline seen from the viewer (the convex hull of the
   projected points of its surface, resampled evenly and drawn as a smooth curve; a lobe is nearly convex, so
   only a slight dent is filled). An ordinary lobe is drawn running into the nucleus, as in the textbook
@@ -279,11 +285,23 @@ Structure tab; the user's choices of 2026-11-23.
   | Nature | 89 mm (single column), 120 mm (one and a half, of 120 to 136), 183 mm (double) | 7 pt (5 to 7 asked) |
   | Science | 5.7, 12.1, 18.4 cm (1, 2, 3 columns) | 7 pt (not smaller than 5) |
   | Physical Review | 8.5 cm (1 column), 17.8 cm (2 columns) | capitals and numerals 2 mm high |
-  | ACS journals | 3.33 in (single), 7 in (double) | 7 pt (at least 4.5) |
+  | ACS journals (JACS, Inorg. Chem., Chem. Mater.) | 3.33 in (single), 7 in (double) | 7 pt (at least 4.5) |
+  | Nature Communications | 88 mm (single), 180 mm (double) | 7 pt (no size given) |
+  | Nature Materials | 88 mm (1 column), 180 mm (2) | 7 pt (5 to 7 asked) |
+  | RSC journals (Dalton Trans., CrystEngComm, J. Mater. Chem. A and C) | 8.3 cm (single), 17.1 cm (double) | 7 pt (no figure text size given) |
+  | Elsevier journals (J. Solid State Chem., J. Alloys Compd.) | 90 mm (single), 140 mm (1.5), 190 mm (double) | 7 pt |
+  | J. Phys.: Condens. Matter | 8.5 cm (single), 15 cm (double) | 8 pt (8 to 12 asked) |
+  | American Mineralogist | 19 picas, 3.17 in (1 column); 39 picas, 6.5 in (2 columns) | 8 pt (at least 8) |
 
   Science gives two sets of widths; the user chose those of its "initial manuscript" page over the 3.5, 5.0
   and 7.3 in of another Science page. APS gives no number for two columns: 17.8 cm (7 in) is the REVTeX
-  two-column page width. For Physical Review the text size is 2 mm over the cap height of the chosen font
+  two-column page width; Physical Review B and Materials follow the general APS rules. The last six templates
+  were added on 2026-11-23, each from the publisher's own page. Where a journal gives no text size, the
+  template sets 7 pt: for Nature Communications the largest size of the Nature journals' guide, for RSC the size
+  RSC gives for atom labels in chemical structures. The Elsevier template uses Elsevier's common artwork rules,
+  as the journals' own guides could not be read; a journal may have rules beyond these. Not included, because
+  their pages refuse automated access: the IUCr journals, Science Advances and Wiley's journals.
+  For Physical Review the text size is 2 mm over the cap height of the chosen font
   (measured in the browser), rounded up to half a point: 8 pt in Open Sans. Checked in `tests/journals.test.ts`:
   the widths against the journals' numbers, and capitals at least 2 mm high whatever the font's cap height.
 - **Shape.** A shape can be chosen in either case (1:1, 5:4, 4:3, 3:2, √2:1, 16:10, 16:9, 2:1, landscape or
@@ -379,11 +397,14 @@ Structure tab; the user's choices of 2026-11-23.
 - An entry has a `title`, a `file` (which must be in `examples/`) and a `note` (a few words shown on the card and
   in the menu),
   and may add:
-  - `orbitals`: a list of `{ species, orbitals: [...], size }`, the orbitals drawn on the atoms of a species,
-    with their size in Å (optional, more than 0 and at most 20);
+  - `orbitals`: a list of `{ species, orbitals: [...], size, colours, zFrom }`, the orbitals drawn on the atoms
+    of a species; optional are their size in Å (more than 0 and at most 20), `colours` (two `#rrggbb`, for the
+    two signs) and `zFrom` (`{ neighbour, mode }`, mode `longest` or `bridge`: the local z from each atom's
+    bonds, as under Orbitals);
   - `hide`: a list of species left out of the figure;
   - `cells`: six numbers, the range shown, from *a*, *b*, *c* then to *a*, *b*, *c* (each "from" below its "to");
   - `fold`: `true` for an RMC configuration to be folded into one averaged cell;
+  - `completeBonds`: `false` so that the bond rules do not add atoms outside the cells shown;
   - `along`: three whole numbers [u v w], not all zero, the direction the view looks along (pointing at the
     viewer), with *c* up, or *b* (then *a*) when *c* lies along the line of sight.
 - An entry with no title or file, a file not in `examples/`, or a malformed setting is refused with its number.

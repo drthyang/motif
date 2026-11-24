@@ -24,7 +24,8 @@ In crystallography the *motif* is the group of atoms repeated at every lattice p
   reversal; ISODISTORT CIFs, with distortion modes drawn as displacement arrows; RMCProfile `.rmc6f`
   configurations, as the whole supercell or folded into one averaged cell.
 - **Figures sized for a journal:** the size on paper (a Nature single column, 89 mm, 4:3, by default), with
-  templates for Nature, Science, Physical Review and ACS journals; text in pt; an SVG that opens at exactly that size in Illustrator or Keynote, and a PNG at the dpi you choose,
+  templates for Nature, Science, Physical Review, ACS, RSC, Elsevier and other journals that print crystal
+  structures; text in pt; an SVG that opens at exactly that size in Illustrator or Keynote, and a PNG at the dpi you choose,
   drawn from the same SVG.
 - **Shows the chemistry:** cells or a slab, bonds by distance, bond angles, chains and filled polygons, shared
   sites as pie spheres, and s, p, d and f orbitals as schematic isosurfaces.
@@ -38,8 +39,8 @@ In crystallography the *motif* is the group of atoms repeated at every lattice p
 
 Open [the app](https://drthyang.github.io/motif/) and drop a file on it, or start from one of the feature
 examples on the start page: an atomic structure (quartz), a magnetic structure (MnF₂), a distortion mode (the
-TiO₆ octahedra of SrTiO₃ turned about *c*), orbitals (the e_g orbitals of Ti in SrTiO₃) and an RMC configuration
-folded into one cell. Turn the structure with the mouse,
+TiO₆ octahedra of SrTiO₃ turned about *c*), orbital order (the Mn e_g and O 2p orbitals of LaMnO₃) and an RMC
+configuration folded into one cell. Turn the structure with the mouse,
 then press **Save SVG** or **Save PNG**.
 
 ## Status
