@@ -20,6 +20,19 @@ describe("journal templates", () => {
     expect(pt(journalSize("acs-1")!)).toBeLessThanOrEqual(240);
     expect(pt(journalSize("acs-2")!)).toBeGreaterThanOrEqual(300);
     expect(pt(journalSize("acs-2")!)).toBeLessThanOrEqual(504);
+    // Journals that often print crystal structures.
+    expect(["ncomms-1", "ncomms-2"].map((id) => journalSize(id)!.width)).toEqual([8.8, 18]);
+    expect(["nmat-1", "nmat-2"].map((id) => journalSize(id)!.width)).toEqual([8.8, 18]);
+    expect(["rsc-1", "rsc-2"].map((id) => journalSize(id)!.width)).toEqual([8.3, 17.1]);
+    expect(["elsevier-1", "elsevier-1.5", "elsevier-2"].map((id) => journalSize(id)!.width)).toEqual([9, 14, 19]);
+    expect(["jpcm-1", "jpcm-2"].map((id) => journalSize(id)!.width)).toEqual([8.5, 15]);
+    // American Mineralogist: 19 and 39 picas (6 picas to the inch).
+    expect(pt(journalSize("ammin-1")!) / 12).toBeCloseTo(19, 1);
+    expect(pt(journalSize("ammin-2")!) / 12).toBe(39);
+    // Each template's text is within what its journal allows.
+    expect(journalTextPt(journalSize("jpcm-1")!.of, 0.7)).toBeGreaterThanOrEqual(8);
+    expect(journalTextPt(journalSize("ammin-1")!.of, 0.7)).toBeGreaterThanOrEqual(8);
+    expect(journalTextPt(journalSize("elsevier-1")!.of, 0.7)).toBe(7);
     // Every id is unique, and each size knows its journal.
     const ids = JOURNALS.flatMap((j) => j.sizes.map((s) => s.id));
     expect(new Set(ids).size).toBe(ids.length);
