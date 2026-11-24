@@ -17,11 +17,11 @@
   --primary-tint: #f3f3f1;
   --accent: #fff27a;
   --accent-deep: #f6e24a;
-  /* The assistant's drawer: the accent yellow itself, so it follows the theme. */
-  --drawer-bg: var(--accent);
+  /* The assistant's drawer: its header bar in the accent itself (so it follows the theme), the rest plain. */
+  --drawer-bg: var(--surface);
   --drawer-head: var(--accent);
   --drawer-hover: var(--accent-deep);
-  --drawer-line: rgba(27, 26, 24, 0.14);
+  --drawer-line: var(--line);
   --radius: 6px;
   --note-bg: #fffbd6;
   --note-ink: #4a4000;
@@ -313,8 +313,5 @@ button.plain-text:hover:not(:disabled) { background: none; text-decoration-color
 .drawer-actions { display: inline-flex; align-items: center; gap: 2px; flex: none; }
 .drawer-lines { display: flex; flex-direction: column; gap: 8px; max-height: 32vh; overflow-y: auto; padding: 10px 22px; }
 .drawer-input { display: flex; gap: 8px; align-items: flex-end; padding: 8px 22px 12px; border-top: 1px solid var(--drawer-line); }
-/* On the tint: the user's words and the input stay white. */
-.drawer .said.you { background: var(--surface); box-shadow: inset 0 0 0 1px var(--drawer-line); }
-.drawer .said.step { border-left-color: var(--drawer-line); }
 .drawer-input textarea { flex: 1; resize: none; min-height: 36px; max-height: 120px; font: inherit; font-size: var(--fz-body); padding: 7px 10px; border: 1px solid var(--control); border-radius: var(--radius); field-sizing: content; background: var(--surface); }
 .drawer-input textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
