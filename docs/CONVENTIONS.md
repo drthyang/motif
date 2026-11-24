@@ -59,7 +59,12 @@ see the [README](../README.md).
 - Displacement arrows are styled apart from moment arrows, so the two never look alike: green, a thicker rod
   (0.26 A) and a smaller cone (0.6 of the usual proportion), each changeable (the user's choice, 2026-11-23).
 - Strain, magnetic, rotational and occupancy modes are not drawn; the page says when a file has them.
-- Checked by hand against the published BaTiO3 coordinates (`tests/distortion.test.ts`).
+- A site with no free coordinate (its `_atom_site_fract_symmform` is 0,0,0) stays where it is (2026-11-23).
+  ISODISTORT still writes such a site a coordinate formula naming a shift it never lists (for example
+  "1/2 + Sr1_dx"). Formulas on every other site are read strictly.
+- Checked by hand against the published BaTiO3 coordinates (`tests/distortion.test.ts`), and against the
+  published octahedral turn of SrTiO3 I4/mcm (COD 2310687): each O2 moves 0.0383 Å in the *ab* plane, Sr, Ti
+  and O1 stay, and the turns of neighbouring layers are opposite.
 
 ### RMCProfile configurations (.rmc6f)
 
@@ -373,7 +378,9 @@ Structure tab; the user's choices of 2026-11-23.
     with their size in Å (optional, more than 0 and at most 20);
   - `hide`: a list of species left out of the figure;
   - `cells`: six numbers, the range shown, from *a*, *b*, *c* then to *a*, *b*, *c* (each "from" below its "to");
-  - `fold`: `true` for an RMC configuration to be folded into one averaged cell.
+  - `fold`: `true` for an RMC configuration to be folded into one averaged cell;
+  - `along`: three whole numbers [u v w], not all zero, the direction the view looks along (pointing at the
+    viewer), with *c* up, or *b* (then *a*) when *c* lies along the line of sight.
 - An entry with no title or file, a file not in `examples/`, or a malformed setting is refused with its number.
 - The settings apply only when the example is opened from the list; opening the same file by hand gives the
   plain defaults. A file used only by a feature example is not listed again under "Structures".
@@ -406,7 +413,7 @@ Each step is checked against an independent reference before the next one starts
 |------|-----------------|-------|
 | CIF reader and symmetry expansion | gemmi: `scripts/gemmi_reference.py` writes the reference atom lists | `tests/reference/` |
 | Magnetic moments | pymatgen, on hexagonal structures with time-reversed operations | `scripts/pymatgen_moments.py`, `tests/fixtures` |
-| Distortion modes | a hand calculation from the published BaTiO3 coordinates | `tests/distortion.test.ts` |
+| Distortion modes | hand calculations from the published BaTiO3 and SrTiO3 I4/mcm coordinates | `tests/distortion.test.ts` |
 | Journal templates | the widths and text rules on the journals' author pages | `tests/journals.test.ts` |
 | Orbitals | orthogonality of the harmonics; the solid against the drawn surface; cuts against atoms | `tests/orbitals.test.ts` |
 | GPU preview | the same atom placement as the SVG; in a real browser, the saved SVG is identical with the preview on, off and showing, the two pictures of one view agree, and the page works without worker drawing | `scripts/browser_check.cjs` |

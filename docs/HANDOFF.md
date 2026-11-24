@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 286 tests, about two seconds
+npx tsc -b && npx vitest run    # 292 tests, about two seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -58,11 +58,12 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   set up). The user's choice (2026-11-23): keep the link in the README, with a grey "app: not yet live" badge
   and a line saying it will work once published. When the app goes live, change the badge back to "app: live"
   and drop that line.
-- Feature examples (commit 6547441): atomic structure, magnetic structure, orbitals and an RMC configuration
-  folded, listed in `examples/features.json` and described in `examples/README.md`; the format is in
-  docs/CONVENTIONS.md. The RMC file `examples/SrTiO3-supercell_generated.rmc6f` is generated for MOTIF by
-  `scripts/make_rmc_example.py`, not a fit to data. Still to come: a distortion-mode example, SrTiO3 I4/mcm
-  (octahedral rotation, the user's choice), waiting on a COD search; BaTiO3 stays under "Structures" until then.
+- Five feature examples (commits 6547441 and 2329288): atomic structure, magnetic structure, distortion mode,
+  orbitals and an RMC configuration folded, listed in `examples/features.json` and described in
+  `examples/README.md`; the format is in docs/CONVENTIONS.md. The distortion mode is SrTiO3 I4/mcm (COD 2310687,
+  the octahedra turned about c, the user's choice), seen down c. The RMC file
+  `examples/SrTiO3-supercell_generated.rmc6f` is generated for MOTIF by `scripts/make_rmc_example.py`, not a
+  fit to data. BaTiO3 is no longer a feature; its file stays, under "Structures".
 
 ## Open questions for the user (none blocking)
 
