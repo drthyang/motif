@@ -51,8 +51,8 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
 - SVG is the source of truth; PNG is drawn from the same SVG. Three parts: `src/structure` (file to
   atoms), `src/scene` (what is shown, plain data), `src/render` (scene + view to SVG), plus `src/preview`
   (GPU drawing while a large structure moves) and `src/ui`.
-- The page: header with the name MOTIF only; five tabs: Info, Structure (what is drawn), Visual (how it
-  looks), Layout (canvas, view, saved settings, page colour), Assistant; one text scale (12/13/14/15 px); labels in one column.
+- The page: header with the name MOTIF and the page-colour dot; five tabs: Info, Structure (what is drawn), Visual (how it
+  looks), Layout (canvas, view, saved settings), Assistant; one text scale (12/13/14/15 px); labels in one column.
 - Formats (2026-11-23/24): CIF, mCIF, ISODISTORT, RMCProfile, VASP POSCAR/CONTCAR, XYZ and extended XYZ, SHELX
   .res/.ins, PDB, Quantum ESPRESSO input (ibrav 0), CASTEP .cell, FHI-aims geometry.in, XSF; each checked against
   the CIF reading of the same crystal (`tests/formats.test.ts`). The format shows over the figure, top left; an
@@ -83,8 +83,10 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   with PNG, ICO and Apple touch icon copies on a white tile for Safari (e084351).
   MTF as a name or monogram was considered and dropped (it reads as "male-to-female", and in imaging as
   "modulation transfer function").
-- Page colour (1c365d6): Layout › Page colour, six accents (Lemon, the default, Marigold, Apricot, Mint, Sky,
-  Lilac), for the page only, never the figures; kept in this browser (`src/ui/theme.ts`). The user had found Lemon
+- Page colour: a small dot beside the MOTIF word mark in the header opens six accents (Lemon, the default,
+  Marigold, Apricot, Mint, Sky, Lilac), for the page only, never the figures; kept in this browser
+  (`src/ui/ThemeCue.tsx`, `src/ui/theme.ts`). Since cb9f2f4; it was a Layout section (1c365d6) until the user said
+  it is not about the figure's layout. The user had found Lemon
   close to the MFA Boston website's yellow (#ffff5a); after mock views of the six they kept Lemon as the default
   and asked for a choice. The assistant drawer's header bar takes the accent; its conversation and input are plain
   white (06915a4, after a pale-yellow tint in 7bfc9ae and an all-yellow drawer in 4927e65).

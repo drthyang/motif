@@ -428,7 +428,7 @@ Structure tab; the user's choices of 2026-11-23.
   - Structure: what is drawn (the cells shown, which elements, bonds, angles, whether moments are shown).
   - Visual: how it looks (presets, surfaces and outlines, colours and sizes of atoms, bonds, angle marks and
     moment arrows, the unit-cell lines, legend, axes, lettering).
-  - Layout: canvas size and shape, view direction, scale, saved views, dragging, large structures, page colour.
+  - Layout: canvas size and shape, view direction, scale, saved views, dragging, large structures.
   - Assistant (since 2026-11-24): the assistant's connection and conversation (see "Assistant" below).
 - A bond or angle rule is set up under Structure and styled under Visual.
 - Above the figure: Open file…, the Examples menu and, while a structure is open, Close, which closes it and
@@ -443,13 +443,16 @@ Structure tab; the user's choices of 2026-11-23.
   `favicon.ico` (16, 32 and 48 px) and `apple-touch-icon.png` (180 px): the same mark in ink on a white rounded
   tile, since a PNG cannot turn white on a dark tab bar. `index.html` links the 32 px PNG, then the SVG (which
   Chrome and Firefox use), then the Apple touch icon.
-- Page colour (the user's choice, 2026-11-24, commit 1c365d6): Layout › Page colour (a closed section) offers six
-  accents: Lemon (#fff27a, the default and the stylesheet's own), Marigold, Apricot, Mint, Sky and Lilac. The
-  accent colours the page only: the main buttons, the assistant drawer's header, the example cards under the
-  pointer, the active control hint and notices. Figures never change. The choice is kept in this browser
-  (`localStorage` "motif.theme") and applied before the page is first drawn; choosing Lemon clears it. Code in
-  `src/ui/theme.ts`. Checked (`tests/theme.test.ts`): Lemon matches the accent in `app.css`, and the page's ink
-  (#1b1a18) has a contrast of at least 7:1 (WCAG AAA) on every accent and on its hover shade.
+- Page colour (the user's choice, 2026-11-24): a 14 px dot in the current accent beside the MOTIF word mark in the
+  header (since cb9f2f4; first a closed section, Layout › Page colour, in 1c365d6, moved because the user found it
+  unrelated to the figure's layout). A click opens a small row of the six colours below it; choosing one applies
+  it and closes the row, as do Escape and a click elsewhere (`src/ui/ThemeCue.tsx`). The six accents: Lemon
+  (#fff27a, the default and the stylesheet's own), Marigold, Apricot, Mint, Sky and Lilac. The accent colours the
+  page only: the main buttons, the assistant drawer's header, the example cards under the pointer, the active
+  control hint and notices. Figures never change. The choice is kept in this browser (`localStorage`
+  "motif.theme") and applied before the page is first drawn; choosing Lemon clears it. Code in `src/ui/theme.ts`.
+  Checked (`tests/theme.test.ts`): Lemon matches the accent in `app.css`, and the page's ink (#1b1a18) has a
+  contrast of at least 7:1 (WCAG AAA) on every accent and on its hover shade.
 
 ### Saved settings
 
@@ -521,9 +524,11 @@ where each control is, so the user learns where to find it.
   bar ("Assistant", the connection, ▴); open, it holds Setup (switches to the Assistant tab), New chat, the
   conversation (at most about a third of the window high, scrolling) and an input. Open or shut is kept in this
   browser. The Assistant tab holds the connection setup (always shown) and the whole conversation, with its own
-  input; the drawer is hidden while that tab is open. Only the drawer's header bar is coloured, in the page's
-  accent (see "Page colour" under Tabs); the conversation and input below it are plain white (06915a4). Both show the one conversation (`src/ui/useAssistant.ts`;
-  the drawer is `AssistantDrawer` in `src/ui/AssistantPanel.tsx`). A chatbox over the figure's lower right corner
+  input; the drawer is hidden while that tab is open. The drawer stays at the bottom of the side panel on every
+  tab, however short; on a narrow screen, where the page scrolls, it sticks to the bottom of the screen while the
+  panel is in view (310e03e). Only the drawer's header bar is coloured, in the page's accent (see "Page colour"
+  under Tabs); the conversation and input below it are plain white (06915a4). Both show the one conversation
+  (`src/ui/useAssistant.ts`; the drawer is `AssistantDrawer` in `src/ui/AssistantPanel.tsx`). A chatbox over the figure's lower right corner
   (f8b5708) came first and was removed because it covered the figure.
 - **Models** (the user's choice): Claude, OpenAI or Gemini with the user's own API key, sent from the browser
   straight to that provider (Anthropic, OpenAI or Google); or a local model on Ollama or LM Studio, on which nothing
