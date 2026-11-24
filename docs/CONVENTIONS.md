@@ -500,12 +500,14 @@ Structure tab; the user's choices of 2026-11-23.
 The user says how the figure should look, and the assistant changes it through the page's own controls, then says
 where each control is, so the user learns where to find it.
 
-- **Where it is** (commit f8b5708): a chatbox over the figure's lower right corner, and the Assistant tab. The
-  chatbox has Setup (opens the Assistant tab), New (a new conversation), a fold button and the conversation with
-  an input; folded, it is an "Assistant" button, and whether it is folded is kept in this browser. The Assistant tab
-  holds the connection setup (always shown) and the whole conversation, with its own input. Both show the one
-  conversation (`src/ui/useAssistant.ts`). Whether to keep the chatbox, the tab or both is open: the user decides
-  after trying it.
+- **Where it is** (the user's choice, 2026-11-24, commit 661f335): a drawer at the foot of the side panel, under
+  every tab but Assistant, and the Assistant tab. Nothing is drawn over the figure. Shut, the drawer is a one-line
+  bar ("Assistant", the connection, ▴); open, it holds Setup (switches to the Assistant tab), New chat, the
+  conversation (at most about a third of the window high, scrolling) and an input. Open or shut is kept in this
+  browser. The Assistant tab holds the connection setup (always shown) and the whole conversation, with its own
+  input; the drawer is hidden while that tab is open. Both show the one conversation (`src/ui/useAssistant.ts`;
+  the drawer is `AssistantDrawer` in `src/ui/AssistantPanel.tsx`). A chatbox over the figure's lower right corner
+  (f8b5708) came first and was removed because it covered the figure.
 - **Models** (the user's choice): Claude, OpenAI or Gemini with the user's own API key, sent from the browser
   straight to that provider (Anthropic, OpenAI or Google); or a local model on Ollama or LM Studio, on which nothing
   leaves the computer. With a key, what the tools read about the figure (cell, elements, settings) goes to that
@@ -531,7 +533,7 @@ where each control is, so the user learns where to find it.
 - **Checked:** tools against a stand-in page, the exchange with a scripted model (`tests/agentTools.test.ts`,
   `tests/assistant.test.ts`); the OpenAI/Gemini translation both ways, with a stand-in server
   (`tests/openaiCompatible.test.ts`), and in the browser with a stand-in Gemini server inside the page, through
-  which the chatbox turned the quartz O atoms red; and a trial of ten requests on a local model, the page's state read after each
+  which a request from the drawer under the Visual tab turned the quartz O atoms red; and a trial of ten requests on a local model, the page's state read after each
   (`scripts/assistant_trial.cjs`, `?probe` in the address; a 2-minute limit per request, 30 minutes in all).
   No paid API calls in development. Results on the user's local models (2026-11-24, after the fixes below):
 

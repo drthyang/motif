@@ -60,9 +60,10 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
 - Assistant (2026-11-24, docs/CONVENTIONS.md "Assistant"): look and layout only; Claude, OpenAI or Gemini with
   the user's key, or a local model. Tried on the user's seven local models: the six of 25B and more pass 10 of 10;
   a 4B model 7 of 10. gemma4:26b (Ollama) and gemma-4-26b-a4b-qat (LM Studio) are accurate and take seconds.
-  Since f8b5708 it is talked to in a chatbox over the figure's lower right corner (folds to an "Assistant"
-  button) as well as in the Assistant tab, which keeps the setup; both show one conversation
-  (`src/ui/useAssistant.ts`). OpenAI and Gemini go through one Chat Completions translation
+  Since 661f335 it is talked to in a drawer at the foot of the side panel (under every tab but Assistant; shut,
+  a one-line bar) as well as in the Assistant tab, which keeps the setup; both show one conversation
+  (`src/ui/useAssistant.ts`). Nothing is drawn over the figure: the chatbox over its lower right corner (f8b5708)
+  was removed because it covered the figure, and the user settled on drawer plus tab. OpenAI and Gemini go through one Chat Completions translation
   (`src/agent/openaiCompatible.ts`, Gemini at its OpenAI-compatible address); checked with unit tests and a
   stand-in Gemini server in the page, not yet against the real services.
 - Also since 2026-11-23: rulers beside the figure (cm/in switch where they meet), journal templates chosen as
@@ -116,7 +117,6 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   `scattering-agent-tools` (another repo; only with the user's yes). The user has not yet tried it with Claude
   (with their key); it was built and tried on local models only. OpenAI and Gemini (f8b5708) likewise have not
   been tried against the real services.
-- Assistant: the chatbox, the Assistant tab, or both? The user decides after looking at it (f8b5708 has both).
 - `CLAUDE.md` ("Decided by the user", in-app assistant, 2026-11-24) names Claude with the user's key and local
   models only; the code since f8b5708 also offers OpenAI and Gemini with the user's key. The writing session does
   not edit `CLAUDE.md`: the user should confirm OpenAI and Gemini there.
