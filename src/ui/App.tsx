@@ -473,9 +473,19 @@ export function App() {
     setZoom(NO_ZOOM);
     setTurnScale(null);
   };
+  /** A file opened by hand. An RMC configuration opens as its whole supercell; "Fold" then averages it to one cell. */
+  const openFile = (text: string, name: string) => {
+    foldRmc.current = false;
+    load(text, name);
+  };
+  /** Read the RMC configuration last opened again, folded into one cell or as the whole supercell. */
+  const refold = (fold: boolean) => {
+    foldRmc.current = fold;
+    if (lastFile.current) load(lastFile.current.text, lastFile.current.name);
+  };
   /** Open a feature example with the settings that show its feature. */
   const loadFeature = (f: (typeof FEATURES)[number]) => {
-    if (f.fold !== undefined) foldRmc.current = f.fold;
+    foldRmc.current = f.fold ?? false;
     const read = load(f.text, f.file);
     if (read && f.along) {
       // Looking along [u v w], pointing at the viewer; c up, or b (then a) when c lies along the line of sight.
@@ -681,7 +691,7 @@ export function App() {
     setOver(false);
     const file = e.dataTransfer.files[0];
     // The file is read here, in the page. Nothing is uploaded.
-    if (file) void file.text().then((text) => load(text, file.name));
+    if (file) void file.text().then((text) => openFile(text, file.name));
   };
   // ---- Gestures on the figure. Plain drag turns; Shift + drag or the middle button moves; Ctrl/Cmd + wheel,
   // a pinch, or the + and - keys zoom; double-click or 0 resets the zoom; "Box" then a drag zooms to a rectangle.
@@ -966,7 +976,7 @@ export function App() {
               hidden
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) void file.text().then((text) => load(text, file.name));
+                if (file) void file.text().then((text) => openFile(text, file.name));
                 e.target.value = ""; // so the same file can be opened again
               }}
             />
@@ -1057,6 +1067,29 @@ export function App() {
                 <span data-testid="counts">{scene.spheres.length} atoms{counts && `: ${counts}`}</span>
               </div>
               <div className="toolbar">
+                {structure?.rmc && (
+                  <div className="tools rmc-switch" role="group" aria-label="RMC configuration: the whole supercell, or folded into one cell">
+                    <span className="tool-label">RMC</span>
+                    <button
+                      className={structure.rmc.folded ? "" : "on"}
+                      data-testid="rmc-quick-whole"
+                      aria-pressed={!structure.rmc.folded}
+                      title={`The whole supercell, ${structure.rmc.supercell.join(" × ")} cells, every atom as in the file`}
+                      onClick={() => structure.rmc?.folded && refold(false)}
+                    >
+                      Supercell
+                    </button>
+                    <button
+                      className={structure.rmc.folded ? "on" : ""}
+                      data-testid="rmc-quick-fold"
+                      aria-pressed={structure.rmc.folded}
+                      title="Fold into one cell: each site at the average of its copies, as RMCProfile Workbench does"
+                      onClick={() => structure.rmc && !structure.rmc.folded && refold(true)}
+                    >
+                      Fold
+                    </button>
+                  </div>
+                )}
                 <button
                   className={`help${showHelp ? " on" : ""}`}
                   data-testid="help"
@@ -1266,10 +1299,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                       name="rmc-fold"
                       data-testid={`rmc-${mode}`}
                       checked={structure.rmc!.folded === (mode === "folded")}
-                      onChange={() => {
-                        foldRmc.current = mode === "folded";
-                        if (lastFile.current) load(lastFile.current.text, lastFile.current.name);
-                      }}
+                      onChange={() => refold(mode === "folded")}
                     />
                     {mode === "whole" ? `Whole supercell (${structure.rmc!.supercell.join(" × ")} cells, P1)` : "Folded into one cell, each site averaged"}
                   </label>

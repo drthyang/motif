@@ -79,8 +79,7 @@
     {
       "title": "RMC configuration",
       "file": "SrTiO3-supercell_generated.rmc6f",
-      "note": "SrTiO₃ supercell, folded to one cell",
-      "fold": true
+      "note": "SrTiO₃ 6 × 6 × 6 supercell; Fold averages it to one cell"
     }
   ]
 }

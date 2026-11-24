@@ -17,7 +17,7 @@ gives the plain defaults.
 | Magnetic structure | `MnF2-antiferromagnet_handwritten.mcif` | nothing: MnF2 with its moments along +*c* and −*c* |
 | Distortion mode | `SrTiO3-octahedral-rotation_COD-2310687.cif` | one TiO2 layer, 2 × 2 cells (cells 0 to 2 along *a* and *b*, −0.01 to 0.01 along *c*), seen down *c*: the octahedra turned about *c* by the mode R4+ |
 | Orbital order | `LaMnO3-orbital-order_COD-1006141.cif` | one MnO2 layer, 2 × 2 cells (cells 0 to 2 along *a* and *b*, −0.06 to 0.06 along *c*), seen down *c*, bonds not completed outside the slab; dz² on each Mn along its own longest Mn–O bond (size 1.9 Å), pz on each O along the line through its two Mn (size 0.9 Å, green and gold) |
-| RMC configuration | `SrTiO3-supercell_generated.rmc6f` | the 6 × 6 × 6 configuration, opened folded into one averaged cell |
+| RMC configuration | `SrTiO3-supercell_generated.rmc6f` | the 6 × 6 × 6 configuration, opened as the supercell; **Fold** averages it to one cell |
 
 Only one TiO2 layer is shown in the distortion-mode example: seen down *c*, the layers at *z* = 0 and *z* = 1/2,
 whose octahedra turn in opposite senses, would lie on top of each other.

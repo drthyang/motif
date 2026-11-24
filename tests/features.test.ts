@@ -44,8 +44,9 @@ describe("feature examples", () => {
     }
   });
 
-  it("the RMC example folds into the five sites of cubic SrTiO3, each averaged to within 0.02 A of the published site", () => {
-    const f = features.find((x) => x.fold)!;
+  it("the RMC example opens as its whole supercell, and folds into the five sites of cubic SrTiO3, each averaged to within 0.02 A of the published site", () => {
+    const f = features.find((x) => x.file.endsWith(".rmc6f"))!;
+    expect(f.fold).toBeUndefined(); // opens as the supercell (the user's choice, 2026-11-23); "Fold" averages it
     const whole = open(f.file, false);
     expect(whole.sites.length).toBe(1080);
     const folded = open(f.file, true);

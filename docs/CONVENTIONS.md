@@ -77,7 +77,9 @@ see the [README](../README.md).
 - Vacancies (`Va`) are left out and counted.
 - The atom-line grammar is adapted from the author's RMCProfile Workbench.
 
-**Folding into one cell** (Structure tab), as RMCProfile Workbench does:
+**Folding into one cell**, as RMCProfile Workbench does. An RMC configuration opens as its whole supercell (the
+user's choice, 2026-11-23); a quick switch over the figure, "RMC: Supercell | Fold", shown only for an RMC
+configuration, reads it again folded or whole (also in the Structure tab):
 
 - Each atom is moved into one cell (supercell fraction x N, its fractional part).
 - The copies of a site are grouped by the file's site numbers (the crystallographic site of the unit cell;
@@ -433,7 +435,7 @@ Structure tab; the user's choices of 2026-11-23.
 - The settings apply only when the example is opened from the start page or the Examples menu; opening the same
   file by hand gives the plain defaults.
 - Checked (`tests/features.test.ts`): each example opens and shows its feature (moments for the magnetic one,
-  orbitals on every atom of the species named), and the RMC example folds into the five sites of cubic SrTiO3,
+  orbitals on every atom of the species named), and the RMC example opens as its supercell and folds into the five sites of cubic SrTiO3,
   each within 0.02 Å of the published site.
 
 ### Large structures

@@ -40,7 +40,7 @@ In crystallography the *motif* is the group of atoms repeated at every lattice p
 Open [the app](https://drthyang.github.io/motif/) and drop a file on it, or start from one of the feature
 examples on the start page: an atomic structure (quartz), a magnetic structure (MnF₂), a distortion mode (the
 TiO₆ octahedra of SrTiO₃ turned about *c*), orbital order (the Mn e_g and O 2p orbitals of LaMnO₃) and an RMC
-configuration folded into one cell. Turn the structure with the mouse,
+configuration (its supercell; **Fold** averages it to one cell). Turn the structure with the mouse,
 then press **Save SVG** or **Save PNG**.
 
 ## Status
