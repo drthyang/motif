@@ -236,4 +236,16 @@ describe("colour and size", () => {
     const plain = renderSvg(buildScene(olivine, { ...DEFAULT_SPEC, axesOutline: false }), DEFAULT_VIEW);
     expect(plain).not.toMatch(/<g stroke="#[0-9a-f]{6}">/);
   });
+
+  it("every surface gives well-formed XML: no attribute written twice in a tag (a saved SVG must open anywhere)", () => {
+    for (const atomMaterial of MATERIALS)
+      for (const arrowMaterial of MATERIALS)
+        for (const bondMaterial of MATERIALS) {
+          const svg = renderSvg(buildScene(olivine, { ...DEFAULT_SPEC, atomMaterial, arrowMaterial, bondMaterial, bondOutline: true }), DEFAULT_VIEW);
+          for (const tag of svg.match(/<[a-zA-Z][^>]*>/g) ?? []) {
+            const names = [...tag.matchAll(/\s([a-zA-Z:-]+)="/g)].map((m) => m[1]);
+            expect(new Set(names).size, `${atomMaterial}/${arrowMaterial}/${bondMaterial}: ${tag.slice(0, 120)}`).toBe(names.length);
+          }
+        }
+  });
 });

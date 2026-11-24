@@ -1212,7 +1212,7 @@ function sphereSvg(scene: Scene, styleKey: string, x: number, y: number, r: numb
   }
   const outline = mixHex(style.colour, "#000000", material === "metal" ? 0.5 : 0.35);
   const fill = material === "flat" ? style.colour : `url(#${gradientId(style.colour)})`;
-  return `<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="${fill}" stroke="${outline}" stroke-width="2"${material === "glass" ? ' stroke-opacity="0.85" stroke-width="1.5"' : ""}/>${glow}${gloss}\n`;
+  return `<circle cx="${n1(x)}" cy="${n1(y)}" r="${n1(r)}" fill="${fill}" stroke="${outline}" stroke-width="${material === "glass" ? "1.5" : "2"}"${material === "glass" ? ' stroke-opacity="0.85"' : ""}/>${glow}${gloss}\n`;
 }
 
 /**

@@ -23,15 +23,16 @@ In crystallography the *motif* is the group of atoms repeated at every lattice p
 
 <table>
   <tr>
-    <td colspan="2" align="center"><img src="docs/media/orbital-order.png" alt="Orbital order in LaMnO3: the Mn eg orbitals alternate in direction from site to site, with the O 2p orbitals along the Mn–O–Mn bonds" width="80%" /><br /><b>Orbital order</b>: LaMnO₃, the Mn e<sub>g</sub> orbital of each site along its long Mn–O bond and the O 2p orbitals along each Mn–O–Mn line, coloured by the sign of the lobe</td>
+    <td width="50%" align="center"><img src="docs/media/orbital-order.png" alt="Orbital order in LaMnO3: the Mn eg orbitals alternate in direction from site to site, with the O 2p orbitals along the Mn–O–Mn bonds" width="100%" /><br /><b>Orbital order</b>: LaMnO₃, Mn e<sub>g</sub> and O 2p orbitals, coloured by the sign of the lobe</td>
+    <td width="50%" align="center"><img src="docs/media/magnetic-structure.svg" alt="MnF2: Mn moments as red arrows along ±c, F neighbours" width="100%" /><br /><b>Magnetic structure</b>: MnF₂, moments along ±c from the magnetic CIF</td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="docs/media/atomic-structure.svg" alt="Quartz: Si and O atoms, Si–O bonds and the unit cell" /><br /><b>Atomic structure</b>: quartz, with its Si–O bonds</td>
-    <td width="50%" align="center"><img src="docs/media/magnetic-structure.svg" alt="MnF2: Mn moments as red arrows along ±c, F neighbours" /><br /><b>Magnetic structure</b>: MnF₂, moments along ±c from the magnetic CIF</td>
+    <td width="50%" align="center"><img src="docs/media/distortion-mode.svg" alt="SrTiO3: TiO6 octahedra turned about c, O displacements as green arrows" width="100%" /><br /><b>Distortion mode</b>: SrTiO₃, the octahedra turned about <i>c</i> (ISODISTORT)</td>
+    <td width="50%" align="center"><img src="docs/media/rmc-configuration.png" alt="An RMCProfile configuration of SrTiO3: a 6 × 6 × 6 supercell of Sr, Ti and O atoms" width="100%" /><br /><b>RMC configuration</b>: a 6 × 6 × 6 SrTiO₃ supercell; <b>Fold</b> averages it to one cell</td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="docs/media/distortion-mode.svg" alt="SrTiO3: TiO6 octahedra turned about c, O displacements as green arrows" /><br /><b>Distortion mode</b>: SrTiO₃, the octahedra turned about <i>c</i> (ISODISTORT)</td>
-    <td width="50%" align="center"><img src="docs/media/rmc-configuration.png" alt="An RMCProfile configuration of SrTiO3: a 6 × 6 × 6 supercell of Sr, Ti and O atoms" /><br /><b>RMC configuration</b>: a 6 × 6 × 6 SrTiO₃ supercell; <b>Fold</b> averages it to one cell</td>
+    <td width="50%" align="center"><img src="docs/media/quartz-metal.svg" alt="Quartz drawn with metallic atoms and bonds" width="100%" /><br /><b>Metal surface</b>: quartz, Si–O, with the Metallic preset</td>
+    <td width="50%" align="center"><img src="docs/media/quartz-glass.svg" alt="Quartz drawn with see-through glass atoms, the Si–O bonds showing through" width="100%" /><br /><b>Glass surface</b>: quartz, Si–O, glass atoms with the bonds seen through them</td>
   </tr>
 </table>
 
