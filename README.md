@@ -11,18 +11,20 @@ submitting to. Nothing to install.
 *The app is not online yet; this link will work once it is published.*
 
 <p align="center">
-  <img src="docs/media/orbital-order.png" alt="Orbital order in LaMnO3 drawn by MOTIF: the Mn eg orbitals alternate in direction from site to site, with the O 2p orbitals along the Mn–O–Mn bonds" width="88%" />
+  <img src="docs/media/app.jpg" alt="The MOTIF page: the orbital order of LaMnO3 on a canvas with rulers, the toolbar above it, and the Structure tab with the orbitals chosen for Mn and O" width="100%" />
 </p>
 
-*Orbital order in LaMnO₃: the Mn e<sub>g</sub> orbital of each site lies along its long Mn–O bond, and the O 2p orbitals
-along each Mn–O–Mn line, coloured by the sign of the lobe. Every figure on this page is MOTIF's own output,
-saved with **Save SVG** or **Save PNG**.*
+*MOTIF with the orbital-order example open: the figure on its canvas, sized on paper (rulers in cm), and the
+orbitals chosen for Mn and O in the side panel. Every figure on this page is MOTIF's own output.*
 
 In crystallography the *motif* is the group of atoms repeated at every lattice point.
 
 ## Examples
 
 <table>
+  <tr>
+    <td colspan="2" align="center"><img src="docs/media/orbital-order.png" alt="Orbital order in LaMnO3: the Mn eg orbitals alternate in direction from site to site, with the O 2p orbitals along the Mn–O–Mn bonds" width="80%" /><br /><b>Orbital order</b>: LaMnO₃, the Mn e<sub>g</sub> orbital of each site along its long Mn–O bond and the O 2p orbitals along each Mn–O–Mn line, coloured by the sign of the lobe</td>
+  </tr>
   <tr>
     <td width="50%" align="center"><img src="docs/media/atomic-structure.svg" alt="Quartz: Si and O atoms, Si–O bonds and the unit cell" /><br /><b>Atomic structure</b>: quartz, with its Si–O bonds</td>
     <td width="50%" align="center"><img src="docs/media/magnetic-structure.svg" alt="MnF2: Mn moments as red arrows along ±c, F neighbours" /><br /><b>Magnetic structure</b>: MnF₂, moments along ±c from the magnetic CIF</td>
