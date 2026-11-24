@@ -2,9 +2,24 @@
   "about": "The feature examples, in the order the app lists them: each is a structure file in this folder and the settings that show its feature, applied when it is opened from the list. Opening the same file by hand gives the plain defaults.",
   "examples": [
     {
-      "title": "Atomic structure",
-      "file": "quartz_COD-9009666.cif",
-      "note": "Quartz, with its Si–O bonds"
+      "title": "Coordination polyhedra",
+      "file": "perovskite-SrTiO3_COD-9006864.cif",
+      "note": "SrTiO₃, TiO₆ octahedra sharing corners",
+      "cells": [
+        0,
+        0,
+        0,
+        2,
+        2,
+        1
+      ],
+      "polyhedra": [
+        {
+          "centre": "Ti",
+          "neighbour": "O",
+          "upTo": 2.3
+        }
+      ]
     },
     {
       "title": "Magnetic structure",

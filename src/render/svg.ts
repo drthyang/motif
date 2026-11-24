@@ -7,6 +7,7 @@
  */
 import { mulVec } from "../structure/cell";
 import { mixHex } from "../scene/elementStyle";
+import { hullEdges } from "../scene/polyhedra";
 import type { Material, OrbitalTexture, Scene, StickStyle, Wedge } from "../scene/scene";
 import { orbitalById, orbitalField, orbitalSurface, type OrbitalFace } from "../scene/orbitals";
 import type { Vec3 } from "../structure/types";
@@ -245,7 +246,29 @@ export interface DrawnOrbitalFace {
   readonly svg: string;
 }
 
-export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand | DrawnSector | DrawnOrbitalFace;
+/** A face or the edges of a coordination polyhedron, ready to write. */
+export interface DrawnPolyhedronPart {
+  readonly kind: "polyhedron";
+  readonly depth: number;
+  readonly svg: string;
+}
+
+export type Drawn = DrawnSphere | DrawnLine | DrawnArrow | DrawnPolygon | DrawnBand | DrawnSector | DrawnOrbitalFace | DrawnPolyhedronPart;
+
+/** The light on polyhedron faces, in view space (right, up, towards the viewer): from the upper left and in front, as on the spheres. */
+const FACE_LIGHT: Vec3 = (() => {
+  const v: Vec3 = [-0.4, 0.6, 0.7];
+  const n = Math.hypot(...v);
+  return [v[0] / n, v[1] / n, v[2] / n];
+})();
+const INK = "#1b1a18";
+/**
+ * Depth steps inside a polyhedron's unit, in angstrom: far smaller than any real gap between atoms, so the unit's
+ * parts stay together, in order, at the depth of its centre. The centre atom and the bonds inside keep their own
+ * order, squeezed by UNIT_SQUEEZE into the middle of the unit.
+ */
+const UNIT_STEP = 1e-5;
+const UNIT_SQUEEZE = 1e-6;
 
 /** Points of a lobe's outline. */
 const LOBE_STEPS = 72;
@@ -762,10 +785,15 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     return [fit.x + q[0] * scale, fit.y - q[1] * scale, q[2]]; // SVG y runs down
   };
   const drawn: Drawn[] = [];
-  for (const s of scene.spheres) {
+  // The centre atom of a solid or line-art polyhedron is hidden inside it and is not drawn.
+  const insidePolyhedron = new Set((scene.polyhedra ?? []).filter((p) => p.look !== "glass").map((p) => p.centre));
+  const sphereDrawn: number[] = [];
+  scene.spheres.forEach((s, index) => {
+    if (insidePolyhedron.has(index)) return;
     const [x, y, depth] = project(s.centre);
+    sphereDrawn[index] = drawn.length;
     drawn.push({ kind: "sphere", x, y, depth, r: scene.styles[s.style]!.radius * scale, style: s.style, label: s.label });
-  }
+  });
   // Orbitals, placed among the atoms so that they cut through one another as solids do (see placeOrbital).
   const atoms = scene.spheres.map((s) => {
     const [x, y, depth] = project(s.centre);
@@ -847,7 +875,10 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
   // atom, whose outline cuts it. A half that points at the viewer comes out of the atom's face: it is drawn
   // after the atom, from the small circle where it pierces the surface (an ellipse when seen at an angle).
   const rods = scene.bondMaterial !== undefined && scene.sticks.length <= BOND_ROD_LIMIT;
+  // Where each stick's drawn pieces start in `drawn` (they end where the next stick's start).
+  const stickStart: number[] = [];
   scene.sticks.forEach((stick, stickIndex) => {
+    stickStart[stickIndex] = drawn.length;
     const [a, b] = [scene.spheres[stick.i]!, scene.spheres[stick.j]!];
     const [radiusA, radiusB] = [scene.styles[a.style]!.radius, scene.styles[b.style]!.radius];
     if (stick.length <= (radiusA + radiusB) * BOND_START) return; // the spheres overlap: nothing of the bond shows
@@ -962,6 +993,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     half(true);
     half(false);
   });
+  stickStart.push(drawn.length);
   for (const polygon of scene.polygons) {
     // Just behind its own atoms and bonds, and cut to the gap between them, so it touches them without
     // covering any part of them (see fillOutline).
@@ -1137,6 +1169,8 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       });
     }
   });
+  // Each piece of a cell edge with its middle (angstrom): a piece inside a polyhedron is drawn inside its unit.
+  const cellPieces: { index: number; middle: Vec3 }[] = [];
   for (const [from, to] of scene.cellEdges) {
     // A cell edge is long, so it is drawn in short pieces, each at its own depth: an atom then hides
     // only the part of the edge that is really behind it. `along` keeps the dashes continuous.
@@ -1147,10 +1181,107 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
     const drawnLength = Math.hypot(end[0] - start[0], end[1] - start[1]);
     for (let n = 0; n < pieces; n++) {
       const [p, q] = [project(at(n / pieces)), project(at((n + 1) / pieces))];
+      cellPieces.push({ index: drawn.length, middle: at((n + 0.5) / pieces) });
       drawn.push({ kind: "cell", x1: p[0], y1: p[1], x2: q[0], y2: q[1], width: 0, depth: (p[2] + q[2]) / 2 - 0.3, along: (drawnLength * n) / pieces });
     }
   }
+  layoutPolyhedra(scene, view, project, scale, drawn, sphereDrawn, stickStart, cellPieces);
   return drawn.sort((p, q) => p.depth - q.depth);
+}
+
+/**
+ * Coordination polyhedra (the user's choices, 2026-11-24), each drawn as one unit at the depth of its centre atom:
+ * its back faces and edges, then the centre atom and the bonds inside it (in their own order), then its front faces
+ * and edges. A face is at the back when its outward normal points away from the viewer. Corner atoms keep their own
+ * depth, so a corner nearer the viewer than the centre is drawn over the polyhedron and a farther one under it.
+ * Glass: see-through shaded faces and every edge. Solid: opaque shaded front faces, edged. Line art: white front
+ * faces, hidden edges dashed and thin, visible edges in ink. A flat polygon is drawn whole, behind its centre atom.
+ */
+function layoutPolyhedra(
+  scene: Scene,
+  view: View,
+  project: (p: Vec3) => Vec3,
+  scale: number,
+  drawn: Drawn[],
+  sphereDrawn: readonly number[],
+  stickStart: readonly number[],
+  cellPieces: readonly { index: number; middle: Vec3 }[],
+): void {
+  const polyhedra = scene.polyhedra ?? [];
+  if (polyhedra.length === 0) return;
+  const byCentre = new Map(polyhedra.map((p) => [p.centre, p]));
+  const width = Math.max(1, 0.025 * scale);
+  for (const poly of polyhedra) {
+    const c = project(scene.spheres[poly.centre]!.centre)[2];
+    const at = (step: number): number => c + step * UNIT_STEP;
+    // The centre atom and the bonds inside: kept in their order, squeezed into the middle of the unit.
+    const squeeze = (index: number | undefined): void => {
+      if (index === undefined) return;
+      const d = drawn[index]!;
+      drawn[index] = { ...d, depth: c + (d.depth - c) * UNIT_SQUEEZE } as Drawn;
+    };
+    squeeze(sphereDrawn[poly.centre]);
+    const corners = new Set(poly.corners);
+    scene.sticks.forEach((stick, k) => {
+      if (stick.rule !== poly.rule) return;
+      const other = stick.i === poly.centre ? stick.j : stick.j === poly.centre ? stick.i : -1;
+      if (other < 0 || !corners.has(other) || byCentre.get(poly.centre) !== poly) return;
+      for (let index = stickStart[k]!; index < stickStart[k + 1]!; index++) squeeze(index);
+    });
+    // Pieces of cell edges that run through the polyhedron (a cell edge from Ti to Ti through an O corner) are inside
+    // it too: behind its front faces, in front of its back faces.
+    const centre = scene.spheres[poly.centre]!.centre;
+    const reach = Math.max(...poly.corners.map((k) => Math.hypot(...([0, 1, 2].map((i) => scene.spheres[k]!.centre[i]! - centre[i]!) as [number, number, number]))));
+    const anchor = poly.faces.map((face) => scene.spheres[poly.corners[face[0]!]!]!.centre);
+    for (const piece of poly.flat ? [] : cellPieces) {
+      const m = piece.middle;
+      if (Math.hypot(m[0] - centre[0], m[1] - centre[1], m[2] - centre[2]) > reach) continue;
+      const inside = poly.normals.every((n, f) => n[0] * (m[0] - anchor[f]![0]) + n[1] * (m[1] - anchor[f]![1]) + n[2] * (m[2] - anchor[f]![2]) < -1e-6);
+      if (inside) squeeze(piece.index);
+    }
+    const points = poly.corners.map((k) => project(scene.spheres[k]!.centre));
+    const facing = poly.normals.map((n) => mulVec(view, n));
+    const front = facing.map((n) => !poly.flat && n[2] > 1e-9);
+    const shape = (face: readonly number[]): string => face.map((k) => `${n1(points[k]![0])},${n1(points[k]![1])}`).join(" ");
+    const lit = (f: number): number => {
+      const n = facing[f]!;
+      const l = n[0] * FACE_LIGHT[0] + n[1] * FACE_LIGHT[1] + n[2] * FACE_LIGHT[2];
+      return Math.max(0, poly.flat ? Math.abs(l) : l);
+    };
+    const edge = (a: number, b: number, look: string): string =>
+      `<line class="polyhedron-edge" x1="${n1(points[a]![0])}" y1="${n1(points[a]![1])}" x2="${n1(points[b]![0])}" y2="${n1(points[b]![1])}" ${look}/>`;
+    const edges = hullEdges(poly.faces);
+    // A flat polygon has no hidden side: all its edges are shown.
+    const hidden = poly.flat ? [] : edges.filter((e) => e.faces.every((f) => !front[f]));
+    const shown = poly.flat ? edges : edges.filter((e) => e.faces.some((f) => front[f]));
+    const push = (step: number, svg: string): void => {
+      if (svg) drawn.push({ kind: "polyhedron", depth: at(step), svg });
+    };
+    const colour = poly.colour;
+    if (poly.look === "glass") {
+      const fill = (f: number): string => mixHex(mixHex(colour, INK, 0.12), mixHex(colour, "#ffffff", 0.5), 0.3 + 0.7 * lit(f));
+      const faces = (want: boolean): string =>
+        poly.faces.map((face, f) => (front[f] === want ? `<polygon class="polyhedron-face" points="${shape(face)}" fill="${fill(f)}"/>` : "")).join("");
+      const line = `stroke="${mixHex(colour, INK, 0.5)}" stroke-width="${n1(width)}" stroke-linecap="round"`;
+      const opacity = Math.min(1, Math.max(0, poly.opacity));
+      // Faces of one side as one see-through group, so where they overlap the colour does not double.
+      const group = (svg: string): string => (svg ? `<g class="polyhedron" fill-opacity="${+opacity.toFixed(3)}">${svg}</g>` : "");
+      push(-2, group(faces(false)));
+      push(-1.5, hidden.map((e) => edge(e.a, e.b, line)).join(""));
+      push(1.5, group(faces(true)));
+      push(2, shown.map((e) => edge(e.a, e.b, line)).join(""));
+    } else if (poly.look === "solid") {
+      const fill = (f: number): string => mixHex(mixHex(colour, INK, 0.35), mixHex(colour, "#ffffff", 0.35), 0.35 + 0.65 * lit(f));
+      const stroke = mixHex(colour, INK, 0.5);
+      push(1.5, poly.faces.map((face, f) => (front[f] || poly.flat ? `<polygon class="polyhedron-face" points="${shape(face)}" fill="${fill(f)}" stroke="${stroke}" stroke-width="${n1(width)}" stroke-linejoin="round"/>` : "")).join(""));
+    } else {
+      const ink = `stroke="${INK}" stroke-width="${n1(width)}" stroke-linecap="round"`;
+      const thin = `stroke="${INK}" stroke-width="${n1(0.6 * width)}" stroke-linecap="round" stroke-dasharray="${n1(3 * width)} ${n1(2.5 * width)}"`;
+      push(1.5, poly.faces.map((face, f) => (front[f] || poly.flat ? `<polygon class="polyhedron-face" points="${shape(face)}" fill="#ffffff"/>` : "")).join(""));
+      push(1.75, hidden.map((e) => edge(e.a, e.b, thin)).join(""));
+      push(2, shown.map((e) => edge(e.a, e.b, ink)).join(""));
+    }
+  }
 }
 
 /** The spheres only, back to front. */
@@ -1554,7 +1685,7 @@ export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CAN
         out += `<line x1="${p!.split(",")[0]}" y1="${p!.split(",")[1]}" x2="${q!.split(",")[0]}" y2="${q!.split(",")[1]}"/>`;
       }
       out += "</g>\n";
-    } else if (d.kind === "orbital") {
+    } else if (d.kind === "orbital" || d.kind === "polyhedron") {
       out += `${d.svg}\n`;
     } else if (d.kind === "arrow") {
       // The outline, when asked for: every shape of the arrow in the darker tone of its colour, as the spheres have.

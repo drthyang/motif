@@ -21,6 +21,11 @@ export interface FeatureExample {
   readonly along?: readonly [number, number, number];
   /** The cells shown: from a, b, c, then to a, b, c (in cell edges). */
   readonly cells?: readonly [number, number, number, number, number, number];
+  /**
+   * Coordination polyhedra: round each `centre` atom, with its `neighbour` atoms as corners. The bond rule between
+   * the two is used if the page suggested one, else one is added up to `upTo` angstrom.
+   */
+  readonly polyhedra?: readonly { readonly centre: string; readonly neighbour: string; readonly upTo: number }[];
 }
 
 /** The feature examples from the text of features.json; an entry whose file is not among `files` is refused. */
@@ -45,6 +50,10 @@ export function readFeatures(text: string, files: readonly string[]): FeatureExa
     if (cells !== undefined && (!Array.isArray(cells) || cells.length !== 6 || cells.some((x) => typeof x !== "number") || [0, 1, 2].some((i) => cells[i]! >= cells[i + 3]!))) {
       throw new Error(`${where}: cells are six numbers, from a, b, c then to a, b, c`);
     }
+    const polyhedra = e.polyhedra as FeatureExample["polyhedra"] | undefined;
+    if (polyhedra !== undefined && (!Array.isArray(polyhedra) || polyhedra.some((p) => typeof p.centre !== "string" || typeof p.neighbour !== "string" || !(p.upTo > 0.1 && p.upTo <= 10)))) {
+      throw new Error(`${where}: polyhedra are given as { centre, neighbour, upTo (angstrom) }`);
+    }
     return {
       title: e.title,
       file: e.file,
@@ -55,6 +64,7 @@ export function readFeatures(text: string, files: readonly string[]): FeatureExa
       ...(e.completeBonds === false ? { completeBonds: false } : {}),
       ...(along ? { along: along as unknown as readonly [number, number, number] } : {}),
       ...(cells ? { cells: cells as unknown as readonly [number, number, number, number, number, number] } : {}),
+      ...(polyhedra ? { polyhedra } : {}),
     };
   });
 }

@@ -109,6 +109,11 @@ describe("the assistant's tools", () => {
       ["cells", [0, 0, 0], [2, 2, 1]],
       ["journal", { publisher: "American Physical Society", width: "1/2" }],
     ]);
+    // Polyhedra are set under Structure, and the reply says so.
+    const poly = runTool(page, "change_bonds", { between: "Ti–O", polyhedra: true, polyhedron_look: "line art", polyhedron_colour: "#5f89b8" });
+    expect(calls[calls.length - 1]).toEqual(["change", "Ti–O", { polyhedra: true, polyhedronLook: "line art", polyhedronColour: "#5f89b8" }]);
+    expect(poly.text).toMatch(/polyhedra drawn, line art polyhedra, polyhedron colour #5f89b8/);
+    expect(poly.text).toMatch(/Structure › Bonds/);
     expect(runTool(page, "set_element", { element: "Xx", colour: "#000000" })).toEqual({ text: "No element Xx in this structure.", isError: true });
     expect(runTool(page, "add_bonds", { between: "Nb", up_to: 3 }).isError).toBe(true);
     expect(runTool(page, "set_element", { element: "all", colour: "#ffffff" }).text).toMatch(/atomMaterial/);

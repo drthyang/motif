@@ -26,6 +26,9 @@ export interface BondView {
   readonly fillTriangles: boolean;
   readonly triangleColour?: string;
   readonly highlight: boolean;
+  /** "off", or the look of the coordination polyhedra round the centre atoms ("glass", "solid", "line art"). */
+  readonly polyhedra: string;
+  readonly polyhedronColour?: string;
 }
 
 /** The figure as the assistant sees it. */
@@ -69,6 +72,9 @@ export interface BondChange {
   readonly fillTriangles?: boolean;
   readonly triangleColour?: string;
   readonly highlight?: boolean;
+  readonly polyhedra?: boolean;
+  readonly polyhedronLook?: "glass" | "solid" | "line art";
+  readonly polyhedronColour?: string;
 }
 
 export interface ViewRequest {
@@ -118,7 +124,7 @@ export const TOOLS: readonly ToolSpec[] = [
   },
   {
     name: "change_bonds",
-    description: "Change one kind of bond: its distance limit, colour, thickness (angstrom), line, colouring, filled triangles (three mutually bonded atoms, e.g. the faces of a cluster) and their colour, or a highlight band.",
+    description: "Change one kind of bond: its distance limit, colour, thickness (angstrom), line, colouring, filled triangles (three mutually bonded atoms, e.g. the faces of a cluster) and their colour, a highlight band, or coordination polyhedra round the first element of the pair (e.g. TiO6 octahedra for \"Ti-O\"): on or off, their look and colour.",
     input_schema: {
       type: "object",
       properties: {
@@ -131,6 +137,9 @@ export const TOOLS: readonly ToolSpec[] = [
         fill_triangles: { type: "boolean" },
         triangle_colour: colour,
         highlight: { type: "boolean" },
+        polyhedra: { type: "boolean" },
+        polyhedron_look: { type: "string", enum: ["glass", "solid", "line art"] },
+        polyhedron_colour: colour,
       },
       required: ["between"],
     },
@@ -183,6 +192,9 @@ function inWords(change: Record<string, unknown>): string {
     fillTriangles: (v) => (v ? "triangles filled" : "triangles not filled"),
     triangleColour: (v) => `triangle colour ${v}`,
     highlight: (v) => (v ? "highlight band" : "no highlight band"),
+    polyhedra: (v) => (v ? "polyhedra drawn" : "no polyhedra"),
+    polyhedronLook: (v) => `${v} polyhedra`,
+    polyhedronColour: (v) => `polyhedron colour ${v}`,
     along: (v) => `along [${(v as number[]).join(" ")}]`,
     normalTo: (v) => `normal to (${(v as number[]).join(" ")})`,
     preset: (v) => `${v} view`,
@@ -268,11 +280,16 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
         ...(typeof input["fill_triangles"] === "boolean" ? { fillTriangles: input["fill_triangles"] } : {}),
         ...(typeof input["triangle_colour"] === "string" ? { triangleColour: input["triangle_colour"] } : {}),
         ...(typeof input["highlight"] === "boolean" ? { highlight: input["highlight"] } : {}),
+        ...(typeof input["polyhedra"] === "boolean" ? { polyhedra: input["polyhedra"] } : {}),
+        ...(typeof input["polyhedron_look"] === "string" ? { polyhedronLook: input["polyhedron_look"] as NonNullable<BondChange["polyhedronLook"]> } : {}),
+        ...(typeof input["polyhedron_colour"] === "string" ? { polyhedronColour: input["polyhedron_colour"] } : {}),
       };
       if (Object.keys(change).length === 0) return fail("Say what to change about these bonds.");
       const error = page.changeBonds(between, change);
-      // Only the place of what changed: the distance limit is under Structure, the look under Visual.
-      const place = change.upTo !== undefined && Object.keys(change).length === 1 ? "Structure › Bonds" : change.upTo !== undefined ? BOND_PLACE : "Visual › Bonds";
+      // Only the place of what changed: the distance limit and the polyhedra are under Structure, the look under Visual.
+      const underStructure = ["upTo", "polyhedra", "polyhedronLook", "polyhedronColour"];
+      const keys = Object.keys(change);
+      const place = keys.every((k) => underStructure.includes(k)) ? "Structure › Bonds" : keys.some((k) => underStructure.includes(k)) ? BOND_PLACE : "Visual › Bonds";
       return error ? fail(error) : { text: done(`${between} bonds: ${inWords(change as Record<string, unknown>)}`, place) };
     }
     case "remove_bonds": {

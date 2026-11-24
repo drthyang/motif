@@ -19,7 +19,7 @@ const open = (file: string, fold = false) => {
 
 describe("feature examples", () => {
   it("each opens, and shows its feature", () => {
-    expect(features.map((f) => f.title)).toEqual(["Atomic structure", "Magnetic structure", "Distortion mode", "Orbital order", "RMC configuration"]);
+    expect(features.map((f) => f.title)).toEqual(["Coordination polyhedra", "Magnetic structure", "Distortion mode", "Orbital order", "RMC configuration"]);
     for (const f of features) {
       const s = open(f.file, f.fold);
       const orbitals = (f.orbitals ?? []).map((o) => {
@@ -29,6 +29,15 @@ describe("feature examples", () => {
       const scene = buildScene(s, { ...DEFAULT_SPEC, ...(orbitals.length ? { orbitals } : {}) });
       expect(scene.spheres.length, f.title).toBeGreaterThan(0);
       if (f.title === "Magnetic structure") expect(scene.arrows.length).toBeGreaterThan(0);
+      if (f.title === "Coordination polyhedra") {
+        // In its own cells, the TiO6 octahedra of cubic SrTiO3: 3 x 3 x 2 Ti on the corners of 2 x 2 x 1 cells.
+        const [c0, c1, c2, c3, c4, c5] = f.cells!;
+        const range = { from: [c0, c1, c2] as const, to: [c3, c4, c5] as const, boundary: "both" as const };
+        const bonds = f.polyhedra!.map((p) => ({ centre: p.centre, neighbour: p.neighbour, max: p.upTo, complete: true, polyhedra: true }));
+        const drawn = buildScene(s, { ...DEFAULT_SPEC, range, bonds });
+        expect(drawn.polyhedra).toHaveLength(18);
+        expect(drawn.polyhedra!.every((p) => p.corners.length === 6 && p.look === "glass")).toBe(true);
+      }
       if (f.title === "Distortion mode") {
         // In its own cells: one TiO2 layer, every O2 with an arrow, none on Ti.
         const [c0, c1, c2, c3, c4, c5] = f.cells!;

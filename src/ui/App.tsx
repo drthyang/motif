@@ -18,7 +18,7 @@ import { DEFAULT_ISO, ORBITALS } from "../scene/orbitals";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
-import { pairDistances, type BondColouring, type BondLine, type BondRule } from "../scene/bonds";
+import { DEFAULT_POLYHEDRON_OPACITY, pairDistances, type BondColouring, type BondLine, type BondRule, type PolyhedronLook } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readStructure } from "../structure/readStructure";
 import { withDisplacements } from "../structure/distortion";
@@ -501,6 +501,13 @@ export function App() {
     if (f.cells) setRangeText(f.cells.map(String));
     if (f.completeBonds === false) setBondRules((all) => all.map((r) => ({ ...r, complete: false })));
     if (f.hide) setLooks((all) => ({ ...all, ...Object.fromEntries(f.hide!.map((k) => [k, { ...all[k], hidden: true }])) }));
+    for (const p of f.polyhedra ?? []) {
+      setBondRules((all) =>
+        all.some((r) => r.centre === p.centre && r.neighbour === p.neighbour)
+          ? all.map((r) => (r.centre === p.centre && r.neighbour === p.neighbour ? { ...r, polyhedra: true } : r))
+          : [...all, { centre: p.centre, neighbour: p.neighbour, max: p.upTo, maxText: String(p.upTo), complete: true, polyhedra: true }],
+      );
+    }
     if (f.orbitals) {
       setOrbitalRules(
         f.orbitals.map((o) => ({ species: o.species, orbitals: [...o.orbitals], sizeText: String(o.size ?? DEFAULT_ORBITAL_SIZE), colours: [...(o.colours ?? DEFAULT_ORBITAL_COLOURS)] as [string, string], opacityText: String(DEFAULT_ORBITAL_OPACITY), iso: DEFAULT_ISO, texture: "soft" as OrbitalTexture, zText: "", xText: "", ...(o.zFrom ? { zMode: o.zFrom.mode, zNeighbour: o.zFrom.neighbour } : {}) })),
@@ -1014,6 +1021,8 @@ export function App() {
           fillTriangles: r.fill === true,
           ...(r.fill ? { triangleColour: r.fillColour ?? scene?.ruleInfo[sceneRule(i)]?.fillColour ?? "" } : {}),
           highlight: r.band === true,
+          polyhedra: r.polyhedra ? (r.polyhedronLook === "line" ? "line art" : (r.polyhedronLook ?? "glass")) : "off",
+          ...(r.polyhedra ? { polyhedronColour: r.polyhedronColour ?? scene?.polyhedra?.find((p) => p.rule === sceneRule(i))?.colour ?? "" } : {}),
         })),
         pairs: pairs.map((p) => ({ between: `${p.centre}–${p.neighbour}`, distances: p.distances.slice(0, 4).map((d) => Number(d.toFixed(3))) })),
         cells: `from ${rangeText.slice(0, 3).join(", ")} to ${rangeText.slice(3).join(", ")}`,
@@ -1051,7 +1060,7 @@ export function App() {
     changeBonds: (between, change) => {
       const i = ruleIndex(between);
       if (i < 0) return `No ${between} bonds are drawn. Drawn: ${bondRules.map((r) => `${r.centre}–${r.neighbour}`).join(", ") || "none"}.`;
-      for (const c of [change.colour, change.triangleColour]) if (c !== undefined && !/^#[0-9a-fA-F]{6}$/.test(c)) return `"${c}" is not a colour "#rrggbb".`;
+      for (const c of [change.colour, change.triangleColour, change.polyhedronColour]) if (c !== undefined && !/^#[0-9a-fA-F]{6}$/.test(c)) return `"${c}" is not a colour "#rrggbb".`;
       if (change.upTo !== undefined && !(change.upTo > 0.1 && change.upTo <= 10)) return "up_to must be between 0.1 and 10 Å.";
       if (change.thickness !== undefined && !(change.thickness > 0.005 && change.thickness <= 1)) return "The thickness must be between 0.005 and 1 Å.";
       changeRule(i, {
@@ -1063,6 +1072,9 @@ export function App() {
         ...(change.fillTriangles !== undefined ? { fill: change.fillTriangles } : {}),
         ...(change.triangleColour !== undefined ? { fill: true, fillColour: change.triangleColour.toLowerCase() } : {}),
         ...(change.highlight !== undefined ? { band: change.highlight } : {}),
+        ...(change.polyhedra !== undefined ? { polyhedra: change.polyhedra } : {}),
+        ...(change.polyhedronLook !== undefined ? { polyhedra: true, polyhedronLook: change.polyhedronLook === "line art" ? ("line" as const) : change.polyhedronLook } : {}),
+        ...(change.polyhedronColour !== undefined ? { polyhedra: true, polyhedronColour: change.polyhedronColour.toLowerCase() } : {}),
       });
       return null;
     },
@@ -1590,10 +1602,11 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                     )}
                     <button title="Remove this bond" onClick={() => setBondRules((all) => all.filter((_, i) => i !== index))}>×</button>
                   </div>
-                  <label className="row">
+                  <label className="row" title={r.polyhedra ? "Polyhedra need every corner, so these are always added while they are drawn." : undefined}>
                     <input
                       type="checkbox"
-                      checked={r.complete}
+                      checked={r.complete || (r.polyhedra ?? false)}
+                      disabled={r.polyhedra ?? false}
                       onChange={(e) => setBondRules((all) => all.map((x, i) => (i === index ? { ...x, complete: e.target.checked } : x)))}
                     />
                     Add {nameOf(r.neighbour)} outside the range bonded to {nameOf(r.centre)} inside
@@ -1608,9 +1621,57 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                       Keep only atoms and bonds of complete triangles
                     </label>
                   )}
+                  <label className="row" title={`The coordination polyhedron round each ${nameOf(r.centre)} inside the range: the solid whose corners are the ${nameOf(r.neighbour)} this rule bonds it to.`}>
+                    <input type="checkbox" data-testid={`bond-polyhedra-${index}`} checked={r.polyhedra ?? false} onChange={(e) => changeRule(index, { polyhedra: e.target.checked })} />
+                    Polyhedra round {nameOf(r.centre)}
+                  </label>
+                  {r.polyhedra && (
+                    <>
+                      <div className="row">
+                        <span className="lab">look</span>
+                        <select data-testid={`polyhedron-look-${index}`} value={r.polyhedronLook ?? "glass"} onChange={(e) => changeRule(index, { polyhedronLook: e.target.value as PolyhedronLook })}>
+                          <option value="glass">Glass: see-through, every edge</option>
+                          <option value="solid">Solid: shaded faces</option>
+                          <option value="line">Line art: white, hidden edges dashed</option>
+                        </select>
+                        <input
+                          type="color"
+                          data-testid={`polyhedron-colour-${index}`}
+                          title={`Colour of the polyhedra (usually the colour of ${nameOf(r.centre)})`}
+                          value={r.polyhedronColour ?? scene?.polyhedra?.find((p) => p.rule === sceneRule(index))?.colour ?? "#cccccc"}
+                          onChange={(e) => changeRule(index, { polyhedronColour: e.target.value })}
+                        />
+                        {r.polyhedronColour && (
+                          <button className="plain" title={`Back to the colour of ${nameOf(r.centre)}`} data-testid={`polyhedron-colour-reset-${index}`} onClick={() => changeRule(index, { polyhedronColour: undefined })}>
+                            ↺
+                          </button>
+                        )}
+                      </div>
+                      {(r.polyhedronLook ?? "glass") === "glass" && (
+                        <div className="row slider" title="How solid the faces are: to the left clearer, to the right less see-through.">
+                          <span className="lab">faces</span>
+                          <input
+                            type="range"
+                            min={0.1}
+                            max={1}
+                            step={0.05}
+                            data-testid={`polyhedron-opacity-${index}`}
+                            value={r.polyhedronOpacity ?? DEFAULT_POLYHEDRON_OPACITY}
+                            onChange={(e) => changeRule(index, { polyhedronOpacity: Number(e.target.value) })}
+                          />
+                          <span className="sub">{Math.round((r.polyhedronOpacity ?? DEFAULT_POLYHEDRON_OPACITY) * 100)}% solid</span>
+                        </div>
+                      )}
+                      <label className="row">
+                        <input type="checkbox" data-testid={`polyhedron-bonds-${index}`} checked={r.polyhedronBonds ?? false} onChange={(e) => changeRule(index, { polyhedronBonds: e.target.checked })} />
+                        Also draw the {nameOf(r.centre)}–{nameOf(r.neighbour)} bonds inside
+                      </label>
+                    </>
+                  )}
                   <p className="sub" data-testid={`bond-count-${index}`}>
                     {r.max > 0.1 && r.max <= 10
-                      ? `${bondCount(index)} bonds drawn, in ${scene?.ruleInfo[sceneRule(index)]?.groups ?? 0} connected group(s); ${scene?.ruleInfo[sceneRule(index)]?.triangles ?? 0} triangles`
+                      ? `${bondCount(index)} bonds drawn, in ${scene?.ruleInfo[sceneRule(index)]?.groups ?? 0} connected group(s); ${scene?.ruleInfo[sceneRule(index)]?.triangles ?? 0} triangles` +
+                        (r.polyhedra ? `; ${polyhedraText(scene?.ruleInfo[sceneRule(index)]?.polyhedra)}` : "")
                       : "Give a distance between 0.1 and 10 Å."}
                   </p>
                 </div>
@@ -2806,6 +2867,18 @@ const FONT_GROUPS: { label: string; fonts: string[] }[] = [
 const fontChecks = new Map<string, boolean>();
 /** Height of a capital letter as a fraction of the font size, measured in this browser (0.72 if it cannot be). */
 const capHeights = new Map<string, number>();
+/** What a rule's polyhedra are, for the line under it: "18 octahedra", "4 tetrahedra and 2 with 5 corners". */
+const SHAPE_NAMES: Readonly<Record<number, string>> = { 3: "triangles", 4: "tetrahedra", 6: "octahedra" };
+function polyhedraText(found: readonly { readonly corners: number; readonly count: number }[] | undefined): string {
+  if (!found || found.length === 0) return "no polyhedra";
+  const one = ({ corners, count }: { corners: number; count: number }): string => {
+    const name = SHAPE_NAMES[corners];
+    if (name) return `${count} ${count === 1 ? name.replace(/a$/, "on").replace(/s$/, "") : name}`;
+    return `${count} polyhedr${count === 1 ? "on" : "a"} with ${corners} corners`;
+  };
+  return found.map(one).join(", ");
+}
+
 function capHeight(family: string): number {
   const name = family.replace(/[^A-Za-z0-9 \-]/g, "").trim();
   const known = capHeights.get(name);

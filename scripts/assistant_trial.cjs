@@ -21,16 +21,16 @@ const bond = (s, a, b) => s.bonds.find((x) => x.between === `${a}–${b}` || x.b
 
 const ONLY = process.env.ONLY ? Number(process.env.ONLY) : 0;
 const CASES_ALL = [
-  { example: "Atomic structure", ask: "Make the atoms glass and colour the oxygen atoms red.", ok: (s) => s.settings.atomMaterial === "glass" && reddish(el(s, "O").colour) },
-  { example: "Atomic structure", ask: "Make the oxygen atoms smaller.", ok: (s, s0) => el(s, "O").radius < el(s0, "O").radius },
-  { example: "Atomic structure", ask: "Hide the unit cell.", ok: (s) => s.settings.showCell === false },
-  { example: "Atomic structure", ask: "Look along the c axis.", ok: (s) => /along \[001\]/.test(s.view) },
-  { example: "Atomic structure", ask: "Size the figure for Physical Review, one column, half width.", ok: (s) => /Physical Review/.test(s.journal) && /1\/2/.test(s.journal) },
-  { example: "Atomic structure", ask: "Show 2 by 2 by 1 cells.", ok: (s) => s.cells === "from 0, 0, 0 to 2, 2, 1" },
-  { example: "Atomic structure", ask: "Make the Si–O bonds thicker and dashed.", ok: (s, s0) => bond(s, "Si", "O").thickness > bond(s0, "Si", "O").thickness && bond(s, "Si", "O").line === "dashed" },
-  { example: "Atomic structure", ask: "Remove the legend.", ok: (s) => s.settings.showLegend === false },
+  { example: "Coordination polyhedra", ask: "Make the atoms glass and colour the oxygen atoms red.", ok: (s) => s.settings.atomMaterial === "glass" && reddish(el(s, "O").colour) },
+  { example: "Coordination polyhedra", ask: "Make the oxygen atoms smaller.", ok: (s, s0) => el(s, "O").radius < el(s0, "O").radius },
+  { example: "Coordination polyhedra", ask: "Hide the unit cell.", ok: (s) => s.settings.showCell === false },
+  { example: "Coordination polyhedra", ask: "Look along the c axis.", ok: (s) => /along \[001\]/.test(s.view) },
+  { example: "Coordination polyhedra", ask: "Size the figure for Physical Review, one column, half width.", ok: (s) => /Physical Review/.test(s.journal) && /1\/2/.test(s.journal) },
+  { example: "Coordination polyhedra", ask: "Show just one unit cell.", ok: (s) => s.cells === "from 0, 0, 0 to 1, 1, 1" },
+  { example: "Coordination polyhedra", ask: "Draw the TiO6 octahedra as solid polyhedra.", ok: (s) => bond(s, "Ti", "O").polyhedra === "solid" },
+  { example: "Coordination polyhedra", ask: "Remove the legend.", ok: (s) => s.settings.showLegend === false },
   { example: "Magnetic structure", ask: "Make the moment arrows blue.", ok: (s) => bluish(s.settings.momentColour) },
-  { example: "Atomic structure", ask: "Set all the text to 8 pt.", ok: (s) => ["legend", "axes", "angle"].every((k) => String(s.settings.textSizes[k]) === "8") },
+  { example: "Coordination polyhedra", ask: "Set all the text to 8 pt.", ok: (s) => ["legend", "axes", "angle"].every((k) => String(s.settings.textSizes[k]) === "8") },
 ];
 
 const CASES = ONLY ? [CASES_ALL[ONLY - 1]] : CASES_ALL;

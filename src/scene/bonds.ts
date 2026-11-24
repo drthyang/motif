@@ -8,6 +8,13 @@ import { atomsInRange, type Range } from "./select";
 
 export type BondColouring = "single" | "atoms";
 export type BondLine = "solid" | "dashed" | "dotted";
+/**
+ * How coordination polyhedra are drawn: "glass" (see-through shaded faces, every edge, the centre atom inside),
+ * "solid" (opaque shaded faces, the centre hidden) or "line" (white faces, hidden edges dashed, for print in black
+ * and white).
+ */
+export type PolyhedronLook = "glass" | "solid" | "line";
+export const POLYHEDRON_LOOKS: readonly PolyhedronLook[] = ["glass", "solid", "line"];
 
 export interface BondRule {
   /** Species at the centre, e.g. the metal of an octahedron: an element symbol, or "Fe/Mg" for a shared site. */
@@ -47,7 +54,23 @@ export interface BondRule {
    * bonds that are not the side of a triangle (the ragged edge of a kagome net).
    */
   readonly onlyTriangles?: boolean;
+  /**
+   * Draw the coordination polyhedron round each `centre` atom inside the range: the convex hull of the neighbours
+   * this rule bonds it to. It needs every neighbour, so it adds those outside the range as `complete` does.
+   */
+  readonly polyhedra?: boolean;
+  /** How the polyhedra are drawn (absent: glass, the user's choice of 2026-11-24). */
+  readonly polyhedronLook?: PolyhedronLook;
+  /** Colour of the polyhedra (absent: the centre atom's colour; for a shared site its colours mixed by occupancy). */
+  readonly polyhedronColour?: string | undefined;
+  /** How solid the faces of glass polyhedra are, 0 to 1 (absent: DEFAULT_POLYHEDRON_OPACITY). */
+  readonly polyhedronOpacity?: number;
+  /** Also draw this rule's bonds inside its polyhedra (absent: they are left out). */
+  readonly polyhedronBonds?: boolean;
 }
+
+/** How solid the faces of glass polyhedra are unless chosen. */
+export const DEFAULT_POLYHEDRON_OPACITY = 0.55;
 
 /** An atom with its position in angstrom. */
 export interface PlacedAtom extends CellAtom {
@@ -136,7 +159,7 @@ export function atomsAndBonds(structure: Structure, range: Range, rules: readonl
 
   // 1. Add the neighbours outside the range that "complete" rules ask for. Only atoms inside the range
   //    are centres, so the figure grows by one shell of neighbours and no further.
-  const completing = rules.filter((r) => r.complete);
+  const completing = rules.filter((r) => r.complete || r.polyhedra);
   if (completing.length > 0 && inRange > 0) {
     const reach = Math.max(...completing.map((r) => r.max));
     const around = place(structure, atomsInRange(structure, widened(structure, range, reach), Infinity).atoms).filter((a) => !hidden.has(a.species));

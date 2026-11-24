@@ -11,7 +11,8 @@ import { DEFAULT_ISO, orbitalById, orbitalFrame, orbitalFrameAbout } from "./orb
 import { expandToUnitCell } from "../structure/expand";
 import { defaultColour, defaultRadius } from "./elementStyle";
 import { angleKinds, anglesOfRule, bondAngles, DEFAULT_ANGLE_LOOK, type AngleKind, type AngleRule } from "./angles";
-import { atomsAndBonds, type BondColouring, type BondLine, type BondRule } from "./bonds";
+import { atomsAndBonds, DEFAULT_POLYHEDRON_OPACITY, type BondColouring, type BondLine, type BondRule, type PolyhedronLook } from "./bonds";
+import { convexHull } from "./polyhedra";
 import { mixHex } from "./elementStyle";
 import { connectedGroups, prune, triangles } from "./highlight";
 import { BOUNDARY_TOLERANCE, ONE_CELL, type Range } from "./select";
@@ -129,6 +130,28 @@ export interface Polygon {
   readonly opacity: number;
 }
 
+/**
+ * A coordination polyhedron: the convex hull of the atoms one bond rule bonds to a centre atom (see polyhedra.ts).
+ * The renderer draws it as one unit at the depth of its centre: back faces, the centre atom, front faces.
+ */
+export interface Polyhedron {
+  /** Index into Scene.spheres of the centre atom. */
+  readonly centre: number;
+  /** Indices into Scene.spheres of its corners. */
+  readonly corners: readonly number[];
+  /** Each face as indices into `corners`, anticlockwise seen from outside, with its outward unit normal. */
+  readonly faces: readonly (readonly number[])[];
+  readonly normals: readonly Vec3[];
+  /** True when the corners all lie in one plane (square-planar CuO4): one face, seen from either side. */
+  readonly flat: boolean;
+  /** Index of the bond rule that made it. */
+  readonly rule: number;
+  readonly colour: string;
+  /** How solid its faces are (glass), 0 to 1. */
+  readonly opacity: number;
+  readonly look: PolyhedronLook;
+}
+
 /** A marked bond angle: a translucent sector between two bonds at their common atom. */
 export interface Sector {
   /** Indices into Scene.spheres: the apex and the two ends. */
@@ -151,6 +174,8 @@ export interface RuleInfo {
   /** Number of connected groups (chains, nets) its bonds form. */
   readonly groups: number;
   readonly triangles: number;
+  /** The polyhedra the rule drew, by number of corners (absent when it draws none). */
+  readonly polyhedra?: readonly { readonly corners: number; readonly count: number }[];
   /** Colour the filled triangles are drawn in (the chosen one, else the usual tint); null with no triangles. */
   readonly fillColour?: string | null;
 }
@@ -170,6 +195,8 @@ export interface Scene {
   readonly ruleInfo: readonly RuleInfo[];
   readonly bands: readonly Band[];
   readonly polygons: readonly Polygon[];
+  /** Coordination polyhedra (absent or empty: none). */
+  readonly polyhedra?: readonly Polyhedron[];
   /** Marked bond angles. */
   readonly sectors: readonly Sector[];
   /** The kinds of angle present among the drawn bonds, for the user to choose from. */
@@ -436,6 +463,23 @@ export const DEFAULT_SPEC: SceneSpec = { range: ONE_CELL, bonds: [], showCell: t
 /** Colour of an element: the user's, else the default. */
 export function elementColour(element: string, looks: Readonly<Record<string, Look>>): string {
   return looks[element]?.colour ?? defaultColour(element);
+}
+
+/**
+ * The colour of a polyhedron round a site: its element's colour, or for a site shared by several elements their
+ * colours mixed in proportion to their occupancies (the user's choice, 2026-11-24).
+ */
+export function occupancyColour(components: readonly Component[], looks: Readonly<Record<string, Look>>): string {
+  const total = components.reduce((sum, c) => sum + c.occupancy, 0);
+  if (components.length === 1 || !(total > 0)) return elementColour(components[0]!.element, looks);
+  const channel = (hex: string, i: number): number => parseInt(hex.slice(1 + 2 * i, 3 + 2 * i), 16);
+  return `#${[0, 1, 2]
+    .map((i) =>
+      Math.round(components.reduce((sum, c) => sum + (c.occupancy / total) * channel(elementColour(c.element, looks), i), 0))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
 }
 
 /** Radius of a species in angstrom: the user's, else the default (for a shared site, the occupancy-weighted mean of its elements). */
@@ -727,7 +771,45 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
       rule: ruleIndex,
     })),
   );
-  const sticks: Stick[] = bonds.map((b, index) => (paleBonds.has(index) ? { ...b, pale: true } : b));
+  // Coordination polyhedra: round each centre atom inside the range, the hull of the atoms the rule bonds it to.
+  // The rule's bonds inside them are left out unless asked for.
+  const polyhedra: Polyhedron[] = [];
+  const innerBonds = new Set<number>();
+  spec.bonds.forEach((rule, ruleIndex) => {
+    if (!rule.polyhedra) return;
+    const around = new Map<number, { atom: number; bond: number }[]>();
+    bonds.forEach((b, index) => {
+      if (b.rule !== ruleIndex) return;
+      for (const [c, n] of [[b.i, b.j], [b.j, b.i]] as const) {
+        const centre = atoms[c]!;
+        if (centre.species !== rule.centre || centre.added || atoms[n]!.species !== rule.neighbour) continue;
+        const list = around.get(c);
+        if (list) list.push({ atom: n, bond: index });
+        else around.set(c, [{ atom: n, bond: index }]);
+      }
+    });
+    const counts = new Map<number, number>();
+    for (const c of [...around.keys()].sort((p, q) => p - q)) {
+      const list = around.get(c)!;
+      const hull = convexHull(list.map((x) => atoms[x.atom]!.cart));
+      if (!hull) continue;
+      polyhedra.push({
+        centre: c,
+        corners: list.map((x) => x.atom),
+        faces: hull.faces,
+        normals: hull.normals,
+        flat: hull.flat,
+        rule: ruleIndex,
+        colour: rule.polyhedronColour ?? occupancyColour(atoms[c]!.components, spec.looks),
+        opacity: rule.polyhedronOpacity ?? DEFAULT_POLYHEDRON_OPACITY,
+        look: rule.polyhedronLook ?? "glass",
+      });
+      counts.set(list.length, (counts.get(list.length) ?? 0) + 1);
+      if (!rule.polyhedronBonds) for (const x of list) innerBonds.add(x.bond);
+    }
+    ruleInfo[ruleIndex] = { ...ruleInfo[ruleIndex]!, polyhedra: [...counts].sort((p, q) => p[0] - q[0]).map(([corners, count]) => ({ corners, count })) };
+  });
+  const sticks: Stick[] = bonds.flatMap((b, index) => (innerBonds.has(index) ? [] : [paleBonds.has(index) ? { ...b, pale: true } : b]));
   const radiusOf = (index: number): number => styles[spheres[index]!.style]!.radius;
   const bands: Band[] = bandSpecs
     .filter((b) => b.segments.length > 0)
@@ -742,5 +824,5 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     const rule = polygonSpecs[k]!.rule;
     if (ruleInfo[rule] && ruleInfo[rule]!.fillColour === undefined) ruleInfo[rule] = { ...ruleInfo[rule]!, fillColour: p.colour };
   });
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, ...(orbitals.length ? { orbitals } : {}), arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, axesColours: spec.axesColoured ? spec.axesColours : undefined, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, glassOpacity: spec.glassOpacity, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legendFontPt: spec.legendFontPt, axesFontPt: spec.axesFontPt, angleFontPt: spec.angleFontPt, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, ...(polyhedra.length ? { polyhedra } : {}), sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, ...(orbitals.length ? { orbitals } : {}), arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, axesColours: spec.axesColoured ? spec.axesColours : undefined, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, glassOpacity: spec.glassOpacity, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legendFontPt: spec.legendFontPt, axesFontPt: spec.axesFontPt, angleFontPt: spec.angleFontPt, legend, axes, warnings: [...warnings, ...arrowNote] };
 }
