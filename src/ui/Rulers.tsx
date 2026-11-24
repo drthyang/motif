@@ -11,16 +11,28 @@ export const RULER_LEFT = 26;
  * Rulers along the top and the left of the figure on the page, measuring the figure itself (cm or in on paper,
  * else px of the figure). `box` is where the drawing sits in its frame, in screen px. Never part of a saved figure.
  */
-export function Rulers({ box, width, height, unit }: { box: { left: number; top: number; width: number; height: number }; width: number; height: number; unit: RulerUnit }) {
+export function Rulers({ box, width, height, unit, onUnit }: { box: { left: number; top: number; width: number; height: number }; width: number; height: number; unit: RulerUnit; onUnit?: () => void }) {
   if (box.width < 10 || box.height < 10) return null;
   const top = rulerTicks(width, unit, box.width / width);
   const side = rulerTicks(height, unit, box.height / height);
   const len = (major: boolean) => (major ? 9 : 4);
   return (
     <>
-      <div className="ruler-corner" style={{ top: -RULER_TOP, left: -RULER_LEFT, width: RULER_LEFT, height: RULER_TOP }} aria-hidden>
-        {unit}
-      </div>
+      {onUnit ? (
+        <button
+          className="ruler-corner switch"
+          data-testid="ruler-unit"
+          style={{ top: -RULER_TOP, left: -RULER_LEFT, width: RULER_LEFT, height: RULER_TOP }}
+          title={`Rulers in ${unit === "cm" ? "inches" : "centimetres"} (the figure's size does not change)`}
+          onClick={onUnit}
+        >
+          {unit}
+        </button>
+      ) : (
+        <div className="ruler-corner" style={{ top: -RULER_TOP, left: -RULER_LEFT, width: RULER_LEFT, height: RULER_TOP }} aria-hidden>
+          {unit}
+        </div>
+      )}
       <svg className="ruler" data-testid="ruler-top" style={{ top: -RULER_TOP, left: box.left, width: box.width, height: RULER_TOP }} aria-hidden>
         {top.map((t, i) => {
           const x = Math.min(box.width - 0.5, Math.max(0.5, (t.at / width) * box.width));

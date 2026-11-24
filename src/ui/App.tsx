@@ -100,6 +100,8 @@ export function App() {
   const [journalChoice, setJournalChoice] = useState("");
   // Rulers along the top and left of the figure on the page (never part of the saved figure).
   const [showRulers, setShowRulers] = useState(true);
+  // The unit the rulers and the size under the figure are read in: cm or in, whatever unit the size was set in.
+  const [rulerUnit, setRulerUnit] = useState<"cm" | "in" | null>(null);
   // Which share of the template's width the figure takes: all, a half, a third or a quarter.
   const [journalPart, setJournalPart] = useState<PartId>("1");
   const canvasSize: [number, number] = [Number(canvasSizeText[0]), Number(canvasSizeText[1])];
@@ -108,7 +110,12 @@ export function App() {
     canvasSize.every((x) => Number.isFinite(x) && x >= sideMin && x <= sideMax) && canvasSize[1] / canvasSize[0] >= 0.2 && canvasSize[1] / canvasSize[0] <= 5;
   // While a side is being typed (or is out of range) the canvas keeps the last valid size.
   const lastPhysical = useRef<PhysicalSize>({ width: 8.9, height: 6.675, unit: "cm" });
-  if (canvasSizeOk) lastPhysical.current = { width: canvasSize[0], height: canvasSize[1], unit: canvasUnit };
+  // Replaced only when a number changes: the frame's measuring effect depends on this object, and a new one on
+  // every render made it set the canvas on every render (an endless update loop, which blanked the figure).
+  if (canvasSizeOk) {
+    const was = lastPhysical.current;
+    if (was.width !== canvasSize[0] || was.height !== canvasSize[1] || was.unit !== canvasUnit) lastPhysical.current = { width: canvasSize[0], height: canvasSize[1], unit: canvasUnit };
+  }
   const physical: PhysicalSize | null = canvasFixed ? lastPhysical.current : null;
   // The shape of the canvas: free (the frame's shape, or the width and height as typed) or a chosen
   // width : height, turned upright with "portrait".
@@ -263,6 +270,14 @@ export function App() {
     () => (structure && near ? (near.angle <= SNAP_DEGREES ? near : nearestDirection(structure.cell, view, SIMPLE_DIRECTIONS)) : null),
     [structure, view, near],
   );
+  // The figure's size as the rulers show it: on paper in the unit chosen for the rulers, else in px of the figure.
+  const shownSize: { width: number; height: number; unit: "cm" | "in" | "px" } = (() => {
+    const p = canvas.physical;
+    if (!p) return { width: canvas.width, height: canvas.height, unit: "px" };
+    const unit = rulerUnit ?? p.unit;
+    const f = PT_PER[p.unit] / PT_PER[unit];
+    return { width: p.width * f, height: p.height * f, unit };
+  })();
   const viewLine = `${writeView(numbers)}${named ? (named.angle < 0.05 ? ` · along ${writeDirection(named.direction)}` : ` · ${named.angle.toFixed(1)}° from ${writeDirection(named.direction)}`) : ""}`;
   const [showVacancy, setShowVacancy] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
@@ -1100,9 +1115,10 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 {showRulers && drawingBox.width > 0 && (
                   <Rulers
                     box={drawingBox}
-                    width={canvas.physical ? canvas.physical.width : canvas.width}
-                    height={canvas.physical ? canvas.physical.height : canvas.height}
-                    unit={canvas.physical ? canvas.physical.unit : "px"}
+                    width={shownSize.width}
+                    height={shownSize.height}
+                    unit={shownSize.unit}
+                    {...(canvas.physical ? { onUnit: () => setRulerUnit(shownSize.unit === "cm" ? "in" : "cm") } : {})}
                   />
                 )}
                 <div
@@ -1130,7 +1146,11 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   data-live={previewLive ? "yes" : "no"}
                   style={{ display: previewLive ? "block" : "none", left: drawingBox.left, top: drawingBox.top, width: drawingBox.width, height: drawingBox.height }}
                 />
-                {previewLive && <div className="preview-note">Simplified while moving</div>}
+                {previewLive && (
+                  <div className="preview-note" style={{ left: drawingBox.left + 12, top: drawingBox.top + 12 }}>
+                    Simplified while moving
+                  </div>
+                )}
                 {box && (() => {
                   // The dragged rectangle, in screen px of the frame.
                   const r = figureRef.current!.getBoundingClientRect();
@@ -1158,7 +1178,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   <button className="plain copy" title="Copy the view" onClick={() => void navigator.clipboard?.writeText(writeView(numbers))}>⧉</button>
                   <span className="figure-size" data-testid="figure-size">
                     {" · figure "}
-                    {canvas.physical ? sizeLabel(canvas.physical.width, canvas.physical.height, canvas.physical.unit) : sizeLabel(canvas.width, canvas.height, "px")}
+                    {sizeLabel(shownSize.width, shownSize.height, shownSize.unit)}
                   </span>
                 </p>
                 {showHelp && (

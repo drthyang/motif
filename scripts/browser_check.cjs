@@ -123,6 +123,31 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
     await page.close();
   }
 
+  // 4. No endless update loop: each feature example opens, turns and zooms with no error in the console
+  //    (a size-on-paper object rebuilt on every render once made React re-render until it gave up).
+  {
+    const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(String(e)));
+    page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 80)); });
+    await page.goto(URL_BASE);
+    const names = await page.evaluate(() => [...document.querySelectorAll("[data-testid^=feature-]")].map((e) => e.dataset.testid));
+    for (const id of names) {
+      await page.goto(URL_BASE);
+      await page.click(`[data-testid="${id}"]`);
+      await page.waitForTimeout(1200);
+      const fig = await page.locator("[data-testid=figure]").boundingBox();
+      await page.mouse.move(fig.x + fig.width / 2, fig.y + fig.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(fig.x + fig.width / 2 + 60, fig.y + fig.height / 2 + 20, { steps: 5 });
+      await page.mouse.up();
+      await page.keyboard.press("+");
+      await page.waitForTimeout(400);
+    }
+    check(`feature examples (${names.length}) open, turn and zoom with no console error`, names.length >= 5 && errors.length === 0, [...new Set(errors)].join("; "));
+    await page.close();
+  }
+
   await browser.close();
   console.log(failures === 0 ? "all browser checks passed" : `${failures} browser check(s) FAILED`);
   process.exit(failures === 0 ? 0 : 1);

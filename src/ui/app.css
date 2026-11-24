@@ -266,3 +266,5 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .ruler text { fill: var(--secondary); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 .ruler-corner { display: flex; align-items: flex-start; justify-content: flex-start; padding: 2px 0 0 2px; font-size: 9.5px; color: var(--faint); }
 .figure-size { color: var(--faint); }
+.ruler-corner.switch { pointer-events: auto; cursor: pointer; border: 0; border-radius: 4px; background: none; height: auto; padding: 1px 3px; font: inherit; font-size: 9.5px; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--control); }
+.ruler-corner.switch:hover { background: var(--muted); }

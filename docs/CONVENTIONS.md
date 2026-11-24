@@ -362,6 +362,8 @@ Structure tab; the user's choices of 2026-11-23.
   does not change them. Ticks at least 5 screen px apart (mm and cm; eighths to whole inches; round px), labels
   on whole cm, whole inches or round px at least 34 px apart. The figure's size is written after the view line.
   On by default; Layout tab, Canvas, "Rulers beside the figure". A guide on the page only, never in a saved figure.
+  With a size on paper, the unit where the rulers meet is a switch: the rulers and the size under the figure
+  are then read in cm or in; the figure's own size and unit do not change.
 - **Zoom and move** act on the structure; the legend and axes stay put and are drawn over a structure that
   reaches them. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the buttons; move: Shift + drag, middle-button
   drag, arrow keys; fit again: double-click, 0, or "Fit"; "Box" then a drag zooms to a rectangle (Esc
