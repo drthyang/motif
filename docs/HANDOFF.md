@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 359 tests, about three seconds
+npx tsc -b && npx vitest run    # 363 tests, about three seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -52,7 +52,7 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   atoms), `src/scene` (what is shown, plain data), `src/render` (scene + view to SVG), plus `src/preview`
   (GPU drawing while a large structure moves) and `src/ui`.
 - The page: header with the name MOTIF only; five tabs: Info, Structure (what is drawn), Visual (how it
-  looks), Layout (canvas, view, saved settings), Assistant; one text scale (12/13/14/15 px); labels in one column.
+  looks), Layout (canvas, view, saved settings, page colour), Assistant; one text scale (12/13/14/15 px); labels in one column.
 - Formats (2026-11-23/24): CIF, mCIF, ISODISTORT, RMCProfile, VASP POSCAR/CONTCAR, XYZ and extended XYZ, SHELX
   .res/.ins, PDB, Quantum ESPRESSO input (ibrav 0), CASTEP .cell, FHI-aims geometry.in, XSF; each checked against
   the CIF reading of the same crystal (`tests/formats.test.ts`). The format shows over the figure, top left; an
@@ -82,6 +82,11 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   heavy fused grotesque drawn from scratch; ink on a light tab bar, white on a dark one. `public/favicon.svg`.
   MTF as a name or monogram was considered and dropped (it reads as "male-to-female", and in imaging as
   "modulation transfer function").
+- Page colour (1c365d6): Layout › Page colour, six accents (Lemon, the default, Marigold, Apricot, Mint, Sky,
+  Lilac), for the page only, never the figures; kept in this browser (`src/ui/theme.ts`). The user had found Lemon
+  close to the MFA Boston website's yellow (#ffff5a); after mock views of the six they kept Lemon as the default
+  and asked for a choice. The assistant drawer's header bar takes the accent; its conversation and input are plain
+  white (06915a4, after a pale-yellow tint in 7bfc9ae and an all-yellow drawer in 4927e65).
 - Opening any file blanked the page in newer browsers, fixed in 1cd3e18: the Assistant tab's scroll effect
   returned the promise that `scrollIntoView` now gives, and React took it for a clean-up; it now returns nothing.
 
