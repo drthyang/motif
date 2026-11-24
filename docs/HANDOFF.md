@@ -83,10 +83,10 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   with PNG, ICO and Apple touch icon copies on a white tile for Safari (e084351).
   MTF as a name or monogram was considered and dropped (it reads as "male-to-female", and in imaging as
   "modulation transfer function").
-- Page colour: a small dot beside the MOTIF word mark in the header opens six accents (Lemon, the default,
+- Page colour: a small dot at the right of the header, left of Open file…, opens six accents (Lemon, the default,
   Marigold, Apricot, Mint, Sky, Lilac), for the page only, never the figures; kept in this browser
-  (`src/ui/ThemeCue.tsx`, `src/ui/theme.ts`). Since cb9f2f4; it was a Layout section (1c365d6) until the user said
-  it is not about the figure's layout. The user had found Lemon
+  (`src/ui/ThemeCue.tsx`, `src/ui/theme.ts`). It was a Layout section (1c365d6) until the user said it is not about
+  the figure's layout, then a dot beside the word mark (cb9f2f4), then at the right (83562f4). The user had found Lemon
   close to the MFA Boston website's yellow (#ffff5a); after mock views of the six they kept Lemon as the default
   and asked for a choice. The assistant drawer's header bar takes the accent; its conversation and input are plain
   white (06915a4, after a pale-yellow tint in 7bfc9ae and an all-yellow drawer in 4927e65).

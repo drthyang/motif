@@ -443,16 +443,18 @@ Structure tab; the user's choices of 2026-11-23.
   `favicon.ico` (16, 32 and 48 px) and `apple-touch-icon.png` (180 px): the same mark in ink on a white rounded
   tile, since a PNG cannot turn white on a dark tab bar. `index.html` links the 32 px PNG, then the SVG (which
   Chrome and Firefox use), then the Apple touch icon.
-- Page colour (the user's choice, 2026-11-24): a 14 px dot in the current accent beside the MOTIF word mark in the
-  header (since cb9f2f4; first a closed section, Layout › Page colour, in 1c365d6, moved because the user found it
-  unrelated to the figure's layout). A click opens a small row of the six colours below it; choosing one applies
-  it and closes the row, as do Escape and a click elsewhere (`src/ui/ThemeCue.tsx`). The six accents: Lemon
-  (#fff27a, the default and the stylesheet's own), Marigold, Apricot, Mint, Sky and Lilac. The accent colours the
-  page only: the main buttons, the assistant drawer's header, the example cards under the pointer, the active
-  control hint and notices. Figures never change. The choice is kept in this browser (`localStorage`
-  "motif.theme") and applied before the page is first drawn; choosing Lemon clears it. Code in `src/ui/theme.ts`.
-  Checked (`tests/theme.test.ts`): Lemon matches the accent in `app.css`, and the page's ink (#1b1a18) has a
-  contrast of at least 7:1 (WCAG AAA) on every accent and on its hover shade.
+- Page colour (the user's choice, 2026-11-24): a 14 px dot in the current accent at the right of the header, just
+  left of Open file… (since 83562f4; first a closed section, Layout › Page colour, in 1c365d6, moved because the
+  user found it unrelated to the figure's layout, then beside the MOTIF word mark in cb9f2f4). A click opens a
+  small row of the six colours under the dot, placed against the window so that on a phone, where the header's
+  buttons scroll sideways, it is not cut off; choosing one applies it and closes the row, as do Escape and a click
+  elsewhere (`src/ui/ThemeCue.tsx`). The six accents: Lemon (#fff27a, the default and the stylesheet's own),
+  Marigold, Apricot, Mint, Sky and Lilac. The accent colours the page only: the main buttons, the assistant
+  drawer's header, the example cards under the pointer, the active control hint and notices. Figures never change.
+  The choice is kept in this browser (`localStorage` "motif.theme") and applied before the page is first drawn;
+  choosing Lemon clears it. Code in `src/ui/theme.ts`. Checked (`tests/theme.test.ts`): Lemon matches the accent
+  in `app.css`, and the page's ink (#1b1a18) has a contrast of at least 7:1 (WCAG AAA) on every accent and on its
+  hover shade.
 
 ### Saved settings
 
