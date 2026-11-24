@@ -1,4 +1,4 @@
-# MOTIF handoff (2026-11-23, evening)
+# MOTIF handoff (2026-11-24)
 
 For the next session, on any computer. Read `CLAUDE.md` first: it has the working rules and the decisions
 already taken by the user. This note is the state of play. docs/CONVENTIONS.md lists every convention.
@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 298 tests, about two seconds
+npx tsc -b && npx vitest run    # 352 tests, about two seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -18,10 +18,20 @@ Browser check (Playwright; needs a `playwright-core` from any local project, no 
 PLAYWRIGHT=/path/to/node_modules/playwright-core node scripts/browser_check.cjs
 ```
 
-It must end with `all browser checks passed`. It relies on the `data-testid`s, `.figure-wrap`,
-`[data-testid=layer-structure]`, `[data-testid=layer-band]` and the tabs `tab-info|structure|visual|layout`.
-It opens olivine through the file input, since olivine is no longer in the Examples menu (ed88c53).
-It was not run on 2026-11-23 (no Playwright on that computer).
+It must end with `all browser checks passed` (it did on 2026-11-24, at 3fcb45a). It relies on the
+`data-testid`s, `.figure-wrap`, `[data-testid=layer-structure]`, `[data-testid=layer-band]` and the tabs
+`tab-info|structure|visual|layout|assistant`. It opens olivine through the file input, and since 2026-11-24 also
+opens every feature example, turns and zooms it, and fails on any console error.
+
+The assistant's trial on a local model (no paid API; Ollama or LM Studio must be running):
+
+```sh
+PLAYWRIGHT=/path/to/playwright-core node scripts/assistant_trial.cjs gemma4:26b
+TRANSPORT=lmstudio PLAYWRIGHT=... node scripts/assistant_trial.cjs google/gemma-4-26b-a4b-qat   # LM Studio: lms server start --cors
+ONLY=5 CASE_S=300 ...   # one request, a longer limit
+```
+
+Do not edit the page's code while a trial runs: the dev server reloads the page under test and spoils the request.
 
 ## What MOTIF is now
 
@@ -40,8 +50,18 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
 - SVG is the source of truth; PNG is drawn from the same SVG. Three parts: `src/structure` (file to
   atoms), `src/scene` (what is shown, plain data), `src/render` (scene + view to SVG), plus `src/preview`
   (GPU drawing while a large structure moves) and `src/ui`.
-- The page: header with the name MOTIF only; four tabs: Info, Structure (what is drawn), Visual (how it
-  looks), Layout (canvas, view, saved settings); one text scale (12/13/14/15 px); labels in one column.
+- The page: header with the name MOTIF only; five tabs: Info, Structure (what is drawn), Visual (how it
+  looks), Layout (canvas, view, saved settings), Assistant; one text scale (12/13/14/15 px); labels in one column.
+- Formats (2026-11-23/24): CIF, mCIF, ISODISTORT, RMCProfile, VASP POSCAR/CONTCAR, XYZ and extended XYZ, SHELX
+  .res/.ins, PDB, Quantum ESPRESSO input (ibrav 0), CASTEP .cell, FHI-aims geometry.in, XSF; each checked against
+  the CIF reading of the same crystal (`tests/formats.test.ts`). The format shows over the figure, top left; an
+  RMC file opens as its supercell with a Supercell | Fold switch there.
+- Assistant (2026-11-24, docs/CONVENTIONS.md "Assistant"): look and layout only, Claude with the user's key or a
+  local model. Tried on the user's seven local models: the six of 25B and more pass 10 of 10; a 4B model 7 of 10.
+  gemma4:26b (Ollama) and gemma-4-26b-a4b-qat (LM Studio) are accurate and take seconds.
+- Also since 2026-11-23: rulers beside the figure (cm/in switch where they meet), journal templates chosen as
+  publisher › journal › column › width (full, 1/2, 1/3, 1/4), phone and tablet gestures, default colours Se
+  orange and Ga mauve.
 - Defaults (the user's): a Nature single column, 89 mm, 4:3; Open Sans; text 7 pt, with the legend and
   axes in proportion to it; displacement arrows green, 1.5 A; moment arrows with the tail 80 % of the head
   side; up to 100,000 atoms.
@@ -84,11 +104,15 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   offered. The browser tab still says "MOTIF · Crystal Structure Visualizer".
 - Proposed, not started: click an atom or bond in the figure to edit it; undo/redo; symmetrize a folded RMC
   cell with a space group (RMCProfile Workbench has the method).
-- In-app assistant built 2026-11-24 (the user asked for it after parking it): see docs/CONVENTIONS.md, "Assistant".
-  Not built: the MCP server (registry, stdio) for agents outside the page, and hub registration in
-  `scattering-agent-tools` (another repo; only with the user's yes). The user has not yet tried it with Claude.
-- Firefox not yet tested; the browser check not run since the latest changes (orbitals cut against atoms
-  included).
+- Assistant: not built, the MCP server (registry, stdio) for agents outside the page, and hub registration in
+  `scattering-agent-tools` (another repo; only with the user's yes). The user has not yet tried it with Claude
+  (with their key); it was built and tried on local models only.
+- Filled triangles: should they get a contrasting colour by default (not the pale tint of their atoms)? The user
+  chose a contrasting blue by hand for a cluster figure; asked, not answered.
+- Blank canvas while moving ("simplified while moving" with nothing drawn): not reproduced here. Since bdbf658 the
+  preview checks that its first frame painted and is dropped if not, and an endless update loop that could blank
+  the figure was fixed (399e17c). Ask the user which browser and device showed it, and whether it still does.
+- Firefox not yet tested.
 
 ## Rules that are easy to break
 
