@@ -138,7 +138,8 @@ kbd { font: inherit; font-size: 11px; line-height: 1.45; padding: 0 5px; color: 
 .tabs button { justify-content: center; border: 0; border-radius: 0; background: none; padding: 14px 4px 11px; height: auto; color: var(--faint); font-weight: 600; font-size: var(--fz-body); letter-spacing: -0.01em; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tabs button:hover:not(:disabled) { background: none; color: var(--ink); }
 .tabs button.on { color: var(--ink); border-bottom-color: var(--ink); }
-.tab-body { display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 0 22px 24px; }
+/* The tab body takes the panel's spare height, so the assistant drawer below it stays at the bottom even on a short tab. */
+.tab-body { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; padding: 0 22px 24px; }
 .section { border-bottom: 1px solid var(--line); }
 .section:last-child { border-bottom: 0; }
 .section > summary { list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 16px 0 10px; font-weight: 600; font-size: var(--fz-title); letter-spacing: -0.015em; color: var(--ink); }
@@ -222,6 +223,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
   .figure-wrap { flex: none; aspect-ratio: 1440 / 1100; }
   .side { border-left: 0; border-top: 1px solid var(--line); }
   .tab-body { overflow: visible; }
+  /* The page scrolls here, so the drawer sticks to the bottom of the screen while the panel is in view. */
+  .drawer { position: sticky; bottom: 0; z-index: 2; }
 }
 /* A small dot of an element's colour, beside its name where the colour cannot be changed. */
 .swatch { width: 10px; height: 10px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.15); flex: none; }
