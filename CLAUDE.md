@@ -48,10 +48,18 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
   carried in that repo.
 
 - In-app assistant (2026-11-24): models as in MATERIA (Claude with the user's own key, called from the
-  browser, or a local model through Ollama or LM Studio; with Claude the structure is sent to Anthropic, with a
-  local model nothing leaves the computer). First version changes look and layout only (settings, element
-  colours and sizes, bonds and their look, view, cells, journal template); it does not open files or save
-  figures. Built and tested against a local model only, no paid API calls.
+  browser, or a local model through Ollama or LM Studio), and also OpenAI and Gemini with the user's own keys
+  (the user's request, 2026-11-24). With a key the structure is sent to that company (Anthropic, OpenAI or
+  Google); with a local model nothing leaves the computer. First version changes look and layout only (settings,
+  element colours and sizes, bonds and their look, view, cells, journal template); it does not open files or save
+  figures. Built and tested against a local model and stand-ins for the companies' servers only, no paid API
+  calls. Its conversation is in a drawer at the bottom of the side panel and in the Assistant tab.
+- Page colour (2026-11-24): six accents for the page only, never the figure; Lemon by default. Chosen from a
+  small dot at the right of the header, left of Open file. The tab icon is a slanted M and T sharing a stem.
+- Coordination polyhedra (2026-11-24): drawn from a bond rule, round its centre atoms inside the range; Glass
+  by default (Solid and Line art can be chosen); each polyhedron drawn as one unit at its centre's depth; a
+  shared site coloured by its elements' colours mixed by occupancy; corner atoms cut exactly where they meet the
+  faces. The first feature example is LaMnO3's MnO6 octahedra, one layer seen down c.
 
 ## Data rule (strict)
 
