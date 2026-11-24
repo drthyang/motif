@@ -44,7 +44,7 @@ import {
 } from "./settings";
 import { Rulers } from "./Rulers";
 import { AssistantDrawer, AssistantPanel } from "./AssistantPanel";
-import { applyTheme, readTheme, THEMES } from "./theme";
+import { ThemeCue } from "./ThemeCue";
 import { useAssistant } from "./useAssistant";
 import { splitPair, type FigureState, type Page } from "../agent/tools";
 import { sizeLabel } from "./ruler";
@@ -1132,8 +1132,6 @@ export function App() {
     }),
     [],
   );
-  // The page colour (only the page; never the figure), kept in this browser.
-  const [theme, setTheme] = useState(readTheme);
   // One conversation, shown in the drawer under the side tabs and in the Assistant tab.
   const chat = useAssistant(assistantPage);
 
@@ -1142,6 +1140,7 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="mark">MOTIF</span>
+          <ThemeCue />
         </div>
         <div className="actions">
           <label className="button primary">
@@ -2697,26 +2696,6 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 Animate a change of view
               </label>
               </Section>
-            <Section tab="layout" closed title="Page colour" hint="The accent colour of this page: the main buttons, the assistant drawer's header, the example cards under the pointer, notices. Only the page: figures never change. Kept in this browser.">
-              <div className="theme-choices" role="radiogroup" aria-label="Page colour">
-                {THEMES.map((t) => (
-                  <button
-                    key={t.id}
-                    role="radio"
-                    aria-checked={theme === t.id}
-                    data-testid={`theme-${t.id}`}
-                    className={theme === t.id ? "on" : ""}
-                    onClick={() => {
-                      applyTheme(t.id);
-                      setTheme(t.id);
-                    }}
-                  >
-                    <span className="theme-swatch" style={{ background: t.accent }} />
-                    {t.name}
-                  </button>
-                ))}
-              </div>
-            </Section>
             <Section tab="layout" closed title="Large structures" hint="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
               <label className="row" title="While a large structure is turned, moved or zoomed, a simplified drawing made by the graphics card stands in for it; the full figure returns when you stop. The saved figure is never the simplified one.">
                 <input type="checkbox" data-testid="smooth" checked={smooth} onChange={(e) => setSmooth(e.target.checked)} />
