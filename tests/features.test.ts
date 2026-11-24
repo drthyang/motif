@@ -30,12 +30,13 @@ describe("feature examples", () => {
       expect(scene.spheres.length, f.title).toBeGreaterThan(0);
       if (f.title === "Magnetic structure") expect(scene.arrows.length).toBeGreaterThan(0);
       if (f.title === "Coordination polyhedra") {
-        // In its own cells, the TiO6 octahedra of cubic SrTiO3: 3 x 3 x 2 Ti on the corners of 2 x 2 x 1 cells.
+        // In its own cells, one MnO2 layer of LaMnO3 (2 x 2 cells): 12 MnO6 octahedra, each stretched along one Mn-O
+        // bond by Jahn-Teller (Mn-O 1.906, 1.968 and 2.180 A, as in tests/polyhedra.test.ts).
         const [c0, c1, c2, c3, c4, c5] = f.cells!;
         const range = { from: [c0, c1, c2] as const, to: [c3, c4, c5] as const, boundary: "both" as const };
         const bonds = f.polyhedra!.map((p) => ({ centre: p.centre, neighbour: p.neighbour, max: p.upTo, complete: true, polyhedra: true }));
         const drawn = buildScene(s, { ...DEFAULT_SPEC, range, bonds });
-        expect(drawn.polyhedra).toHaveLength(18);
+        expect(drawn.polyhedra).toHaveLength(12);
         expect(drawn.polyhedra!.every((p) => p.corners.length === 6 && p.look === "glass")).toBe(true);
       }
       if (f.title === "Distortion mode") {

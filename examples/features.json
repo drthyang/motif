@@ -3,21 +3,27 @@
   "examples": [
     {
       "title": "Coordination polyhedra",
-      "file": "perovskite-SrTiO3_COD-9006864.cif",
-      "note": "SrTiO₃, TiO₆ octahedra sharing corners",
+      "file": "LaMnO3-orbital-order_COD-1006141.cif",
+      "note": "LaMnO₃, tilted and stretched MnO₆ octahedra",
       "cells": [
         0,
         0,
+        -0.06,
+        2,
+        2,
+        0.06
+      ],
+      "along": [
         0,
-        2,
-        2,
+        0,
         1
       ],
+      "completeBonds": false,
       "polyhedra": [
         {
-          "centre": "Ti",
+          "centre": "Mn",
           "neighbour": "O",
-          "upTo": 2.3
+          "upTo": 2.4
         }
       ]
     },

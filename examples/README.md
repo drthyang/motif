@@ -13,7 +13,7 @@ gives the plain defaults.
 
 | Example | File | What is set |
 |---------|------|-------------|
-| Coordination polyhedra | `perovskite-SrTiO3_COD-9006864.cif` | 2 × 2 × 1 cells; TiO6 octahedra (glass) on the Ti–O bonds MOTIF suggests (the bond rule used if suggested, else one up to 2.3 Å) |
+| Coordination polyhedra | `LaMnO3-orbital-order_COD-1006141.cif` | one MnO2 layer, 2 × 2 cells (cells 0 to 2 along *a* and *b*, −0.06 to 0.06 along *c*), seen down *c*, bonds not completed outside the slab; MnO6 octahedra (glass) on the Mn–O bonds MOTIF suggests (the bond rule used if suggested, else one up to 2.4 Å): tilted, and stretched along one Mn–O bond by Jahn–Teller |
 | Magnetic structure | `MnF2-antiferromagnet_handwritten.mcif` | nothing: MnF2 with its moments along +*c* and −*c* |
 | Distortion mode | `SrTiO3-octahedral-rotation_COD-2310687.cif` | one TiO2 layer, 2 × 2 cells (cells 0 to 2 along *a* and *b*, −0.01 to 0.01 along *c*), seen down *c*: the octahedra turned about *c* by the mode R4+ |
 | Orbital order | `LaMnO3-orbital-order_COD-1006141.cif` | one MnO2 layer, 2 × 2 cells (cells 0 to 2 along *a* and *b*, −0.06 to 0.06 along *c*), seen down *c*, bonds not completed outside the slab; dz² on each Mn along its own longest Mn–O bond (size 1.9 Å), pz on each O along the line through its two Mn (size 0.9 Å, green and gold) |
