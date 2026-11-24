@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- MOTIF's tab icon: M and T sharing a stem, slanted 12 degrees. Ink on light, white on a dark tab bar. -->
+  <style>path { fill: #1b1a18; } @media (prefers-color-scheme: dark) { path { fill: #ffffff; } }</style>
+  <g transform="translate(32 33) scale(0.92) skewX(-12) translate(-32 -33)">
+    <path d="M4,54 L4,12 L16,12 L22,30 L28,12 L60,12 L60,24 L40,24 L40,54 L29,54 L29,34 L25,46 L19,46 L15,34 L15,54 Z"/>
+  </g>
+</svg>
