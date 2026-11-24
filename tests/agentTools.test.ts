@@ -19,7 +19,7 @@ function fakePage(over: Partial<Page> = {}) {
     removeBonds: (p) => (calls.push(["remove", p]), null),
     setView: (v) => (calls.push(["view", v]), null),
     setCells: (f, t) => (calls.push(["cells", f, t]), null),
-    useJournal: (r) => (calls.push(["journal", r]), null),
+    useJournal: (r) => (calls.push(["journal", r]), { applied: "Physical Review, 1 column, 8.5 cm, 1/2 width = 4.25 cm" }),
     ...over,
   };
   return { page, calls };
@@ -61,6 +61,8 @@ describe("the assistant's tools", () => {
     const r = runTool(page, "find_setting", { words: "glass" });
     expect(r.text).toMatch(/glassOpacity \(Visual › Shading and outlines\)/);
     expect(runTool(page, "find_setting", { words: "zzz" }).text).toMatch(/No setting matches/);
+    // However the words are run together or spelt.
+    for (const words of ["text,size", "font size", "Text sizes", "pt"]) expect(runTool(page, "find_setting", { words }).text, words).toMatch(/textSizes/);
   });
 
   it("change_settings passes known settings through the page's checks and reports each", () => {
@@ -71,6 +73,26 @@ describe("the assistant's tools", () => {
     expect(r.text).toMatch(/Not a usable value: showCell/);
     expect(r.text).toMatch(/No such setting: nonsense, savedViews/);
     expect(runTool(page, "change_settings", { changes: { nonsense: 1 } }).isError).toBe(true);
+  });
+
+  it("a value refused as written is tried again in its natural other form: 8 as \"8\", \"true\" as true", () => {
+    // A page that keeps text sizes as text and showCell as true/false, as App.tsx does.
+    const kept: Record<string, unknown> = {};
+    const { page } = fakePage({
+      applySettings: (v) =>
+        Object.entries(v).filter(([n, x]) => {
+          const ok = n === "textSizes" ? typeof x === "object" && Object.values(x as object).every((y) => typeof y === "string") : n === "showCell" ? typeof x === "boolean" : true;
+          if (ok) kept[n] = x;
+          return !ok;
+        }).map(([n]) => n),
+    });
+    const r = runTool(page, "change_settings", { changes: { textSizes: { legend: 8, axes: 8, angle: 8 }, showCell: "false" } });
+    expect(r.isError).toBeUndefined();
+    expect(kept).toEqual({ textSizes: { legend: "8", axes: "8", angle: "8" }, showCell: false });
+    expect(r.text).toMatch(/textSizes = \{"legend":"8","axes":"8","angle":"8"\}/);
+    // Still refused: the error says what was sent.
+    const bad = runTool(page, "change_settings", { changes: { showCell: "maybe" } });
+    expect(bad.text).toMatch(/showCell = "maybe", but it takes true or false/);
   });
 
   it("bonds, elements, view, cells and journal reach the page, and errors come back as errors", () => {
@@ -89,6 +111,7 @@ describe("the assistant's tools", () => {
     ]);
     expect(runTool(page, "set_element", { element: "Xx", colour: "#000000" })).toEqual({ text: "No element Xx in this structure.", isError: true });
     expect(runTool(page, "add_bonds", { between: "Nb", up_to: 3 }).isError).toBe(true);
+    expect(runTool(page, "set_element", { element: "all", colour: "#ffffff" }).text).toMatch(/atomMaterial/);
     expect(runTool(page, "add_bonds", { between: "Nb-Se", up_to: 50 }).isError).toBe(true);
     expect(runTool(page, "set_cells", { from: [0, 0], to: [1, 1, 1] }).isError).toBe(true);
     expect(runTool(page, "nope", {}).isError).toBe(true);

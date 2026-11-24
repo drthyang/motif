@@ -510,7 +510,25 @@ controls, then says where each control is, so the user learns where to find it.
 - **Checked:** tools against a stand-in page, the exchange with a scripted model (`tests/agentTools.test.ts`,
   `tests/assistant.test.ts`); and a trial of ten requests on a local model, the page's state read after each
   (`scripts/assistant_trial.cjs`, `?probe` in the address; a 2-minute limit per request, 30 minutes in all).
-  On gemma4:26b (Ollama): 10 of 10 in 1.3 minutes (2026-11-24). No paid API calls in development.
+  No paid API calls in development. Results on the user's local models (2026-11-24, after the fixes below):
+
+  | Model | Server | Passed | Time per request |
+  |-------|--------|--------|------------------|
+  | gemma4:26b | Ollama | 10 of 10 | 3–20 s |
+  | qwen-local (35B) | Ollama | 10 of 10 | 5–28 s |
+  | qwen3:32b | Ollama | 10 of 10 (request 10 rerun after its fixes) | 30–110 s (it thinks first) |
+  | gemma-4-26b-a4b-qat | LM Studio | 10 of 10 (request 5 rerun) | 2–16 s |
+  | qwen3.8-27b | LM Studio | 10 of 10 (request 5 rerun) | 8–22 s |
+  | muse-glimmer (28B) | LM Studio | 10 of 10 | 30–105 s |
+  | gemma-4-e4b (4B) | LM Studio | 7 of 10 | 2–8 s |
+
+  A 4B model is not reliable enough: it skipped part of a request, or asked before acting. Bugs the trials found and
+  fixed: an LM Studio model loaded with too small a context (now loaded with 32k first, MATERIA's helper); a value
+  refused for its form (8 for "8") is retried in its natural form, and the error shows what was sent; setting search
+  split words only on spaces ("text,size" found nothing); "1/2" given as the column was read as "1 column" and full
+  width applied while the assistant said half (now a share given as the column is the width, and the tool answer
+  states what was applied); a journal named as its publisher was not found; an exchange that changed nothing now
+  says so ("Nothing on the figure was changed."), since a small model can claim a change it did not make.
 
 ## How each part is checked
 

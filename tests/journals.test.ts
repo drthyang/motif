@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Tsung-Han Yang
 
 import { describe, expect, it } from "vitest";
-import { JOURNALS, PARTS, PUBLISHERS, journalsOf, matchJournal, partWidth, journalSize, journalTextPt } from "../src/ui/journals";
+import { JOURNALS, PARTS, PUBLISHERS, describeJournal, journalsOf, matchJournal, partWidth, journalSize, journalTextPt } from "../src/ui/journals";
 
 const pt = (s: { width: number; unit: "cm" | "in" }) => (s.unit === "in" ? s.width * 72 : (s.width / 2.54) * 72);
 
@@ -92,5 +92,13 @@ describe("journal templates", () => {
     expect(matchJournal({ journal: "Physical Review", column: "three columns" }, "1")).toMatch(/no column/);
     expect(matchJournal({ journal: "Journal of Nothing" }, "1")).toMatch(/No journal template matches/);
     expect(matchJournal({ journal: "Science", width: "two thirds" }, "1")).toMatch(/width must be/);
+    // A share put where the column goes is the width (a model did this); "1/2" is never "1 column".
+    expect(matchJournal({ publisher: "APS", journal: "Physical Review", column: "1/2", width: "full" }, "1")).toEqual({ id: "aps-1", part: "1/2" });
+    expect(matchJournal({ journal: "Nature", column: "half" }, "1")).toEqual({ id: "nature-1", part: "1/2" });
+    expect(matchJournal({ journal: "Physical Review", column: "2/3" }, "1")).toMatch(/no column/);
+    // The journal's name given as the publisher (a small model did this).
+    expect(matchJournal({ publisher: "Physical Review", column: "one column", width: "half" }, "1")).toEqual({ id: "aps-1", part: "1/2" });
+    expect(describeJournal("aps-1", "1/2")).toBe("Physical Review, 1 column, 8.5 cm, 1/2 width = 4.25 cm");
+    expect(describeJournal("nature-2", "1")).toBe("Nature, double column, 183 mm, full width");
   });
 });

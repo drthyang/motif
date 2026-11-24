@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { CLAUDE_MODELS, clientFor, describeError, exchange, type AssistantConfig, type AssistantEvent, type Transport } from "../agent/assistant";
-import { DEFAULT_LMSTUDIO_URL, listLmStudioModels } from "../agent/lmstudio";
+import { DEFAULT_LMSTUDIO_URL, ensureLmStudioContext, listLmStudioModels } from "../agent/lmstudio";
 import { DEFAULT_OLLAMA_URL, listOllamaModels } from "../agent/ollama";
 import type { Page } from "../agent/tools";
 
@@ -108,6 +108,12 @@ export function AssistantPanel({ page }: { page: Page }) {
     setBusy(true);
     stop.current = new AbortController();
     try {
+      // LM Studio loads a model with its own default context when first asked, which can be far too small for the
+      // tools and instructions (the prompt is then cut without a word): load it with room first (MATERIA's helper).
+      if (stored.transport === "lmstudio") {
+        const { notice } = await ensureLmStudioContext(stored.serverUrl || DEFAULT_LMSTUDIO_URL, model, stop.current.signal);
+        if (notice) setLines((l) => [...l, { who: "assistant", event: { kind: "stopped", reason: notice } }]);
+      }
       const next = await exchange(clientFor(config), model, history, words, page, (event) => setLines((l) => [...l, { who: "assistant", event }]), stop.current.signal);
       setHistory(next);
     } catch (error) {

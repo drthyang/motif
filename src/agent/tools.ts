@@ -56,7 +56,8 @@ export interface Page {
   readonly removeBonds: (between: string) => string | null;
   readonly setView: (view: ViewRequest) => string | null;
   readonly setCells: (from: readonly number[], to: readonly number[]) => string | null;
-  readonly useJournal: (request: { publisher?: string; journal?: string; column?: string; width?: string }) => string | null;
+  /** Applies a journal template; returns an error sentence, or what was applied in words (so the model reports the truth). */
+  readonly useJournal: (request: { publisher?: string; journal?: string; column?: string; width?: string }) => { error: string } | { applied: string };
 }
 
 export interface BondChange {
@@ -205,8 +206,10 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
     case "describe_figure":
       return { text: JSON.stringify(page.describe(), null, 1) };
     case "find_setting": {
-      const words = String(input["words"] ?? "").toLowerCase().split(/\s+/).filter(Boolean);
-      const found = KNOBS.map((k) => ({ k, score: words.filter((w) => searchable(k).includes(w)).length })).filter((x) => x.score > 0);
+      // Words split on any punctuation ("text,size" is two words); a plural also finds the singular.
+      const words = String(input["words"] ?? "").toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length > 1 || /\d/.test(w));
+      const hit = (k: (typeof KNOBS)[number], w: string) => searchable(k).includes(w) || (w.endsWith("s") && searchable(k).includes(w.slice(0, -1)));
+      const found = KNOBS.map((k) => ({ k, score: words.filter((w) => hit(k, w)).length })).filter((x) => x.score > 0);
       found.sort((a, b) => b.score - a.score);
       if (found.length === 0) return { text: `No setting matches "${input["words"]}". Element colours and sizes: set_element. Bonds: add_bonds, change_bonds. View: set_view. Cells: set_cells. Journal: use_journal.` };
       return { text: found.slice(0, 8).map(({ k }) => `${k.name} (${k.place}): ${k.says}; values: ${k.values}`).join("\n") };
@@ -216,12 +219,18 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
       if (typeof changes !== "object" || changes === null || Array.isArray(changes)) return fail('Give "changes" as an object of setting name -> value.');
       const entries = Object.entries(changes as Record<string, unknown>);
       const unknown = entries.filter(([n]) => !knob(n) || NOT_FOR_ASSISTANT.includes(n)).map(([n]) => n);
-      const known = Object.fromEntries(entries.filter(([n]) => !unknown.includes(n)));
-      const skipped = Object.keys(known).length ? page.applySettings(known) : [];
+      const known: Record<string, unknown> = Object.fromEntries(entries.filter(([n]) => !unknown.includes(n)));
+      let skipped = Object.keys(known).length ? page.applySettings(known) : [];
+      // A value refused as written is tried once more in the form the page keeps: 8 as "8" where text is kept
+      // (text sizes, lengths), "true" as true, "60" as 60. A model (or a person) writes such values naturally.
+      const retry = Object.fromEntries(skipped.map((n) => [n, naturalForm(known[n])]).filter(([n, v]) => JSON.stringify(v) !== JSON.stringify(known[n as string])));
+      const retried = Object.keys(retry).length ? page.applySettings(retry) : [];
+      for (const n of Object.keys(retry)) if (!retried.includes(n)) known[n] = retry[n];
+      skipped = skipped.filter((n) => !(n in retry) || retried.includes(n));
       const applied = Object.keys(known).filter((n) => !skipped.includes(n));
       const lines: string[] = [];
       if (applied.length) lines.push(`Done: ${applied.map((n) => `${n} = ${JSON.stringify(known[n])} (${knob(n)!.place})`).join("; ")}.`);
-      if (skipped.length) lines.push(`Not a usable value: ${skipped.map((n) => `${n} (takes ${knob(n)!.values})`).join("; ")}.`);
+      if (skipped.length) lines.push(`Not a usable value: ${skipped.map((n) => `${n} = ${JSON.stringify(known[n])}, but it takes ${knob(n)!.values}`).join("; ")}.`);
       if (unknown.length) lines.push(`No such setting: ${unknown.join(", ")}. Use find_setting.`);
       return { text: lines.join("\n"), ...(applied.length ? {} : { isError: true }) };
     }
@@ -233,6 +242,10 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
         ...(typeof input["hidden"] === "boolean" ? { hidden: input["hidden"] as boolean } : {}),
       };
       if (Object.keys(change).length === 0) return fail("Give a colour, a radius or hidden.");
+      // "all" or "atoms" is not an element: point to the settings that act on every atom (a small model did this).
+      if (/^(all|every|atoms?|all atoms|everything)$/i.test(element.trim())) {
+        return fail('"' + element + '" is not an element. For every atom use change_settings: atomMaterial for the surface ("glass", "metal", ...), and set_element once per element for colours and sizes.');
+      }
       const error = page.setElement(element, change);
       return error ? fail(error) : { text: done(`${element}: ${inWords(change)}`, change.hidden === undefined ? "Visual › Atoms" : "Structure › Elements shown") };
     }
@@ -291,12 +304,29 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
     case "use_journal": {
       const req = Object.fromEntries(["publisher", "journal", "column", "width"].filter((k) => typeof input[k] === "string").map((k) => [k, input[k] as string]));
       if (Object.keys(req).length === 0) return fail("Name at least a publisher or a journal.");
-      const error = page.useJournal(req);
-      return error ? fail(error) : { text: done(`journal template ${Object.values(req).join(", ")}`, "Layout › Canvas") };
+      const result = page.useJournal(req);
+      return "error" in result ? fail(result.error) : { text: done(`journal template ${result.applied}`, "Layout › Canvas") };
     }
     default:
       return fail(`There is no tool "${name}".`);
   }
+}
+
+/**
+ * The other natural form of a value, for a second try: numbers as text (and the numbers inside a list or an object),
+ * or text as a number or a true/false. The page's own checks still decide.
+ */
+export function naturalForm(v: unknown): unknown {
+  if (typeof v === "number") return String(v);
+  if (typeof v === "string") {
+    const t = v.trim().toLowerCase();
+    if (t === "true" || t === "false") return t === "true";
+    if (t !== "" && Number.isFinite(Number(t))) return Number(t);
+    return v;
+  }
+  if (Array.isArray(v)) return v.map((x) => (typeof x === "number" ? String(x) : x));
+  if (v && typeof v === "object") return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, typeof x === "number" ? String(x) : x]));
+  return v;
 }
 
 /** "Nb-Nb", "Nb–Nb", "Nb Nb", "Ga to Se" -> ["Nb", "Nb"]. */

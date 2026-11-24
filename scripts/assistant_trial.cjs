@@ -4,11 +4,13 @@
 // A trial of the in-page assistant on a local model (no paid API): each request is sent in a fresh page with an
 // example open, and the page's state afterwards (read through ?probe) is checked against what was asked.
 // Each case has a time limit, and the whole trial a cap of 30 minutes.
-//   PLAYWRIGHT=/path/to/playwright-core node scripts/assistant_trial.cjs [model]
+//   PLAYWRIGHT=/path/to/playwright-core [TRANSPORT=lmstudio] [ONLY=n] node scripts/assistant_trial.cjs [model]
 const { chromium } = require(process.env.PLAYWRIGHT || "playwright-core");
 const URL_BASE = process.env.MOTIF_URL || "http://localhost:5183/";
 const MODEL = process.argv[2] || "";
-const CASE_MS = 120_000;
+// The local server: "ollama" (default) or "lmstudio".
+const TRANSPORT = process.env.TRANSPORT || "ollama";
+const CASE_MS = Number(process.env.CASE_S || 120) * 1000;
 const TRIAL_MS = 30 * 60_000;
 
 const rgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -48,6 +50,10 @@ const CASES = ONLY ? [CASES_ALL[ONLY - 1]] : CASES_ALL;
       await page.waitForTimeout(1500);
       const before = await page.evaluate(() => window.__motifDescribe());
       await page.click("[data-testid=tab-assistant]");
+      if (TRANSPORT !== "ollama") {
+        if ((await page.locator("[data-testid=assistant-transport]").count()) === 0) await page.click("[data-testid=assistant-setup]");
+        await page.selectOption("[data-testid=assistant-transport]", TRANSPORT);
+      }
       await page.waitForFunction(() => document.querySelectorAll("[data-testid=assistant-model] option").length > 0, null, { timeout: 15000 });
       if (MODEL) await page.selectOption("[data-testid=assistant-model]", MODEL);
       await page.fill("[data-testid=assistant-text]", c.ask);
@@ -60,7 +66,9 @@ const CASES = ONLY ? [CASES_ALL[ONLY - 1]] : CASES_ALL;
       if (ok) passed++;
       line = `${ok ? "ok  " : "FAIL"} ${n + 1}. ${c.ask}  (${((Date.now() - t0) / 1000).toFixed(0)} s)\n       ${said.slice(1).join("\n       ")}${errors.length ? `\n       page errors: ${errors.join("; ")}` : ""}`;
     } catch (e) {
-      line = `FAIL ${n + 1}. ${c.ask}  (${String(e).split("\n")[0]})`;
+      // What the assistant had done when it ran out of time, to see why.
+      const said = await page.locator("[data-testid=assistant-lines] .said").allTextContents().catch(() => []);
+      line = `FAIL ${n + 1}. ${c.ask}  (${String(e).split("\n")[0]})\n       ${said.slice(1).join("\n       ")}`;
     }
     console.log(line);
     await page.close();

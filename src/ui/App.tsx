@@ -47,7 +47,7 @@ import { AssistantPanel } from "./AssistantPanel";
 import { splitPair, type FigureState, type Page } from "../agent/tools";
 import { sizeLabel } from "./ruler";
 import { isDoubleTap, rollFor, twoFingerStep, type Touch } from "./touch";
-import { PARTS, PUBLISHERS, journalsOf, matchJournal, partWidth, journalSize, journalTextPt, type PartId } from "./journals";
+import { PARTS, PUBLISHERS, describeJournal, journalsOf, matchJournal, partWidth, journalSize, journalTextPt, type PartId } from "./journals";
 import { type FeatureExample, readFeatures } from "./examples";
 import featuresText from "../../examples/features.json?raw";
 import type { Structure } from "../structure/types";
@@ -1104,9 +1104,9 @@ export function App() {
     },
     useJournal: (req) => {
       const found = matchJournal(req, journalPart);
-      if (typeof found === "string") return found;
+      if (typeof found === "string") return { error: found };
       applyJournal(found.id, found.part);
-      return null;
+      return { applied: describeJournal(found.id, found.part) };
     },
   };
   const pageRef = useRef(pageNow);

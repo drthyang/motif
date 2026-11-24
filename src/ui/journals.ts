@@ -222,21 +222,39 @@ export function matchJournal(req: { publisher?: string; journal?: string; column
   const fit = (have: string, want?: string) => {
     if (!want) return true;
     const w = want.toLowerCase().trim();
-    return have.toLowerCase().includes(w) || initials(have) === w.replace(/[^a-z]/g, "") || w.split(/[\s,]+/).every((x) => have.toLowerCase().includes(x));
+    const letters = w.replace(/[^a-z]/g, "");
+    return have.toLowerCase().includes(w) || (letters.length >= 2 && initials(have) === letters) || w.split(/[\s,]+/).every((x) => have.toLowerCase().includes(x));
   };
   const words: Record<string, number> = { single: 1, one: 1, double: 2, two: 2, three: 3, "one and a half": 1.5 };
+  // A number of columns; never the parts of a fraction ("1/2" is a share of the width, not 1 column).
   const columns = (t: string): number | null => {
-    const m = /(\d+(?:\.\d+)?|one and a half|single|double|one|two|three)\b/.exec(t.toLowerCase());
+    const m = /(?<![\d/.])(\d+(?:\.\d+)?|one and a half|single|double|one|two|three)\b(?!\s*\/)/.exec(t.toLowerCase());
     return m ? (words[m[1]!] ?? Number(m[1])) : null;
   };
   const columnFits = (label: string, want?: string) => !want || fit(label, want) || (columns(want) !== null && columns(want) === columns(label));
   const shares: Record<string, PartId> = { full: "1", "1": "1", whole: "1", "1/2": "1/2", half: "1/2", "1/3": "1/3", third: "1/3", "1/4": "1/4", quarter: "1/4" };
-  const part = req.width ? shares[req.width.toLowerCase().replace(/\b(width|column|of|the|a)\b/g, "").trim()] : currentPart;
+  const shareOf = (t?: string): PartId | undefined => (t ? shares[t.toLowerCase().replace(/\b(width|column|columns|of|the|a)\b/g, "").trim()] : undefined);
+  // A share written where the column goes ("column: 1/2", "column: half"), with no other width asked for, is the width.
+  if (req.column && shareOf(req.column) && shareOf(req.column) !== "1" && (!req.width || shareOf(req.width) === "1")) {
+    req = { ...req, width: req.column };
+    delete (req as { column?: string }).column;
+  }
+  const part = req.width ? shareOf(req.width) : currentPart;
   if (!part) return 'width must be "full", "1/2", "1/3" or "1/4".';
-  const templates = JOURNALS.filter((j) => fit(j.publisher, req.publisher) && fit(j.name, req.journal));
+  // A journal's name and its publisher are searched together: "Physical Review" given as the publisher still finds it.
+  const names = (j: Journal) => [j.publisher, j.name, `${j.publisher} ${j.name}`];
+  const templates = JOURNALS.filter((j) => names(j).some((n) => fit(n, req.publisher)) && names(j).some((n) => fit(n, req.journal)));
   if (templates.length === 0) return `No journal template matches. Give publisher and journal as one of: ${JOURNALS.map((j) => `"${j.publisher}" / "${j.name}"`).join("; ")}.`;
   const template = templates[0]!;
   const size = template.sizes.find((s) => columnFits(s.label, req.column)) ?? (req.column ? null : template.sizes[0]!);
   if (!size) return `${template.name} has no column "${req.column}". Give column as one of: ${template.sizes.map((s) => `"${s.label.split(",")[0]}"`).join(", ")}.`;
   return { id: size.id, part };
+}
+
+/** What a template gives, in words: "Physical Review, 1 column, 8.5 cm, 1/2 width = 4.25 cm". */
+export function describeJournal(id: string, part: PartId): string {
+  const size = journalSize(id);
+  if (!size) return "";
+  const base = `${size.journal}, ${size.label}`;
+  return part === "1" ? `${base}, full width` : `${base}, ${part} width = ${partWidth(size.width, part)} ${size.unit}`;
 }

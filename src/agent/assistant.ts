@@ -39,6 +39,9 @@ export const CLAUDE_MODELS = [
   { id: "claude-haiku-5-5", label: "Claude Haiku 5.5" },
 ] as const;
 
+/** Tools that only look; the others change the page. */
+const LOOKING = ["describe_figure", "find_setting"];
+
 /** Most tool calls in one exchange. */
 export const MAX_STEPS = 12;
 /** Context a local model is run with, and the longest answer, in tokens. */
@@ -100,6 +103,13 @@ export async function exchange(
   signal?: AbortSignal,
 ): Promise<MessageParam[]> {
   const messages: MessageParam[] = [...history, { role: "user", content: userText }];
+  // Whether any tool changed the page in this exchange. A model can say it changed something without calling a tool
+  // (a small one did); the page then says plainly that nothing was changed, rather than let the words stand alone.
+  let changed = false;
+  const finish = () => {
+    if (!changed) onEvent({ kind: "stopped", reason: "Nothing on the figure was changed." });
+    return messages;
+  };
   for (let step = 0; ; step++) {
     if (signal?.aborted) {
       onEvent({ kind: "stopped", reason: "Stopped." });
@@ -111,7 +121,7 @@ export async function exchange(
     messages.push({ role: "assistant", content: reply.content });
     for (const block of reply.content) if (block.type === "text" && block.text.trim()) onEvent({ kind: "text", text: block.text.trim() });
     const calls = reply.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
-    if (calls.length === 0) return messages;
+    if (calls.length === 0) return finish();
     if (step >= MAX_STEPS) {
       onEvent({ kind: "stopped", reason: `Stopped after ${MAX_STEPS} steps; ask again to go on.` });
       // Every tool call needs its answer, so the conversation can go on.
@@ -120,6 +130,7 @@ export async function exchange(
     }
     const results: ToolResultBlockParam[] = calls.map((c) => {
       const r = runTool(page, c.name, (c.input ?? {}) as Record<string, unknown>);
+      if (!r.isError && !LOOKING.includes(c.name)) changed = true;
       onEvent({ kind: "tool", name: c.name, input: c.input, result: r.text, isError: r.isError === true });
       return { type: "tool_result", tool_use_id: c.id, content: r.text, ...(r.isError ? { is_error: true } : {}) };
     });

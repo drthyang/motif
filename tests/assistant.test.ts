@@ -16,7 +16,7 @@ const page = (calls: unknown[][]): Page => ({
   removeBonds: () => null,
   setView: () => null,
   setCells: () => null,
-  useJournal: () => null,
+  useJournal: () => ({ applied: "" }),
 });
 
 /** A model that answers from a script, and records what it was sent. */
@@ -72,6 +72,13 @@ describe("an exchange with the assistant", () => {
     const last = history[history.length - 1]!;
     expect(last.role).toBe("user");
     expect((last.content as { is_error: boolean }[])[0]!.is_error).toBe(true);
+  });
+
+  it("says plainly when the model answered without changing anything", async () => {
+    const { client } = scripted([[tool("t1", "describe_figure", {})], [text("I have changed the colour to blue.")]]);
+    const events: AssistantEvent[] = [];
+    await exchange(client, "fake", [], "Make the arrows blue", page([]), (e) => events.push(e));
+    expect(events[events.length - 1]).toEqual({ kind: "stopped", reason: "Nothing on the figure was changed." });
   });
 
   it("stops at once when the user stops it", async () => {
