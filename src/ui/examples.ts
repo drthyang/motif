@@ -15,6 +15,8 @@ export interface FeatureExample {
   readonly hide?: readonly string[];
   /** For an RMC configuration: fold it into one averaged cell. */
   readonly fold?: boolean;
+  /** The view: looking along this direction [u v w], which points at the viewer. */
+  readonly along?: readonly [number, number, number];
   /** The cells shown: from a, b, c, then to a, b, c (in cell edges). */
   readonly cells?: readonly [number, number, number, number, number, number];
 }
@@ -33,6 +35,10 @@ export function readFeatures(text: string, files: readonly string[]): FeatureExa
     }
     const hide = e.hide as string[] | undefined;
     if (hide !== undefined && (!Array.isArray(hide) || hide.some((x) => typeof x !== "string"))) throw new Error(`${where}: hide is a list of species`);
+    const along = e.along as number[] | undefined;
+    if (along !== undefined && (!Array.isArray(along) || along.length !== 3 || along.some((x) => !Number.isInteger(x)) || along.every((x) => x === 0))) {
+      throw new Error(`${where}: along is a direction of three whole numbers [u, v, w]`);
+    }
     const cells = e.cells as number[] | undefined;
     if (cells !== undefined && (!Array.isArray(cells) || cells.length !== 6 || cells.some((x) => typeof x !== "number") || [0, 1, 2].some((i) => cells[i]! >= cells[i + 3]!))) {
       throw new Error(`${where}: cells are six numbers, from a, b, c then to a, b, c`);
@@ -44,6 +50,7 @@ export function readFeatures(text: string, files: readonly string[]): FeatureExa
       ...(orbitals ? { orbitals } : {}),
       ...(e.fold === true ? { fold: true } : {}),
       ...(hide ? { hide } : {}),
+      ...(along ? { along: along as unknown as readonly [number, number, number] } : {}),
       ...(cells ? { cells: cells as unknown as readonly [number, number, number, number, number, number] } : {}),
     };
   });

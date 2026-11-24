@@ -408,7 +408,7 @@ export function App() {
   autoBondsRef.current = autoBonds;
   const keepViewRef = useRef(false);
   keepViewRef.current = keepView;
-  const load = useCallback((text: string, name: string) => {
+  const load = useCallback((text: string, name: string): Structure | null => {
     lastFile.current = { text, name };
     try {
       const read = isRmc6f(text, name) ? readRmc6f(text, name, { fold: foldRmc.current }) : readCif(text);
@@ -435,14 +435,22 @@ export function App() {
       setAngleHover(null);
       setNewAngle("");
       if (!keepViewRef.current) setUpAxis(2);
+      return read;
     } catch (e) {
       setError(`${name}: ${e instanceof Error ? e.message : String(e)}`);
+      return null;
     }
   }, []);
   /** Open a feature example with the settings that show its feature. */
   const loadFeature = (f: (typeof FEATURES)[number]) => {
     if (f.fold !== undefined) foldRmc.current = f.fold;
-    load(f.text, f.file);
+    const read = load(f.text, f.file);
+    if (read && f.along) {
+      // Looking along [u v w], pointing at the viewer; c up, or b (then a) when c lies along the line of sight.
+      const towards = directionVector(read.cell, { kind: "uvw", indices: [...f.along] as [number, number, number] });
+      const target = directAxes(read.cell).slice().reverse().map((up) => viewAlong(towards, up)).find((v) => v !== null);
+      if (target) setView(target);
+    }
     if (f.cells) setRangeText(f.cells.map(String));
     if (f.hide) setLooks((all) => ({ ...all, ...Object.fromEntries(f.hide!.map((k) => [k, { ...all[k], hidden: true }])) }));
     if (f.orbitals) {

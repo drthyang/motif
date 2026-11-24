@@ -19,7 +19,7 @@ const open = (file: string, fold = false) => {
 
 describe("feature examples", () => {
   it("each opens, and shows its feature", () => {
-    expect(features.map((f) => f.title)).toEqual(["Atomic structure", "Magnetic structure", "Orbitals", "RMC configuration, folded"]);
+    expect(features.map((f) => f.title)).toEqual(["Atomic structure", "Magnetic structure", "Distortion mode", "Orbitals", "RMC configuration, folded"]);
     for (const f of features) {
       const s = open(f.file, f.fold);
       const orbitals = (f.orbitals ?? []).map((o) => {
@@ -29,6 +29,16 @@ describe("feature examples", () => {
       const scene = buildScene(s, { ...DEFAULT_SPEC, ...(orbitals.length ? { orbitals } : {}) });
       expect(scene.spheres.length, f.title).toBeGreaterThan(0);
       if (f.title === "Magnetic structure") expect(scene.arrows.length).toBeGreaterThan(0);
+      if (f.title === "Distortion mode") {
+        // In its own cells: one TiO2 layer, every O2 with an arrow, none on Ti.
+        const [c0, c1, c2, c3, c4, c5] = f.cells!;
+        const range = { from: [c0, c1, c2] as const, to: [c3, c4, c5] as const, boundary: "both" as const };
+        const layer = buildScene(s, { ...DEFAULT_SPEC, range });
+        const o = layer.spheres.filter((x) => x.species === "O").length;
+        expect(o).toBeGreaterThan(0);
+        expect(layer.spheres.filter((x) => x.species === "Sr").length).toBe(0);
+        expect(layer.arrows.length).toBe(o);
+      }
       // Orbitals are drawn on every atom of the species named.
       if (orbitals.length) expect(scene.orbitals!.length).toBe(scene.spheres.filter((x) => x.species === orbitals[0]!.species).length * orbitals[0]!.orbitals.length);
     }

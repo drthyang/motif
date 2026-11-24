@@ -12,6 +12,13 @@
       "note": "MnF2, moments along +c and -c"
     },
     {
+      "title": "Distortion mode",
+      "file": "SrTiO3-octahedral-rotation_COD-2310687.cif",
+      "note": "SrTiO3 below 105 K: one layer of TiO6 octahedra, turned about c (mode R4+), seen down c",
+      "cells": [0, 0, -0.01, 2, 2, 0.01],
+      "along": [0, 0, 1]
+    },
+    {
       "title": "Orbitals",
       "file": "perovskite-SrTiO3_COD-9006864.cif",
       "note": "A TiO6 octahedron of SrTiO3, the two eg orbitals of Ti pointing at O",

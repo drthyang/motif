@@ -169,6 +169,16 @@ export function readDistortion(items: Map<string, string>, loops: Loop[], sites:
   const formulaLoop = loopWith(loops, "_iso_coordinate_formula");
   if (!formulaLoop) throw new Error("The ISODISTORT data lack the coordinate formulas (_iso_coordinate_formula).");
   const names = new Set(deltas.map((d) => d.label));
+  // A site with no free coordinate (its _atom_site_fract_symmform is 0,0,0) cannot move. ISODISTORT still writes a
+  // formula for it, naming a shift such as Sr1_dx that it never lists; such a site is left where it is.
+  const fixed = new Set<string>();
+  const symmLoop = loopWith(loops, "_atom_site_fract_symmform");
+  if (symmLoop) {
+    const [labels, forms] = [column(symmLoop, "_atom_site_label"), column(symmLoop, "_atom_site_fract_symmform")];
+    labels.forEach((label, i) => {
+      if ((cifText(forms[i]) ?? "").split(",").every((t) => t.trim() === "0")) fixed.add(label);
+    });
+  }
   const uses: Distortion["uses"][number][] = [];
   const coordLabels = column(formulaLoop, "_iso_coordinate_label");
   const formulas = column(formulaLoop, "_iso_coordinate_formula");
@@ -178,6 +188,7 @@ export function readDistortion(items: Map<string, string>, loops: Loop[], sites:
     const axis = ["x", "y", "z"].indexOf(axisName);
     if (cut <= 0 || axis < 0) throw new Error(`The coordinate "${coord}" is not a site label followed by _x, _y or _z.`);
     if (!sites.some((s) => s.label === site)) throw new Error(`The coordinate formula names the site "${site}", which is not in the atom list.`);
+    if (fixed.has(site)) return;
     for (const t of formulaTerms(cifText(formulas[k]) ?? "", names)) {
       uses.push({ site, axis: axis as 0 | 1 | 2, delta: deltas.findIndex((d) => d.label === t.name), coefficient: t.coefficient });
     }

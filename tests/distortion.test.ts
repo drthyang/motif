@@ -114,3 +114,47 @@ describe("reading the ISODISTORT tags", () => {
     expect(() => readCif(text)).toThrow(/do not agree/);
   });
 });
+
+describe("ISODISTORT file: SrTiO3, cubic Pm-3m to tetragonal I4/mcm (COD 2310687, ISODISTORT 6.12.2)", () => {
+  const sto = readCif(readFileSync("examples/SrTiO3-octahedral-rotation_COD-2310687.cif", "utf8"));
+  const a = sto.distortion!.undistortedCell.a;
+  it("one displacive mode, R4+ on O; Sr, Ti and the apical O1 do not move", () => {
+    const d = sto.distortion!;
+    expect(d.modes.map((m) => m.amplitude)).toEqual([-0.07654]);
+    expect(d.modes[0]!.label).toContain("R4+");
+    expect(a).toBeCloseTo(5.5229, 3);
+    for (const label of ["Sr1", "Ti1", "O1"]) for (const v of cart(sto, label)) expect(Math.hypot(...v)).toBeLessThan(1e-9);
+  });
+
+  it("each O2 moves 0.0049 x sqrt 2 x a = 0.0383 A in the ab plane, across its Ti-O bond; the octahedra turn oppositely in alternate layers", () => {
+    // Published O2 at (0.2451, 0.7451, 0): 0.0049 from the cubic (1/4, 3/4, 0) along both a and b.
+    const atoms = expandToUnitCell(sto).atoms;
+    const o2 = atoms.filter((x) => x.label === "O2");
+    expect(o2.length).toBe(8);
+    const c = sto.distortion!.undistortedCell.c;
+    for (const o of o2) {
+      const d = displacementToCartesian(sto, o.displacement!);
+      expect(Math.abs(Math.hypot(...d) - 0.0049 * Math.SQRT2 * a)).toBeLessThan(2e-4);
+      expect(d[2]).toBeCloseTo(0, 9);
+    }
+    // About a Ti, the turn of its four O2 neighbours: the sum of r x d (z part), r from the Ti to the O (nearest image).
+    const turn = (ti: Vec3): number => {
+      let sum = 0;
+      for (const o of o2) {
+        const r = o.frac.map((x, i) => {
+          const t = x - ti[i]!;
+          return t - Math.round(t);
+        });
+        if (Math.abs(r[2]!) > 1e-6 || Math.hypot(r[0]!, r[1]!) > 0.4) continue;
+        const d = displacementToCartesian(sto, o.displacement!);
+        sum += r[0]! * a * d[1] - r[1]! * a * d[0];
+      }
+      return sum;
+    };
+    const lower = turn([0, 0, 0]);
+    const upper = turn([0, 0, 0.5]);
+    expect(Math.abs(lower)).toBeGreaterThan(1e-3);
+    expect(upper).toBeCloseTo(-lower, 9);
+    void c;
+  });
+});
