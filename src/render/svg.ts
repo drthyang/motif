@@ -1211,6 +1211,8 @@ function layoutPolyhedra(
   if (polyhedra.length === 0) return;
   const byCentre = new Map(polyhedra.map((p) => [p.centre, p]));
   const width = Math.max(1, 0.025 * scale);
+  // What each polyhedron looks like from here, for cutting its corner atoms afterwards.
+  const seen: { poly: (typeof polyhedra)[number]; c: number; facing: Vec3[]; front: boolean[]; points: Vec3[] }[] = [];
   for (const poly of polyhedra) {
     const c = project(scene.spheres[poly.centre]!.centre)[2];
     const at = (step: number): number => c + step * UNIT_STEP;
@@ -1242,6 +1244,7 @@ function layoutPolyhedra(
     const points = poly.corners.map((k) => project(scene.spheres[k]!.centre));
     const facing = poly.normals.map((n) => mulVec(view, n));
     const front = facing.map((n) => !poly.flat && n[2] > 1e-9);
+    seen.push({ poly, c, facing, front, points });
     const shape = (face: readonly number[]): string => face.map((k) => `${n1(points[k]![0])},${n1(points[k]![1])}`).join(" ");
     const lit = (f: number): number => {
       const n = facing[f]!;
@@ -1281,6 +1284,121 @@ function layoutPolyhedra(
       push(1.75, hidden.map((e) => edge(e.a, e.b, thin)).join(""));
       push(2, shown.map((e) => edge(e.a, e.b, ink)).join(""));
     }
+  }
+  cutCornerAtoms(scene, drawn, sphereDrawn, seen);
+}
+
+/** Whether a point lies inside a convex polygon (either way round). */
+function insideConvex(polygon: readonly (readonly [number, number])[], x: number, y: number): boolean {
+  let sign = 0;
+  for (let i = 0; i < polygon.length; i++) {
+    const [p, q] = [polygon[i]!, polygon[(i + 1) % polygon.length]!];
+    const turn = (q[0] - p[0]) * (y - p[1]) - (q[1] - p[1]) * (x - p[0]);
+    if (Math.abs(turn) < 1e-9) continue;
+    if (sign === 0) sign = Math.sign(turn);
+    else if (Math.sign(turn) !== sign) return false;
+  }
+  return true;
+}
+
+/**
+ * Where a corner atom meets its polyhedra (the user's request, 2026-11-24). An atom sits on a corner of one or more
+ * polyhedra, and part of it lies inside each. It is drawn twice: whole, before every one of these polyhedra, so their
+ * faces cover the part of it that lies behind them; and again after all of them, cut to the part of it in front of
+ * them, so that part covers their faces and edges.
+ *
+ * The cut is exact. Seen from the viewer, a point of the atom's near surface is in front of a polyhedron when it lies
+ * outside the plane of one of the polyhedron's faces that turn to the viewer and meet at the corner (the polyhedron's
+ * near surface is the nearest of its front faces' planes, and the planes of faces away from the corner are farther
+ * from it than the atom's radius, so they never pass through the atom), or when the line of sight misses the
+ * polyhedron (outside its outline on screen). A face's plane
+ * passes through the atom's centre, so it cuts the atom in a great circle, whose near half is seen as a half-ellipse:
+ * the part of the atom outside that face is the half-disc on the face's outward side joined to the half-ellipse
+ * (semi-axes r and r cos(tilt) of the face) on the other side.
+ */
+function cutCornerAtoms(
+  scene: Scene,
+  drawn: Drawn[],
+  sphereDrawn: readonly number[],
+  seen: readonly { poly: NonNullable<Scene["polyhedra"]>[number]; c: number; facing: Vec3[]; front: boolean[]; points: Vec3[] }[],
+): void {
+  const centres = new Set(seen.map((s) => s.poly.centre));
+  const at = new Map<number, number[]>();
+  seen.forEach((s, k) => {
+    if (s.poly.flat) return;
+    for (const corner of s.poly.corners) {
+      if (centres.has(corner) || sphereDrawn[corner] === undefined) continue;
+      const list = at.get(corner);
+      if (list) list.push(k);
+      else at.set(corner, [k]);
+    }
+  });
+  const SAMPLES = 24;
+  for (const [corner, list] of at) {
+    const index = sphereDrawn[corner]!;
+    const atom = drawn[index] as DrawnSphere;
+    const { x, y, r } = atom;
+    if (!(r > 0)) continue;
+    const point = (px: number, py: number): string => `${n1(x + px * r)},${n1(y - py * r)}`; // view y is up, SVG y down
+    // For each polyhedron at this corner, the parts of the atom in front of it (their union).
+    const regions: string[][] = [];
+    for (const k of list) {
+      const { poly, facing, front, points } = seen[k]!;
+      const v = poly.corners.indexOf(corner);
+      const parts: string[] = [];
+      poly.faces.forEach((face, f) => {
+        if (!front[f] || !face.includes(v)) return;
+        const n = facing[f]!;
+        const size = Math.hypot(n[0], n[1], n[2]);
+        const [nx, ny, nz] = [n[0] / size, n[1] / size, n[2] / size];
+        const L = Math.hypot(nx, ny);
+        if (L < 1e-9) {
+          parts.push(`M${point(1, 0)}A${n1(r)},${n1(r)} 0 1 0 ${point(-1, 0)}A${n1(r)},${n1(r)} 0 1 0 ${point(1, 0)}Z`); // faces the viewer: all of it
+          return;
+        }
+        const [ux, uy] = [nx / L, ny / L];
+        const [wx, wy] = [uy, -ux];
+        const pts: string[] = [];
+        for (let i = 0; i <= SAMPLES; i++) {
+          const t = -Math.PI / 2 + (Math.PI * i) / SAMPLES; // the rim, on the face's outward side
+          pts.push(point(Math.cos(t) * ux + Math.sin(t) * wx, Math.cos(t) * uy + Math.sin(t) * wy));
+        }
+        for (let i = 1; i < SAMPLES; i++) {
+          const t = (Math.PI * i) / SAMPLES; // the near half of the great circle, back across the other side
+          pts.push(point(Math.cos(t) * wx - nz * Math.sin(t) * ux, Math.cos(t) * wy - nz * Math.sin(t) * uy));
+        }
+        parts.push(`M${pts.join("L")}Z`);
+      });
+      // Where the line of sight misses the polyhedron (outside its outline on screen) nothing of it is in front.
+      // The outline is convex; unless it covers the whole disc, the disc less the outline is added (even-odd).
+      const outline = convexHull(points.map((q) => [q[0], q[1]] as [number, number]));
+      const covers = outline.every((q, i) => {
+        const o = outline[(i + 1) % outline.length]!;
+        const [ex, ey] = [o[0] - q[0], o[1] - q[1]];
+        const length = Math.hypot(ex, ey);
+        // Distance of the atom's centre inside this edge (the hull runs one way round; either sign works if all agree).
+        return length > 0 ? Math.abs((ex * (y - q[1]) - ey * (x - q[0])) / length) >= r : true;
+      }) && outline.length >= 3 && insideConvex(outline, x, y);
+      if (!covers) {
+        const disc: string[] = [];
+        for (let i = 0; i < 4 * SAMPLES; i++) disc.push(`${n1(x + r * Math.cos((Math.PI * i) / (2 * SAMPLES)))},${n1(y + r * Math.sin((Math.PI * i) / (2 * SAMPLES)))}`);
+        parts.push(`M${disc.join("L")}Z M${outline.map((q) => `${n1(q[0])},${n1(q[1])}`).join("L")}Z`);
+      }
+      if (parts.length === 0) {
+        regions.length = 0; // wholly behind this polyhedron: nothing of it is drawn over them
+        regions.push([]);
+        break;
+      }
+      regions.push(parts);
+    }
+    const cs = list.map((k) => seen[k]!.c);
+    drawn[index] = { ...atom, depth: Math.min(atom.depth, Math.min(...cs) - 3 * UNIT_STEP) };
+    if (regions.some((parts) => parts.length === 0)) continue;
+    const id = `poly-cut-${corner}`;
+    // Even-odd: a region of two loops (the disc less the outline) is the part between them; the others are one loop.
+    const clips = regions.map((parts, k) => `<clipPath id="${id}-${k}">${parts.map((d) => `<path d="${d}" clip-rule="evenodd"/>`).join("")}</clipPath>`).join("");
+    const body = regions.reduceRight((inner, _, k) => `<g clip-path="url(#${id}-${k})">${inner}</g>`, sphereSvg(scene, atom.style, x, y, r));
+    drawn.push({ kind: "polyhedron", depth: Math.max(atom.depth, Math.max(...cs) + 3 * UNIT_STEP), svg: `<defs>${clips}</defs>${body}` });
   }
 }
 

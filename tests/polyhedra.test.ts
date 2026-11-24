@@ -3,8 +3,8 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CANVAS, layoutAll, renderSvg } from "../src/render/svg";
-import type { View } from "../src/render/view";
+import { DEFAULT_CANVAS, fitView, layoutAll, renderSvg } from "../src/render/svg";
+import { DEFAULT_VIEW, type View } from "../src/render/view";
 import type { BondRule, PolyhedronLook } from "../src/scene/bonds";
 import { defaultColour } from "../src/scene/elementStyle";
 import { convexHull, hullEdges } from "../src/scene/polyhedra";
@@ -169,15 +169,83 @@ describe("drawing a polyhedron", () => {
     const after = parts.filter(({ i }) => i > ti).map(({ d }) => (d.kind === "polyhedron" ? d.svg : "")).join("");
     expect(polygons(before)).toBe(4);
     expect(polygons(after)).toBe(4);
-    // A corner nearer the viewer than the centre is drawn over the polyhedron, a farther one under it.
+    // Every corner atom is drawn whole before the polyhedron, so its faces cover the part of the atom behind them.
     const oxygens = drawn.map((d, i) => ({ d, i })).filter(({ d }) => d.kind === "sphere" && d.style === "O");
-    const first = parts[0]!.i;
-    const last = parts[parts.length - 1]!.i;
-    for (const { d, i } of oxygens) {
-      if (d.depth > 0) expect(i).toBeGreaterThan(last);
-      else expect(i).toBeLessThan(first);
-    }
-    expect(oxygens.filter(({ d }) => d.depth > 0)).toHaveLength(3);
+    expect(oxygens).toHaveLength(6);
+    const faces = parts.filter(({ d }) => d.kind === "polyhedron" && d.svg.includes("<polygon"));
+    for (const { i } of oxygens) expect(i).toBeLessThan(faces[0]!.i);
+    // The part of each atom in front of the faces is drawn again after them, cut to it. Seen down [111], the three
+    // O nearer the viewer than Ti (all their faces turn towards the viewer) and the three farther ones on the outline
+    // of the octahedron (the octahedron is not there beyond its edges) each get a cut copy.
+    const cuts = parts.filter(({ d }) => d.kind === "polyhedron" && d.svg.includes("poly-cut-"));
+    expect(cuts).toHaveLength(6);
+    for (const { i } of cuts) expect(i).toBeGreaterThan(faces[faces.length - 1]!.i);
+  });
+
+  it("cuts each corner atom exactly where its near surface is in front of the octahedron (checked by ray casting)", () => {
+    // Independent check: along the line of sight through points of each O's disc, is the atom's near surface in front
+    // of the octahedron |x| + |y| + |z| <= a/2 (or is the octahedron not there)? The drawn cut must agree, except
+    // within a pixel of its edge.
+    const scene = one("glass");
+    const view = DEFAULT_VIEW;
+    const fit = fitView(scene, view, DEFAULT_CANVAS);
+    const svg = renderSvg(scene, view, DEFAULT_CANVAS, fit);
+    const half = structure("perovskite-SrTiO3_COD-9006864.cif").cell.a / 2;
+    const toView = (p: Vec3): Vec3 => [0, 1, 2].map((i) => view[i]![0] * (p[0] - scene.centre[0]) + view[i]![1] * (p[1] - scene.centre[1]) + view[i]![2] * (p[2] - scene.centre[2])) as unknown as Vec3;
+    const toWorld = (q: Vec3): Vec3 => [0, 1, 2].map((j) => scene.centre[j]! + view[0]![j]! * q[0] + view[1]![j]! * q[1] + view[2]![j]! * q[2]) as unknown as Vec3;
+    const inOcta = (p: Vec3): boolean => Math.abs(p[0]) + Math.abs(p[1]) + Math.abs(p[2]) <= half + 1e-9;
+    const inside = (X: number, Y: number, ring: number[][]): boolean => {
+      let c = false;
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [xi, yi] = ring[i]!;
+        const [xj, yj] = ring[j]!;
+        if (yi! > Y !== yj! > Y && X < ((xj! - xi!) * (Y - yi!)) / (yj! - yi!) + xi!) c = !c;
+      }
+      return c;
+    };
+    let checked = 0;
+    const outcomes = { front: 0, behind: 0 };
+    scene.spheres.forEach((sp, index) => {
+      if (sp.species !== "O") return;
+      const r = scene.styles[sp.style]!.radius;
+      const qo = toView(sp.centre);
+      const clip = svg.match(new RegExp(`<clipPath id="poly-cut-${index}-0">(.*?)</clipPath>`));
+      // Each path of the clip is one or two loops, read even-odd; the clip is their union.
+      const paths = clip ? [...clip[1]!.matchAll(/d="([^"]+)"/g)].map((m) => m[1]!.split("M").filter((x) => x.trim()).map((loop) => loop.replace("Z", "").trim().split("L").map((pt) => pt.split(",").map(Number)))) : [];
+      const front = (qx: number, qy: number): boolean | null => {
+        const [dx, dy] = [qx - qo[0], qy - qo[1]];
+        if (dx * dx + dy * dy >= r * r) return null;
+        const zs = qo[2] + Math.sqrt(r * r - dx * dx - dy * dy);
+        // The line p(z) = p0 + z w enters the octahedron, the eight half-spaces s.p <= a/2 (s = (+-1, +-1, +-1)),
+        // at the smallest of their upper bounds on z, if that is above the largest lower bound.
+        const p0 = toWorld([qx, qy, 0]);
+        const w = view[2]!;
+        let [lo, hi] = [-Infinity, Infinity];
+        for (const sx of [1, -1]) for (const sy of [1, -1]) for (const sz of [1, -1]) {
+          const sw = sx * w[0] + sy * w[1] + sz * w[2];
+          const bound = (half - (sx * p0[0] + sy * p0[1] + sz * p0[2])) / sw;
+          if (sw > 0) hi = Math.min(hi, bound);
+          else if (sw < 0) lo = Math.max(lo, bound);
+        }
+        if (lo > hi) return true; // the line misses the octahedron
+        expect(inOcta(toWorld([qx, qy, (lo + hi) / 2]))).toBe(true); // the solved interval is inside
+        return zs > hi;
+      };
+      const step = 0.08 * r;
+      for (let i = -12; i <= 12; i++) for (let j = -12; j <= 12; j++) {
+        const [qx, qy] = [qo[0] + i * step, qo[1] + j * step];
+        const want = front(qx, qy);
+        if (want === null) continue;
+        const nearEdge = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => front(qx + (a! * 1) / fit.scale, qy + (b! * 1) / fit.scale) !== want);
+        if (nearEdge) continue;
+        const [X, Y] = [fit.x + qx * fit.scale, fit.y - qy * fit.scale];
+        expect(paths.some((loops) => loops.filter((loop) => inside(X, Y, loop)).length % 2 === 1), `O ${index} at (${i}, ${j})`).toBe(want);
+        checked++;
+        outcomes[want ? "front" : "behind"]++;
+      }
+    });
+    expect(checked).toBeGreaterThan(1000);
+    expect(Math.min(outcomes.front, outcomes.behind)).toBeGreaterThan(200); // both kinds of point were tested
   });
 
   it("solid: only the 4 front faces, and no Ti atom drawn inside", () => {
