@@ -17,11 +17,11 @@
   --primary-tint: #f3f3f1;
   --accent: #fff27a;
   --accent-deep: #f6e24a;
-  /* The assistant's drawer: pale tints of the accent yellow. */
-  --drawer-bg: #fffcec;
-  --drawer-head: #fff6cc;
-  --drawer-hover: #fff0b3;
-  --drawer-line: #eadf9f;
+  /* The assistant's drawer: the accent yellow itself, so it follows the theme. */
+  --drawer-bg: var(--accent);
+  --drawer-head: var(--accent);
+  --drawer-hover: var(--accent-deep);
+  --drawer-line: rgba(27, 26, 24, 0.14);
   --radius: 6px;
   --note-bg: #fffbd6;
   --note-ink: #4a4000;
