@@ -91,7 +91,10 @@ export function AssistantPanel({ page }: { page: Page }) {
   }, [stored.transport, stored.serverUrl]);
 
   const model = models.includes(stored.model) ? stored.model : (models[0] ?? "");
-  useEffect(() => end.current?.scrollIntoView({ block: "end" }), [lines]);
+  // In braces: newer browsers return a promise from scrollIntoView, and an effect may return only a clean-up.
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: "end" });
+  }, [lines]);
 
   const send = async (e?: FormEvent) => {
     e?.preventDefault();

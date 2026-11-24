@@ -9,7 +9,7 @@ import { buildPreviewData, type PreviewFrame } from "./data";
 export const PREVIEW_FROM = 1200;
 
 export interface Preview {
-  /** The canvas laid over the figure; it must stay mounted for the life of the page. */
+  /** The canvas laid over the figure. A new canvas gets a new worker at the next load. */
   readonly canvasRef: RefObject<HTMLCanvasElement | null>;
   /** The scene the worker holds now; a frame can be drawn only for this scene. */
   readonly loaded: Scene | null;
@@ -25,12 +25,15 @@ export interface Preview {
 
 /**
  * The GPU preview's worker and canvas. The worker is started the first time a scene is loaded and
- * lives as long as the page. If the browser cannot do it (no OffscreenCanvas or no WebGL 2 in a
+ * lives as long as its canvas: when the canvas is replaced (a structure closed, another opened), the
+ * next scene starts a new worker on the new canvas. If the browser cannot do it (no OffscreenCanvas or no WebGL 2 in a
  * worker), `failed` says so and the page simply keeps redrawing the SVG.
  */
 export function usePreview(): Preview {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const worker = useRef<Worker | null>(null);
+  /** The canvas the current worker draws into. */
+  const given = useRef<HTMLCanvasElement | null>(null);
   const ready = useRef(false);
   const waiting = useRef<Scene | null>(null);
   const frameId = useRef(0);
@@ -51,6 +54,17 @@ export function usePreview(): Preview {
   const load = useCallback(
     (scene: Scene) => {
       if (failed) return;
+      // The canvas is taken off the page when the structure is closed, and a new one is put there when the next
+      // opens. A worker draws only into the canvas it was given, so for a new canvas a new worker is started;
+      // otherwise the preview would draw into the old, unseen one and the structure would vanish while moving.
+      if (worker.current && given.current !== canvasRef.current) {
+        worker.current.terminate();
+        worker.current = null;
+        ready.current = false;
+        busy.current = false;
+        next.current = null;
+        waiting.current = null;
+      }
       if (!worker.current) {
         const canvas = canvasRef.current;
         if (!canvas || typeof canvas.transferControlToOffscreen !== "function" || typeof Worker === "undefined") {
@@ -59,6 +73,7 @@ export function usePreview(): Preview {
         }
         try {
           const offscreen = canvas.transferControlToOffscreen();
+          given.current = canvas;
           const w = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
           w.onmessage = (event: MessageEvent<{ type: string; id?: number; message?: string }>) => {
             if (event.data.type === "ready") {
@@ -101,7 +116,7 @@ export function usePreview(): Preview {
     return frameId.current;
   }, []);
 
-  // Nothing to clean up: the worker serves the page until it is closed.
+  // Nothing to clean up: the worker serves its canvas until the page is closed or the canvas is replaced.
   useEffect(() => undefined, []);
   return { canvasRef, loaded, drawn, failed, load, draw };
 }

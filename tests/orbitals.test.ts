@@ -3,10 +3,10 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { contourLoops, convexHull, orbitalShade, renderSvg } from "../src/render/svg";
+import { contourLoops, convexHull, DEFAULT_CANVAS, fitView, orbitalShade, renderSvg } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
 import { ORBITALS, orbitalById, orbitalField, orbitalFrame, orbitalSurface, orbitalUnitSurface } from "../src/scene/orbitals";
-import { bondAxis, buildScene, DEFAULT_ORBITAL_COLOURS, DEFAULT_SPEC, firstShell, ORBITAL_SCHEMES } from "../src/scene/scene";
+import { bondAxis, buildScene, DEFAULT_ORBITAL_COLOURS, DEFAULT_SPEC, firstShell, ORBITAL_SCHEMES, withoutOrbitals } from "../src/scene/scene";
 import type { Vec3 } from "../src/structure/types";
 import { readCif } from "../src/structure/readCif";
 
@@ -105,6 +105,29 @@ describe("orbitals: the real spherical harmonics", () => {
     expect((whole.match(/<g class="orbital-ring" opacity="0.6">/g) ?? []).length).toBe(ti);
     expect(svg).not.toMatch(/class="orbital"/); // no small faces unless the mesh surface is chosen
     expect(buildScene(srtio3).orbitals).toBeUndefined();
+  });
+
+  it("while the view moves: the same atoms, bonds and cell in the same places, and no orbitals", () => {
+    const srtio3 = readCif(readFileSync("examples/perovskite-SrTiO3_COD-9006864.cif", "utf8"));
+    const scene = buildScene(srtio3, { ...DEFAULT_SPEC, orbitals: [{ species: "Ti", orbitals: ["dz2"], size: 1.6, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6 }] });
+    const bare = withoutOrbitals(scene);
+    expect(bare.orbitals).toBeUndefined();
+    expect(scene.orbitals!.length).toBeGreaterThan(0); // the scene itself keeps them
+    expect(bare.spheres).toBe(scene.spheres);
+    expect(bare.sticks).toBe(scene.sticks);
+    expect([bare.centre, bare.extent]).toEqual([scene.centre, scene.extent]);
+    const fit = fitView(scene, DEFAULT_VIEW, DEFAULT_CANVAS);
+    const moving = renderSvg(bare, DEFAULT_VIEW, DEFAULT_CANVAS, fit, "structure");
+    const still = renderSvg(scene, DEFAULT_VIEW, DEFAULT_CANVAS, fit, "structure");
+    expect(moving).not.toMatch(/orbital/);
+    expect(still).toMatch(/class="orbital-lobe"/);
+    // Every atom is drawn, at the same place as in the still figure (which repeats some discs as clips for the orbitals).
+    const circles = (svg: string) => [...new Set((svg.match(/<circle [^>]*cx="[^"]*" cy="[^"]*"/g) ?? []).map((c) => c.match(/cx="[^"]*" cy="[^"]*"/)![0]))].sort();
+    expect(circles(moving).length).toBeGreaterThan(0);
+    expect(circles(moving)).toEqual(circles(still));
+    // A scene with no orbitals is returned unchanged.
+    const plain = buildScene(srtio3);
+    expect(withoutOrbitals(plain)).toBe(plain);
   });
 
   it("an orbital and an atom cut through one another as solids: a lobe shows on the atom only where it is in front", () => {

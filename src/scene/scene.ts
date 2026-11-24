@@ -569,6 +569,16 @@ export function bondAxis(structure: Structure, frac: Vec3, neighbour: string, mo
   return [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
 }
 
+/**
+ * The same scene with no orbitals: what the page draws while the view moves. Everything else, including
+ * `centre` and `extent` (so the placement), is the scene's own. A scene without orbitals is returned as it is.
+ */
+export function withoutOrbitals(scene: Scene): Scene {
+  if (!scene.orbitals?.length) return scene;
+  const { orbitals: _, ...rest } = scene;
+  return rest;
+}
+
 /** One sphere per atom in the chosen range (plus neighbours added by bond rules), sticks for the bonds, and the cell outline. */
 export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC): Scene {
   const hiddenSpecies = new Set(Object.entries(spec.looks).filter(([, look]) => look.hidden).map(([species]) => species));

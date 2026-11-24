@@ -13,7 +13,7 @@ import {
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { type ArrowStyle, AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, DEFAULT_MOMENT_TAIL, DEFAULT_ORBITAL_COLOURS, DEFAULT_ORBITAL_OPACITY, DEFAULT_ORBITAL_SIZE, ORBITAL_SCHEMES, ORBITAL_TEXTURES, type OrbitalTexture, type Look, type OrbitalRule, type Scene } from "../scene/scene";
+import { type ArrowStyle, AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, DEFAULT_MOMENT_TAIL, DEFAULT_ORBITAL_COLOURS, DEFAULT_ORBITAL_OPACITY, DEFAULT_ORBITAL_SIZE, ORBITAL_SCHEMES, ORBITAL_TEXTURES, type OrbitalTexture, type Look, type OrbitalRule, type Scene, withoutOrbitals } from "../scene/scene";
 import { DEFAULT_ISO, ORBITALS } from "../scene/orbitals";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
@@ -594,8 +594,8 @@ export function App() {
   const [smooth, setSmooth] = useState(true);
   const [previewFromText, setPreviewFromText] = useState(String(PREVIEW_LIMIT));
   const previewFrom = previewFromText.trim() !== "" && Number(previewFromText) >= 0 ? Number(previewFromText) : PREVIEW_LIMIT;
-  // How much there is to redraw: atoms and bonds, and each orbital as much as 60 of them (it is about 1,100 small faces).
-  const drawLoad = scene ? scene.spheres.length + scene.sticks.length + 60 * (scene.orbitals?.length ?? 0) : 0;
+  // How much there is to redraw while moving: atoms and bonds (orbitals are left out until the view is still).
+  const drawLoad = scene ? scene.spheres.length + scene.sticks.length : 0;
   const large = scene !== null && drawLoad >= previewFrom;
   const usePreviewNow = smooth && large && !preview.failed;
   useEffect(() => {
@@ -674,13 +674,14 @@ export function App() {
   // preview is live the structure layer is only hidden (its drawing is kept, so nothing has to be torn down),
   // and the legend and axes go on following the view. Both layers come from the same code as the saved figure.
   const lastStructure = useRef("");
-  const orbitalDraft = moving && !previewing && (scene?.orbitals?.length ?? 0) > 0;
+  // While the view moves, the structure is drawn without its orbitals (atoms and bonds keep their places);
+  // the orbitals come back once it is still, and are in every saved figure.
+  const bareScene = useMemo(() => (scene ? withoutOrbitals(scene) : null), [scene]);
   const structureSvg = useMemo(() => {
-    if (!scene || !fit) return "";
-    // Orbitals are drawn in draft while the view moves, and in full once it is still and in every saved figure.
-    if (!previewing) lastStructure.current = renderSvg(scene, view, canvasOptions, fit, "structure", { draft: orbitalDraft });
+    if (!scene || !bareScene || !fit) return "";
+    if (!previewing) lastStructure.current = renderSvg(moving ? bareScene : scene, view, canvasOptions, fit, "structure");
     return lastStructure.current;
-  }, [scene, view, canvasOptions, fit, previewing, orbitalDraft]);
+  }, [scene, bareScene, view, canvasOptions, fit, previewing, moving]);
   const bandSvg = useMemo(() => (scene && fit ? renderSvg(scene, view, canvasOptions, fit, "band") : ""), [scene, view, canvasOptions, fit]);
   /** What "Save" writes: always the full vector figure, as shown, or (if chosen) the whole structure fitted. */
   const figureToSave = (): string => {
