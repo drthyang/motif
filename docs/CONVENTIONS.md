@@ -439,6 +439,10 @@ Structure tab; the user's choices of 2026-11-23.
   page's ink (#1b1a18), white on a dark tab bar (`prefers-color-scheme`). Drawn for MOTIF as one SVG path, not
   taken from any font or logo. `public/favicon.svg`, linked from `index.html`; the build copies it beside the
   page and links it as `./favicon.svg`. Checked: it reads at 16 and 32 px on light and dark tab bars.
+  Safari does not take an SVG tab icon, so since e084351 `public/` also holds `favicon-32.png` (32 px),
+  `favicon.ico` (16, 32 and 48 px) and `apple-touch-icon.png` (180 px): the same mark in ink on a white rounded
+  tile, since a PNG cannot turn white on a dark tab bar. `index.html` links the 32 px PNG, then the SVG (which
+  Chrome and Firefox use), then the Apple touch icon.
 - Page colour (the user's choice, 2026-11-24, commit 1c365d6): Layout › Page colour (a closed section) offers six
   accents: Lemon (#fff27a, the default and the stylesheet's own), Marigold, Apricot, Mint, Sky and Lilac. The
   accent colours the page only: the main buttons, the assistant drawer's header, the example cards under the
