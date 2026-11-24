@@ -96,6 +96,39 @@ configuration, reads it again folded or whole (also in the Structure tab):
 - In a folded cell an atom within 0.01 of a limit of the range counts as on it (0.001 elsewhere), so a site
   averaged to 0.9988 is drawn at both edges, at its measured position (the user's choice, 2026-11-23).
 
+### Other formats (2026-11-23)
+
+`src/structure/readStructure.ts` chooses the reader by the file's name (and, where names are shared, its
+content); the format's short name shows over the figure at the left. Each reader is checked in
+`tests/formats.test.ts`: quartz and halite are written in the format from the CIF's unit cell (gemmi-checked),
+with the lattice turned to an arbitrary orientation where the format is Cartesian, read back and compared atom
+by atom with the CIF.
+
+- **VASP** POSCAR, CONTCAR, `.vasp`: one scale factor (negative: the volume) or three; VASP 5 species names
+  (POTCAR names such as `Fe_pv` read as Fe); a VASP 4 file only when its comment line names the elements;
+  Selective dynamics; Direct or Cartesian.
+- **XYZ** and **extended XYZ**: `Lattice="..."` gives the cell and `Properties=` the columns; without a lattice
+  the atoms are a molecule. The first frame only.
+- **SHELX** `.res`, `.ins`: CELL, LATT (centring; positive adds the inversion), SYMM, SFAC, FVAR; a coordinate
+  or sof written as 10 + v is v; sof 10m + p is p fv(m), -(10m + p) is p (1 - fv(m)); Q peaks and everything
+  after HKLF or END left out. The operations are generated from SYMM, the inversion and the centring, and must
+  close into a group.
+- **PDB** `.pdb`, `.ent`: CRYST1 and ATOM/HETATM (first model). A PDB file names its space group only by symbol and
+  MOTIF builds symmetry only from listed operations, so only P 1 is drawn as a crystal; any other file is drawn as
+  the model it lists, and the page says the space group was not applied.
+- **Quantum ESPRESSO** pw.x input: ibrav = 0 only (other ibrav values use QE's own lattice formulas and are
+  refused), CELL_PARAMETERS and ATOMIC_POSITIONS in alat, bohr, angstrom or crystal, ATOMIC_SPECIES for elements.
+- **CASTEP** `.cell`: LATTICE_CART or LATTICE_ABC; POSITIONS_FRAC or POSITIONS_ABS (ang, bohr or nm).
+- **FHI-aims** `geometry.in`: lattice_vector, atom, atom_frac; no lattice vectors: a molecule.
+- **XSF**: CRYSTAL with PRIMVEC and PRIMCOORD; ATOMS for a molecule; animated files refused.
+- Common to all: lattice vectors become lengths and angles in MOTIF's axes (the same crystal turned rigidly);
+  a left-handed set is refused (it would be drawn mirrored); elements are symbols or atomic numbers, and
+  anything else is refused rather than guessed (`Ox` is not oxygen). 1 bohr = 0.529177210903 Å.
+- **A molecule** (atoms with no cell) sits in an orthogonal box 10 Å larger on every side than its atoms, so
+  its copies in neighbouring boxes are too far away to bond; the unit-cell outline is switched off for it.
+  The automatic bonds are made for crystals (cation to anion), so in a molecule some bonds (C–H, for example)
+  must be added by hand.
+
 ## What is drawn
 
 ### Range of cells

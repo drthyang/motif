@@ -272,3 +272,5 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .tools.rmc-switch button.on { color: var(--ink); box-shadow: inset 0 -2px 0 var(--ink); border-radius: 0; }
 .tools.rmc-switch button:not(.on) { color: var(--secondary); font-weight: 500; }
 .tools.rmc-switch { margin-right: 8px; }
+/* The file's format, over the figure at the left (as the RMC switch is). */
+.tool-label.format { color: var(--secondary); font-weight: 600; margin-right: 10px; }

@@ -20,8 +20,7 @@ import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
 import { pairDistances, type BondColouring, type BondLine, type BondRule } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
-import { readCif } from "../structure/readCif";
-import { isRmc6f, readRmc6f } from "../structure/readRmc6f";
+import { readStructure } from "../structure/readStructure";
 import { withDisplacements } from "../structure/distortion";
 import {
   apply as applySettings,
@@ -433,7 +432,7 @@ export function App() {
   const load = useCallback((text: string, name: string): Structure | null => {
     lastFile.current = { text, name };
     try {
-      const read = isRmc6f(text, name) ? readRmc6f(text, name, { fold: foldRmc.current }) : readCif(text);
+      const read = readStructure(text, name, { fold: foldRmc.current });
       buildScene(read); // fail here, with a message, rather than while drawing
       lastScene.current = null;
       setStructure(read);
@@ -444,6 +443,8 @@ export function App() {
       const opening = directAxes(read.cell);
       setView(viewFromNumbers(opening, keepViewRef.current ? lastNumbers.current : openingNumbers(opening)));
       setRangeText(ONE_CELL_TEXT);
+      // A molecule sits in a box that is not a unit cell: no cell outline. A crystal shows its cell.
+      setShowCell(!read.molecule);
       setZoom(NO_ZOOM);
       setTurnScale(null);
       // Bonds to start from, unless that is switched off: nearest neighbours by simple rules (see autoBonds.ts).
@@ -971,7 +972,6 @@ export function App() {
             Open file…
             <input
               type="file"
-              accept=".cif,.mcif,.rmc6f"
               data-testid="file"
               hidden
               onChange={(e) => {
@@ -1067,6 +1067,13 @@ export function App() {
                 <span data-testid="counts">{scene.spheres.length} atoms{counts && `: ${counts}`}</span>
               </div>
               <div className="toolbar">
+                {structure?.format && !structure.rmc && (
+                  <div className="tools" role="note">
+                    <span className="tool-label format" data-testid="file-format" title={structure.spaceGroupName ?? structure.format}>
+                      {structure.format}
+                    </span>
+                  </div>
+                )}
                 {structure?.rmc && (
                   <div className="tools rmc-switch" role="group" aria-label="RMC configuration: the whole supercell, or folded into one cell">
                     <span className="tool-label">RMC</span>
@@ -1177,7 +1184,8 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   className="preview"
                   data-testid="preview"
                   data-live={previewLive ? "yes" : "no"}
-                  style={{ display: previewLive ? "block" : "none", left: drawingBox.left, top: drawingBox.top, width: drawingBox.width, height: drawingBox.height }}
+                  // Laid out always and only made invisible: some browsers stop showing a worker's canvas that began hidden.
+                  style={{ opacity: previewLive ? 1 : 0, left: drawingBox.left, top: drawingBox.top, width: drawingBox.width, height: drawingBox.height }}
                 />
                 {previewLive && (
                   <div className="preview-note" style={{ left: drawingBox.left + 12, top: drawingBox.top + 12 }}>

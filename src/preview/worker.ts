@@ -155,10 +155,15 @@ function program(context: WebGL2RenderingContext, vs: string, fs: string): WebGL
   return p;
 }
 
+/** Read back the next frame drawn, to check that this browser's preview paints at all (see the frame message). */
+let checkNext = false;
+
 function init(offscreen: OffscreenCanvas): void {
   canvas = offscreen;
   gl = offscreen.getContext("webgl2", { alpha: true, antialias: true, premultipliedAlpha: true, depth: true });
   if (!gl) throw new Error("WebGL 2 is not available");
+  // A browser may take the graphics context away (memory, sleep): say so, and the page draws the SVG instead.
+  offscreen.addEventListener("webglcontextlost", () => self.postMessage({ type: "error", message: "The graphics card dropped the preview." }));
   sphereProgram = program(gl, SPHERE_VS, SPHERE_FS);
   lineProgram = program(gl, LINE_VS, LINE_FS);
   // One square per sphere, one rectangle per line, each drawn many times (instancing).
@@ -241,8 +246,21 @@ self.onmessage = (event: MessageEvent<Message>) => {
       lineCount = message.lines.length / LINE_STRIDE;
       centre = message.centre;
       reach = message.reach;
+      checkNext = true;
     } else if (message.type === "frame") {
+      if (gl?.isContextLost()) throw new Error("The graphics card dropped the preview.");
       draw(message.frame, message.pixelWidth, message.pixelHeight);
+      // The first frame of each structure (the page draws one, fitted, unseen, as soon as the structure is loaded)
+      // is read back: if not one pixel was painted, this browser's preview does not work, and the page is told so
+      // rather than showing an empty canvas while the structure moves.
+      if (checkNext && gl && sphereCount + lineCount > 0) {
+        checkNext = false;
+        const pixels = new Uint8Array(message.pixelWidth * message.pixelHeight * 4);
+        gl.readPixels(0, 0, message.pixelWidth, message.pixelHeight, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        let painted = false;
+        for (let i = 3; i < pixels.length; i += 4 * 7) if (pixels[i]! > 0) { painted = true; break; }
+        if (!painted) throw new Error("The preview drew nothing on this computer.");
+      }
       self.postMessage({ type: "drawn", id: message.id });
     }
   } catch (error) {

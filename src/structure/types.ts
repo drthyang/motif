@@ -85,6 +85,13 @@ export interface Structure {
   readonly magnetic: boolean;
   /** Present for an ISODISTORT file with displacive modes. */
   readonly distortion?: Distortion;
+  /**
+   * True for atoms with no cell (a molecule, from XYZ, PDB, XSF or geometry.in without one): they sit in an
+   * orthogonal box with room around them (see lattice.ts), which the page does not draw as a unit cell.
+   */
+  readonly molecule?: boolean;
+  /** The file's format in a word or two ("CIF", "VASP", "SHELX", ...), shown over the figure. */
+  readonly format?: string;
   /** Present for an RMCProfile configuration: its supercell, and whether it was folded into one cell. */
   readonly rmc?: {
     readonly supercell: readonly [number, number, number];
