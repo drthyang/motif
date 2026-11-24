@@ -78,6 +78,10 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   publisher's own page; sources in `src/ui/journals.ts`. Science Advances and Wiley's journals are not included:
   their pages refuse automated access, and the user is checking them.
 - After a turn by dragging the figure keeps its scale (664d6e8).
+- Tab icon (bf6bd71, the user's choice from four M+T monograms): an M and a T sharing a stem, slanted 12°, a
+  heavy fused grotesque drawn from scratch; ink on a light tab bar, white on a dark one. `public/favicon.svg`.
+  MTF as a name or monogram was considered and dropped (it reads as "male-to-female", and in imaging as
+  "modulation transfer function").
 - Opening any file blanked the page in newer browsers, fixed in 1cd3e18: the Assistant tab's scroll effect
   returned the promise that `scrollIntoView` now gives, and React took it for a clean-up; it now returns nothing.
 

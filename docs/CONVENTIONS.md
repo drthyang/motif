@@ -423,17 +423,22 @@ Structure tab; the user's choices of 2026-11-23.
 
 ### Tabs
 
-- A view toolbar over the figure and four tabs (the user's layout, 2026-11-23):
+- A view toolbar over the figure and four tabs (the user's layout, 2026-11-23), five since the Assistant tab:
   - Info: what the file says.
   - Structure: what is drawn (the cells shown, which elements, bonds, angles, whether moments are shown).
   - Visual: how it looks (presets, surfaces and outlines, colours and sizes of atoms, bonds, angle marks and
     moment arrows, the unit-cell lines, legend, axes, lettering).
   - Layout: canvas size and shape, view direction, scale, saved views, dragging, large structures.
+  - Assistant (since 2026-11-24): the assistant's connection and conversation (see "Assistant" below).
 - A bond or angle rule is set up under Structure and styled under Visual.
 - Above the figure: Open file…, the Examples menu and, while a structure is open, Close, which closes it and
   returns to the start page (2026-11-23).
 - The quick styles (soft shading; flat colour, outlined; glossy highlight; metallic; clear glass atoms) set
   surfaces, outlines, lettering weight and legend sizes together.
+- Tab icon (the user's choice, 2026-11-24, commit bf6bd71): an M and a T sharing a stem, slanted 12°, in the
+  page's ink (#1b1a18), white on a dark tab bar (`prefers-color-scheme`). Drawn for MOTIF as one SVG path, not
+  taken from any font or logo. `public/favicon.svg`, linked from `index.html`; the build copies it beside the
+  page and links it as `./favicon.svg`. Checked: it reads at 16 and 32 px on light and dark tab bars.
 
 ### Saved settings
 
