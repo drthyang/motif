@@ -2,26 +2,27 @@
 // Copyright (C) 2026 Tsung-Han Yang
 
 /**
- * The page colour, as a small dot beside the word mark in the header. A click opens a row of the six colours;
+ * The page colour, as a small dot at the left of the header's buttons. A click opens a row of the six colours;
  * choosing one applies it and closes the row, as does a click elsewhere or Escape. Only the page changes: figures
- * never do. The choice is kept in this browser (theme.ts).
+ * never do. The choice is kept in this browser (theme.ts). The row is placed against the window, under the dot, so the
+ * header's buttons scrolling sideways on a phone do not cut it off.
  */
 import { useEffect, useRef, useState } from "react";
 import { applyTheme, readTheme, THEMES } from "./theme";
 
 export function ThemeCue() {
   const [theme, setTheme] = useState(readTheme);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<{ top: number; left: number } | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const current = THEMES.find((t) => t.id === theme) ?? THEMES[0]!;
 
   useEffect(() => {
     if (!open) return;
     const away = (e: PointerEvent): void => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+      if (box.current && !box.current.contains(e.target as Node)) setOpen(null);
     };
     const key = (e: globalThis.KeyboardEvent): void => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") setOpen(null);
     };
     document.addEventListener("pointerdown", away);
     document.addEventListener("keydown", key);
@@ -38,13 +39,18 @@ export function ThemeCue() {
         className="theme-dot"
         data-testid="theme-cue"
         aria-label={`Page colour: ${current.name}`}
-        aria-expanded={open}
+        aria-expanded={open !== null}
         title={`Page colour: ${current.name}. Only the page changes, never the figure.`}
         style={{ background: current.accent }}
-        onClick={() => setOpen((o) => !o)}
+        onClick={(e) => {
+          if (open) return setOpen(null);
+          const r = e.currentTarget.getBoundingClientRect();
+          // Six 20 px dots 8 px apart in 8 px of padding: 176 px wide; kept 8 px inside the window.
+          setOpen({ top: r.bottom + 8, left: Math.max(8, Math.min(r.left - 8, window.innerWidth - 184)) });
+        }}
       />
       {open && (
-        <div className="theme-row" role="radiogroup" aria-label="Page colour">
+        <div className="theme-row" role="radiogroup" aria-label="Page colour" style={open}>
           {THEMES.map((t) => (
             <button
               key={t.id}
@@ -59,7 +65,7 @@ export function ThemeCue() {
               onClick={() => {
                 applyTheme(t.id);
                 setTheme(t.id);
-                setOpen(false);
+                setOpen(null);
               }}
             />
           ))}

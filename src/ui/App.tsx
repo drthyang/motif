@@ -1140,9 +1140,9 @@ export function App() {
       <header className="topbar">
         <div className="brand">
           <span className="mark">MOTIF</span>
-          <ThemeCue />
         </div>
         <div className="actions">
+          <ThemeCue />
           <label className="button primary">
             Open file…
             <input
