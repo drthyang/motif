@@ -47,6 +47,12 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
   and in the README. Check first that the file is the user's own work, not third-party code
   carried in that repo.
 
+- In-app assistant (2026-11-24): models as in MATERIA (Claude with the user's own key, called from the
+  browser, or a local model through Ollama or LM Studio; with Claude the structure is sent to Anthropic, with a
+  local model nothing leaves the computer). First version changes look and layout only (settings, element
+  colours and sizes, bonds and their look, view, cells, journal template); it does not open files or save
+  figures. Built and tested against a local model only, no paid API calls.
+
 ## Data rule (strict)
 
 - Only published structures in this repo: examples, tests, docs, screenshots, commit messages.
