@@ -171,11 +171,12 @@ export const JOURNALS: readonly Journal[] = [
   },
 ];
 
-/** A figure can take the whole width of a template, or half or a third of it (one panel in a row of two or three). */
+/** A figure can take the whole width of a template, or a half, a third or a quarter of it (one panel in a row of two, three or four). */
 export const PARTS = [
   { id: "1", label: "full width", share: 1 },
   { id: "1/2", label: "1/2 width", share: 1 / 2 },
   { id: "1/3", label: "1/3 width", share: 1 / 3 },
+  { id: "1/4", label: "1/4 width", share: 1 / 4 },
 ] as const;
 export type PartId = (typeof PARTS)[number]["id"];
 

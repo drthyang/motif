@@ -43,6 +43,8 @@ import {
   type SavedSettings,
   type SettingField,
 } from "./settings";
+import { Rulers } from "./Rulers";
+import { sizeLabel } from "./ruler";
 import { isDoubleTap, rollFor, twoFingerStep, type Touch } from "./touch";
 import { PARTS, PUBLISHERS, journalsOf, partWidth, journalSize, journalTextPt, type PartId } from "./journals";
 import { type FeatureExample, readFeatures } from "./examples";
@@ -96,7 +98,9 @@ export function App() {
   const [canvasSizeText, setCanvasSizeText] = useState<[string, string]>(["8.9", "6.675"]);
   // The journal template last chosen; it shows as chosen while the size on paper is still its width.
   const [journalChoice, setJournalChoice] = useState("");
-  // Which share of the template's width the figure takes: all, half or a third.
+  // Rulers along the top and left of the figure on the page (never part of the saved figure).
+  const [showRulers, setShowRulers] = useState(true);
+  // Which share of the template's width the figure takes: all, a half, a third or a quarter.
   const [journalPart, setJournalPart] = useState<PartId>("1");
   const canvasSize: [number, number] = [Number(canvasSizeText[0]), Number(canvasSizeText[1])];
   const [sideMin, sideMax] = canvasUnit === "cm" ? [1, 100] : [0.4, 40];
@@ -1092,7 +1096,15 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
 </select>
 </div>
               </div>
-              <div className="figure-wrap">
+              <div className={`figure-wrap${showRulers ? " ruled" : ""}`}>
+                {showRulers && drawingBox.width > 0 && (
+                  <Rulers
+                    box={drawingBox}
+                    width={canvas.physical ? canvas.physical.width : canvas.width}
+                    height={canvas.physical ? canvas.physical.height : canvas.height}
+                    unit={canvas.physical ? canvas.physical.unit : "px"}
+                  />
+                )}
                 <div
                   ref={figureRef}
                   className={`figure${transparent ? "" : " white"}${boxMode ? " boxing" : ""}`}
@@ -1144,6 +1156,10 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 <p className="view-line" data-testid="view-line" title="The view, always as it is now. Copy it to use the same view again.">
                   {viewLine}
                   <button className="plain copy" title="Copy the view" onClick={() => void navigator.clipboard?.writeText(writeView(numbers))}>⧉</button>
+                  <span className="figure-size" data-testid="figure-size">
+                    {" · figure "}
+                    {canvas.physical ? sizeLabel(canvas.physical.width, canvas.physical.height, canvas.physical.unit) : sizeLabel(canvas.width, canvas.height, "px")}
+                  </span>
                 </p>
                 {showHelp && (
                   <Controls
@@ -2228,7 +2244,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                       <select
                         data-testid="canvas-journal-part"
                         value={journalPart}
-                        title="The whole column width, or half or a third of it (one panel in a row of two or three). The text size stays the journal's."
+                        title="The whole column width, or a half, a third or a quarter of it (one panel in a row of two, three or four). The text size stays the journal's."
                         onChange={(e) => (chosen ? apply(chosen.id, e.target.value as PartId) : setJournalPart(e.target.value as PartId))}
                       >
                         {PARTS.map((p) => (
@@ -2272,6 +2288,10 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 </select>
                 {!canvasFixed && <span className="sub">{canvas.width} × {canvas.height} px</span>}
               </div>
+              <label className="row" title="Rulers along the top and left of the figure on this page, in cm or in for a size on paper, else in px of the figure. They are never saved with the figure.">
+                <input type="checkbox" data-testid="show-rulers" checked={showRulers} onChange={(e) => setShowRulers(e.target.checked)} />
+                Rulers beside the figure
+              </label>
               <div className="row">
                 <span className="lab">shape</span>
                 <select

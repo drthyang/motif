@@ -280,8 +280,8 @@ Structure tab; the user's choices of 2026-11-23.
   the width the journal asks for, keeping the chosen shape, sets the legend, axis and angle text to the
   journal's size in pt, and shows the journal's limits. The choice is made in steps: publisher, journal, column
   (the user's wish); choosing a publisher or a journal takes its first column at once. Journals with the same
-  widths and text are one template (the user's wish). Under "width" the figure takes the full width, 1/2 or 1/3 of it (one panel in a row of two
-  or three), rounded to 0.01 cm or in; the text keeps the journal's size. Values and their sources (each journal's own author
+  widths and text are one template (the user's wish). Under "width" the figure takes the full width, 1/2, 1/3 or 1/4 of it (one panel in a row of
+  two, three or four), rounded to 0.01 cm or in; the text keeps the journal's size. Values and their sources (each journal's own author
   pages, read 2026-11-23) are in the header of `src/ui/journals.ts`:
 
   | Journal | Widths | Text |
@@ -357,6 +357,11 @@ Structure tab; the user's choices of 2026-11-23.
   keeps its scale, centred on the new outline, and shrinks only if it would not fit; a snap at the end of the
   drag keeps it too. Fit (double-click or the 0 key), Reset, a preset or typed view, opening a file, or
   changing the cells or the canvas fit it afresh.
+- **Rulers** (2026-11-23; `src/ui/ruler.ts`, `tests/ruler.test.ts`). Along the top and left of the figure on the
+  page, measuring the figure itself: in cm or in when it has a size on paper, else in px of the figure; the zoom
+  does not change them. Ticks at least 5 screen px apart (mm and cm; eighths to whole inches; round px), labels
+  on whole cm, whole inches or round px at least 34 px apart. The figure's size is written after the view line.
+  On by default; Layout tab, Canvas, "Rulers beside the figure". A guide on the page only, never in a saved figure.
 - **Zoom and move** act on the structure; the legend and axes stay put and are drawn over a structure that
   reaches them. Zoom: Ctrl/⌘ + wheel, pinch, + and − keys, or the buttons; move: Shift + drag, middle-button
   drag, arrow keys; fit again: double-click, 0, or "Fit"; "Box" then a drag zooms to a rectangle (Esc

@@ -62,7 +62,8 @@ describe("journal templates", () => {
   });
 
   it("a figure can take the whole width, a half or a third", () => {
-    expect(PARTS.map((p) => p.id)).toEqual(["1", "1/2", "1/3"]);
+    expect(PARTS.map((p) => p.id)).toEqual(["1", "1/2", "1/3", "1/4"]);
+    expect(partWidth(8.9, "1/4")).toBe(2.23);
     expect(partWidth(8.9, "1")).toBe(8.9);
     expect(partWidth(8.9, "1/2")).toBe(4.45);
     expect(partWidth(18.3, "1/3")).toBe(6.1);
