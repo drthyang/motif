@@ -213,11 +213,15 @@ Structure tab; the user's choices of 2026-11-23.
   golden-section refinement), and its zero contour is traced by marching squares and drawn as a smooth curve,
   so where a lobe meets an atom the edge is smooth. Atoms beyond an orbital's reach are ordered by depth as
   usual.
-- **A draft while the view moves.** While the view moves the edge is found on a coarser grid; once the view
-  is still, and in every saved figure, it is drawn in full. Surfaces are kept once placed, and atoms of one
-  rule share one outline moved to each atom (the view is orthographic), so turning the view only projects
-  them: on the 8 Ti atoms of the SrTiO₃ example, dz² and dxy together take about 12 ms a frame while moving
-  and 41 ms in full.
+- **No orbitals while the view moves** (2026-11-24, commit 1cd3e18). While the view moves the page draws the
+  structure without its orbitals: atoms, bonds and cell stay in their places (the same scene, the orbitals
+  left out). The orbitals come back once the view is still, and are in every saved figure. Until then a draft
+  was drawn while moving, with the edge found on a coarser grid; the renderer keeps that option (`draft`), but
+  the page no longer uses it. Surfaces are kept once placed, and atoms of one rule share one outline moved to
+  each atom (the view is orthographic), so a still view only projects them: on the 8 Ti atoms of the SrTiO₃
+  example, dz² and dxy together took about 41 ms to draw in full (measured with the draft, 2026-11-23).
+  Checked (`tests/orbitals.test.ts`): the scene drawn while moving has the same atoms, bonds and cell in the
+  same places, and no orbitals.
 - **Surfaces.** Soft, flat, glossy, or mesh (grid lines, drawn face by face, slower); colour schemes for the
   two lobes, or own colours.
 - **Checked** (`tests/orbitals.test.ts`): the harmonics are mutually orthogonal over the sphere; the solid is
@@ -473,8 +477,8 @@ Structure tab; the user's choices of 2026-11-23.
 
 ### Large structures
 
-- Moving a large structure (1,200 drawn atoms and bonds or more; the number can be changed under View, and
-  the preview switched off): while the view is changing, a drawing made by the graphics card (WebGL 2 in a
+- Moving a large structure (1,200 drawn atoms and bonds or more; orbitals do not count, since 1cd3e18 they
+  are not drawn while moving; the number can be changed under View, and the preview switched off): while the view is changing, a drawing made by the graphics card (WebGL 2 in a
   worker, `src/preview`) stands in for the structure; the vector figure is drawn again about 0.2 s after the
   movement stops.
 - The preview is given the same scene and places every atom with the same formula as the SVG (tested), and
@@ -483,6 +487,9 @@ Structure tab; the user's choices of 2026-11-23.
   shows the true intersection of the spheres, the SVG the nearer atom whole.
 - It is never what is saved: Save always writes the vector figure. Small structures are simply redrawn as
   SVG, and so is everything in a browser that cannot draw in a worker (the page says so).
+- The worker draws only into the canvas it was given. Close takes that canvas off the page, so the next
+  structure opened gets a new canvas and a new worker (since 1cd3e18; before, a large structure opened after
+  a Close showed an empty frame while moving).
 - The page shows the figure as two layers (structure; legend and axes) made by the same code as the saved
   figure.
 - Measured on an Apple M5 Pro in Chromium, per frame while dragging, without and with the preview: 729 atoms

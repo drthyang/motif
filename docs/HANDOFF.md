@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 352 tests, about two seconds
+npx tsc -b && npx vitest run    # 353 tests, about three seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -42,9 +42,10 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   (whole supercell as P1, or folded into one cell with each site the plain average of its copies).
 - Orbitals (s, p, d, f) on the atoms of a chosen species, as smooth see-through isosurfaces. Since commit
   9e32821 orbitals and atoms cut through one another as true 3D solids: where a lobe passes in front of an
-  atom's surface, the edge is traced from the exact orbital (not its mesh) and drawn as a smooth curve. While
-  the view moves the edge is found on a coarser grid (a draft); once the view is still, and in every saved
-  figure, it is drawn in full. Since f239ef1 an orbital's local z can come from each atom's own bonds
+  atom's surface, the edge is traced from the exact orbital (not its mesh) and drawn as a smooth curve. Since
+  1cd3e18 the page draws the structure without its orbitals while the view moves (atoms, bonds and cell in
+  place); they come back once the view is still and are in every saved figure. The coarse-grid draft is no
+  longer used by the page, and orbitals no longer count towards the GPU preview. Since f239ef1 an orbital's local z can come from each atom's own bonds
   ("longest bond to" a species, or "line through two" atoms of it), so an orbital order shows. Details and
   checks in docs/CONVENTIONS.md, "Orbitals".
 - SVG is the source of truth; PNG is drawn from the same SVG. Three parts: `src/structure` (file to
@@ -71,6 +72,8 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   publisher's own page; sources in `src/ui/journals.ts`. Science Advances and Wiley's journals are not included:
   their pages refuse automated access, and the user is checking them.
 - After a turn by dragging the figure keeps its scale (664d6e8).
+- Opening any file blanked the page in newer browsers, fixed in 1cd3e18: the Assistant tab's scroll effect
+  returned the promise that `scrollIntoView` now gives, and React took it for a clean-up; it now returns nothing.
 
 ## Documentation
 
@@ -109,9 +112,12 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   (with their key); it was built and tried on local models only.
 - Filled triangles: should they get a contrasting colour by default (not the pale tint of their atoms)? The user
   chose a contrasting blue by hand for a cluster figure; asked, not answered.
-- Blank canvas while moving ("simplified while moving" with nothing drawn): not reproduced here. Since bdbf658 the
-  preview checks that its first frame painted and is dropped if not, and an endless update loop that could blank
-  the figure was fixed (399e17c). Ask the user which browser and device showed it, and whether it still does.
+- Blank canvas while moving ("simplified while moving" with nothing drawn): found and fixed in 1cd3e18. Close
+  took the preview's canvas off the page while its worker went on drawing into the old one, so any large
+  structure opened after a Close (the RMC supercell, for one) showed an empty frame while moving; a new canvas
+  now gets a new worker (`src/preview/usePreview.ts`). Earlier guards stay: the preview checks that its first
+  frame painted (bdbf658), and an endless update loop that could blank the figure was fixed (399e17c). Ask the
+  user whether it still happens.
 - Firefox not yet tested.
 
 ## Rules that are easy to break
