@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="8.9cm" height="6.675cm" viewBox="0 0 1440 1080">
+<defs>
+<radialGradient id="g-f1cfcc" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="#faeeed"/><stop offset="0.55" stop-color="#f1cfcc"/><stop offset="1" stop-color="#9d8785"/></radialGradient>
+<radialGradient id="g-c9b68f" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="#ece5d8"/><stop offset="0.55" stop-color="#c9b68f"/><stop offset="1" stop-color="#83765d"/></radialGradient>
+<radialGradient id="axis-ball" cx="36%" cy="30%" r="72%"><stop offset="0" stop-color="#b6bcc0"/><stop offset="0.55" stop-color="#5c6b74"/><stop offset="1" stop-color="#404b51"/></radialGradient>
+<linearGradient id="axis-b-shaft" gradientUnits="userSpaceOnUse" x1="1283.3" y1="1008.1" x2="1283.3" y2="1014.9"><stop offset="0" stop-color="#3f8a4a"/><stop offset="0.3" stop-color="#9fc5a5"/><stop offset="0.65" stop-color="#3f8a4a"/><stop offset="1" stop-color="#2c6134"/></linearGradient>
+<linearGradient id="axis-b-head" gradientUnits="userSpaceOnUse" x1="1331.7" y1="1003.9" x2="1331.7" y2="1019.1"><stop offset="0" stop-color="#3f8a4a"/><stop offset="0.3" stop-color="#9fc5a5"/><stop offset="0.65" stop-color="#3f8a4a"/><stop offset="1" stop-color="#2c6134"/></linearGradient>
+<linearGradient id="axis-b-base" gradientUnits="userSpaceOnUse" gradientTransform="rotate(0 1331.7 1011.5)" x1="1331.7" y1="1003.9" x2="1331.7" y2="1019.1"><stop offset="0" stop-color="#3f8a4a"/><stop offset="0.3" stop-color="#9fc5a5"/><stop offset="0.65" stop-color="#3f8a4a"/><stop offset="1" stop-color="#2c6134"/></linearGradient>
+<linearGradient id="axis-c-shaft" gradientUnits="userSpaceOnUse" x1="1279.9" y1="1011.5" x2="1286.8" y2="1011.5"><stop offset="0" stop-color="#3567b0"/><stop offset="0.3" stop-color="#9ab3d8"/><stop offset="0.65" stop-color="#3567b0"/><stop offset="1" stop-color="#25487b"/></linearGradient>
+<linearGradient id="axis-c-head" gradientUnits="userSpaceOnUse" x1="1275.7" y1="964.8" x2="1291" y2="964.8"><stop offset="0" stop-color="#3567b0"/><stop offset="0.3" stop-color="#9ab3d8"/><stop offset="0.65" stop-color="#3567b0"/><stop offset="1" stop-color="#25487b"/></linearGradient>
+<linearGradient id="axis-c-base" gradientUnits="userSpaceOnUse" gradientTransform="rotate(90 1283.3 964.8)" x1="1275.7" y1="964.8" x2="1291" y2="964.8"><stop offset="0" stop-color="#3567b0"/><stop offset="0.3" stop-color="#9ab3d8"/><stop offset="0.65" stop-color="#3567b0"/><stop offset="1" stop-color="#25487b"/></linearGradient>
+<linearGradient id="axis-a-shaft" gradientUnits="userSpaceOnUse" x1="1281.9" y1="1008.4" x2="1284.7" y2="1014.6"><stop offset="0" stop-color="#c4473f"/><stop offset="0.3" stop-color="#e2a39f"/><stop offset="0.65" stop-color="#c4473f"/><stop offset="1" stop-color="#89322c"/></linearGradient>
+<linearGradient id="axis-a-head" gradientUnits="userSpaceOnUse" x1="1261.8" y1="1012.8" x2="1268.1" y2="1026.7"><stop offset="0" stop-color="#c4473f"/><stop offset="0.3" stop-color="#e2a39f"/><stop offset="0.65" stop-color="#c4473f"/><stop offset="1" stop-color="#89322c"/></linearGradient>
+<linearGradient id="axis-a-base" gradientUnits="userSpaceOnUse" gradientTransform="rotate(-155.9 1265 1019.7)" x1="1261.8" y1="1012.8" x2="1268.1" y2="1026.7"><stop offset="0" stop-color="#c4473f"/><stop offset="0.3" stop-color="#e2a39f"/><stop offset="0.65" stop-color="#c4473f"/><stop offset="1" stop-color="#89322c"/></linearGradient>
+</defs>
+<rect width="1440" height="1080" fill="#ffffff"/>
+<line class="cell" x1="675.3" y1="635.1" x2="723.5" y2="635.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="48.2"/>
+<line class="cell" x1="723.5" y1="635.1" x2="771.8" y2="635.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="96.5"/>
+<line class="cell" x1="771.8" y1="635.1" x2="820" y2="635.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="144.7"/>
+<line class="cell" x1="820" y1="635.1" x2="868.2" y2="635.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="192.9"/>
+<line class="cell" x1="868.2" y1="635.1" x2="916.5" y2="635.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="241.2"/>
+<line class="cell" x1="916.5" y1="635.1" x2="964.7" y2="635.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="289.4"/>
+<line class="cell" x1="964.7" y1="635.1" x2="1012.9" y2="635.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="337.6"/>
+<line class="cell" x1="1061.1" y1="635.1" x2="1109.4" y2="635.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="434.1"/>
+<line class="cell" x1="627.1" y1="635.1" x2="675.3" y2="635.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="0"/>
+<line class="cell" x1="1012.9" y1="635.1" x2="1061.1" y2="635.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="385.9"/>
+<line class="cell" x1="1109.4" y1="635.1" x2="1109.4" y2="588.5" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="0"/>
+<line class="cell" x1="627.1" y1="635.1" x2="627.1" y2="588.5" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="0"/>
+<line class="cell" x1="1109.4" y1="588.5" x2="1109.4" y2="541.9" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="46.6"/>
+<line class="cell" x1="627.1" y1="588.5" x2="627.1" y2="541.9" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="46.6"/>
+<line class="cell" x1="1109.4" y1="635.1" x2="1085.3" y2="645.9" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="0"/>
+<line class="cell" x1="627.1" y1="635.1" x2="602.9" y2="645.9" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="0"/>
+<circle cx="974.2" cy="203.3" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<line class="cell" x1="627.1" y1="541.9" x2="627.1" y2="495.3" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="93.2"/>
+<line class="cell" x1="1109.4" y1="541.9" x2="1109.4" y2="495.3" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="93.2"/>
+<circle cx="791.6" cy="387.4" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<line class="cell" x1="1109.4" y1="495.3" x2="1109.4" y2="448.7" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="139.8"/>
+<line class="cell" x1="627.1" y1="495.3" x2="627.1" y2="448.7" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="139.8"/>
+<line class="cell" x1="1109.4" y1="448.7" x2="1109.4" y2="402.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="186.4"/>
+<line class="cell" x1="627.1" y1="448.7" x2="627.1" y2="402.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="186.4"/>
+<polygon class="bond" points="955.5,213.5 923.5,245 931.7,253.4 963.7,221.9 964.4,220.7 964.3,219 963.5,217.1 962.1,215.3 960.3,213.9 958.4,213.1 956.7,212.9" fill="url(#bond-8)"/>
+<line class="cell" x1="1085.3" y1="645.9" x2="1061.1" y2="656.7" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="26.4"/>
+<line class="cell" x1="602.9" y1="645.9" x2="578.8" y2="656.7" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="26.4"/>
+<polygon class="bond" points="801.9,368.3 833.9,335.3 842.3,343.5 810.4,376.5 809.2,377.1 807.5,377 805.6,376.1 803.8,374.8 802.4,373 801.5,371.2 801.4,369.5" fill="url(#bond-9)"/>
+<line class="cell" x1="1109.4" y1="402.1" x2="1109.4" y2="355.5" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="233"/>
+<line class="cell" x1="627.1" y1="402.1" x2="627.1" y2="355.5" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="233"/>
+<circle cx="791.6" cy="711.9" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<line class="cell" x1="1109.4" y1="355.5" x2="1109.4" y2="308.9" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="279.6"/>
+<line class="cell" x1="627.1" y1="355.5" x2="627.1" y2="308.9" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="279.6"/>
+<line class="cell" x1="1109.4" y1="308.9" x2="1109.4" y2="262.3" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="326.2"/>
+<line class="cell" x1="627.1" y1="308.9" x2="627.1" y2="262.3" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="326.2"/>
+<defs><linearGradient id="bond-8" gradientUnits="userSpaceOnUse" x1="924.4" y1="244.1" x2="932.7" y2="252.5"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="878.7,289.1 925.3,243.2 933.6,251.6 887,297.5" fill="url(#bond-8)"/>
+<defs><linearGradient id="bond-9" gradientUnits="userSpaceOnUse" x1="833" y1="336.3" x2="841.4" y2="344.5"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="878.6,289.2 832.1,337.2 840.5,345.4 887.1,297.4" fill="url(#bond-9)"/>
+<line class="cell" x1="578.8" y1="656.7" x2="554.7" y2="667.5" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="52.9"/>
+<line class="cell" x1="1061.1" y1="656.7" x2="1037" y2="667.5" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="52.9"/>
+<line class="cell" x1="1109.4" y1="262.3" x2="1109.4" y2="215.7" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="372.8"/>
+<line class="cell" x1="627.1" y1="262.3" x2="627.1" y2="215.7" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="372.8"/>
+<line class="cell" x1="1109.4" y1="215.7" x2="1109.4" y2="169.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="419.4"/>
+<line class="cell" x1="627.1" y1="215.7" x2="627.1" y2="169.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="419.4"/>
+<circle cx="882.8" cy="293.3" r="43.6" fill="url(#g-c9b68f)" stroke="#83765d" stroke-width="2"/>
+<polygon class="bond" points="786,702.5 768.1,693.4 762.8,703.9 780.7,713 782.8,713.5 785,713.2 786.9,712 788.3,710.2 788.9,708 788.7,705.8 787.7,703.8" fill="url(#bond-16)"/>
+<line class="cell" x1="1109.4" y1="169.1" x2="1109.4" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="466"/>
+<line class="cell" x1="627.1" y1="169.1" x2="627.1" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="466"/>
+<line class="cell" x1="675.3" y1="122.4" x2="723.5" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="48.2"/>
+<line class="cell" x1="723.5" y1="122.4" x2="771.8" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="96.5"/>
+<line class="cell" x1="771.8" y1="122.4" x2="820" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="144.7"/>
+<line class="cell" x1="820" y1="122.4" x2="868.2" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="192.9"/>
+<line class="cell" x1="868.2" y1="122.4" x2="916.5" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="241.2"/>
+<line class="cell" x1="916.5" y1="122.4" x2="964.7" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="289.4"/>
+<line class="cell" x1="964.7" y1="122.4" x2="1012.9" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="337.6"/>
+<line class="cell" x1="1061.1" y1="122.4" x2="1109.4" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="434.1"/>
+<line class="cell" x1="627.1" y1="122.4" x2="675.3" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="0"/>
+<line class="cell" x1="1012.9" y1="122.4" x2="1061.1" y2="122.4" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="385.9"/>
+<line class="cell" x1="1037" y1="667.5" x2="1012.9" y2="678.3" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="79.3"/>
+<line class="cell" x1="554.7" y1="667.5" x2="530.6" y2="678.3" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="79.3"/>
+<defs><linearGradient id="bond-10" gradientUnits="userSpaceOnUse" x1="841.4" y1="242.2" x2="833" y2="250.4"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="862.1,263.5 840.5,241.3 832.1,249.4 853.7,271.7 854.9,272.3 856.6,272.2 858.4,271.4 860.2,270 861.7,268.3 862.5,266.4 862.7,264.8" fill="url(#bond-10)"/>
+<defs><linearGradient id="bond-11" gradientUnits="userSpaceOnUse" x1="932.7" y1="334.1" x2="924.4" y2="342.5"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="912,313.8 933.6,335 925.3,343.4 903.7,322.1 903.1,320.9 903.2,319.2 904,317.3 905.4,315.5 907.2,314.1 909,313.3 910.7,313.2" fill="url(#bond-11)"/>
+<line class="cell" x1="1109.4" y1="122.4" x2="1085.3" y2="133.3" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="0"/>
+<line class="cell" x1="627.1" y1="122.4" x2="602.9" y2="133.3" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="0"/>
+<defs><linearGradient id="bond-16" gradientUnits="userSpaceOnUse" x1="768.6" y1="693.6" x2="763.3" y2="704.1"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="743,680.6 769.1,693.9 763.8,704.4 737.7,691.1" fill="url(#bond-16)"/>
+<line class="cell" x1="1012.9" y1="678.3" x2="988.8" y2="689.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="105.7"/>
+<line class="cell" x1="530.6" y1="678.3" x2="506.5" y2="689.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="105.7"/>
+<polygon class="bond" points="795.8,195.2 842.3,243.1 833.9,251.3 787.4,203.4" fill="url(#bond-10)"/>
+<polygon class="bond" points="978.4,379.1 931.7,333.2 923.5,341.6 970.1,387.5" fill="url(#bond-11)"/>
+<line class="cell" x1="1085.3" y1="133.3" x2="1061.1" y2="144.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="26.4"/>
+<line class="cell" x1="602.9" y1="133.3" x2="578.8" y2="144.1" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="26.4"/>
+<circle cx="791.6" cy="199.3" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<circle cx="974.2" cy="383.3" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<circle cx="491.9" cy="383.3" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<circle cx="1080" cy="618.9" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<circle cx="597.7" cy="618.9" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<polygon class="bond" points="623,624.2 672.9,647.7 667.9,658.4 618,634.9 618.1,634.5 618.6,633.3 619.4,631.5 620.3,629.5 621.3,627.4 622.1,625.7 622.7,624.6" fill="url(#bond-18)"/>
+<defs><linearGradient id="bond-18" gradientUnits="userSpaceOnUse" x1="671.5" y1="647" x2="666.5" y2="657.7"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="742.8,680.5 670.1,646.4 665.1,657 737.8,691.2" fill="url(#bond-18)"/>
+<circle cx="740.3" cy="685.9" r="43.6" fill="url(#g-c9b68f)" stroke="#83765d" stroke-width="2"/>
+<line class="cell" x1="988.8" y1="689.1" x2="964.7" y2="700" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="132.1"/>
+<line class="cell" x1="506.5" y1="689.1" x2="482.4" y2="700" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="132.1"/>
+<line class="cell" x1="1061.1" y1="144.1" x2="1037" y2="154.9" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="52.9"/>
+<line class="cell" x1="578.8" y1="144.1" x2="554.7" y2="154.9" stroke="#c3cace" stroke-width="2.4" stroke-dasharray="9.6 8.4" stroke-dashoffset="52.9"/>
+<polygon class="bond" points="969.5,405.7 972.1,454.1 983.8,453.5 981.3,405.1 980.8,404 979.4,403.1 977.5,402.6 975.2,402.5 973,402.9 971.1,403.6 969.9,404.6" fill="url(#bond-5)"/>
+<polygon class="bond" points="487.2,405.7 489.7,454.1 501.5,453.5 498.9,405.1 498.4,404 497.1,403.1 495.2,402.6 492.9,402.5 490.7,402.9 488.8,403.6 487.6,404.6" fill="url(#bond-0)"/>
+<polygon class="bond" points="1068.4,599.1 1033.9,565 1025.6,573.4 1060.2,607.5 1061.2,608 1062.8,607.7 1064.6,606.8 1066.3,605.3 1067.7,603.6 1068.6,601.8 1068.9,600.2" fill="url(#bond-4)"/>
+<polygon class="bond" points="586.1,599.1 551.6,565 543.3,573.4 577.8,607.5 578.9,608 580.5,607.7 582.3,606.8 584,605.3 585.4,603.6 586.3,601.8 586.6,600.2" fill="url(#bond-1)"/>
+<defs><linearGradient id="bond-17" gradientUnits="userSpaceOnUse" x1="785.5" y1="633" x2="793.7" y2="641.4"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="763.1,655.1 786.4,632 794.7,640.4 771.4,663.5 770.3,663.9 768.7,663.7 766.9,662.7 765.2,661.3 763.8,659.5 762.9,657.7 762.6,656.2" fill="url(#bond-17)"/>
+<defs><linearGradient id="bond-19" gradientUnits="userSpaceOnUse" x1="730.8" y1="754.7" x2="742.6" y2="755.3"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="732.5,723.3 730.7,756.1 742.5,756.7 744.2,723.9 743.8,722.8 742.6,721.8 740.7,721.1 738.5,720.8 736.2,720.9 734.3,721.4 733,722.2" fill="url(#bond-19)"/>
+<polygon class="bond" points="786,189.8 768.1,180.7 762.8,191.2 780.7,200.3 782.8,200.9 785,200.6 786.9,199.4 788.3,197.6 788.9,195.4 788.7,193.1 787.7,191.2" fill="url(#bond-20)"/>
+<line class="cell" x1="964.7" y1="700" x2="940.6" y2="710.8" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="482.4" y1="700" x2="458.2" y2="710.8" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<defs><linearGradient id="bond-5" gradientUnits="userSpaceOnUse" x1="972" y1="452.7" x2="983.7" y2="452.1"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="975.6,521.8 971.9,451.3 983.7,450.7 987.4,521.2" fill="url(#bond-5)"/>
+<defs><linearGradient id="bond-0" gradientUnits="userSpaceOnUse" x1="489.7" y1="452.7" x2="501.4" y2="452.1"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="493.3,521.8 489.6,451.3 501.3,450.7 505,521.2" fill="url(#bond-0)"/>
+<defs><linearGradient id="bond-4" gradientUnits="userSpaceOnUse" x1="1034.9" y1="566" x2="1026.6" y2="574.4"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="985.6,517.4 1035.9,567 1027.6,575.4 977.4,525.7" fill="url(#bond-4)"/>
+<defs><linearGradient id="bond-1" gradientUnits="userSpaceOnUse" x1="552.6" y1="566" x2="544.3" y2="574.4"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="503.3,517.4 553.5,567 545.3,575.4 495,525.7" fill="url(#bond-1)"/>
+<polygon class="bond" points="834.7,584.4 784.5,634 792.7,642.4 843,592.7" fill="url(#bond-17)"/>
+<polygon class="bond" points="727.2,823.8 730.9,753.3 742.7,753.9 739,824.4" fill="url(#bond-19)"/>
+<line class="cell" x1="1037" y1="154.9" x2="1012.9" y2="165.7" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="554.7" y1="154.9" x2="530.6" y2="165.7" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<circle cx="981.5" cy="521.5" r="43.6" fill="url(#g-c9b68f)" stroke="#83765d" stroke-width="2"/>
+<circle cx="499.2" cy="521.5" r="43.6" fill="url(#g-c9b68f)" stroke="#83765d" stroke-width="2"/>
+<defs><linearGradient id="bond-6" gradientUnits="userSpaceOnUse" x1="907.7" y1="549.7" x2="912.7" y2="560.4"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="939.9,534.5 906.2,550.4 911.2,561 945,545.2 944.8,544.8 944.4,543.6 943.6,541.8 942.7,539.8 941.7,537.7 940.8,536 940.2,534.9" fill="url(#bond-6)"/>
+<defs><linearGradient id="bond-2" gradientUnits="userSpaceOnUse" x1="425.3" y1="549.7" x2="430.3" y2="560.4"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="457.6,534.5 423.9,550.4 428.9,561 462.6,545.2 462.5,544.8 462,543.6 461.3,541.8 460.3,539.8 459.4,537.7 458.5,536 457.9,534.9" fill="url(#bond-2)"/>
+<polygon class="bond" points="836.3,583.2 909.1,549 914.1,559.7 841.3,593.9" fill="url(#bond-6)"/>
+<polygon class="bond" points="354,583.2 426.8,549 431.8,559.7 359,593.9" fill="url(#bond-2)"/>
+<circle cx="838.8" cy="588.5" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<circle cx="356.5" cy="588.5" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<circle cx="733.1" cy="824.1" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<line class="cell" x1="940.6" y1="710.8" x2="916.5" y2="721.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="458.2" y1="710.8" x2="434.1" y2="721.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<defs><linearGradient id="bond-20" gradientUnits="userSpaceOnUse" x1="768.6" y1="181" x2="763.3" y2="191.5"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="743,168 769.1,181.3 763.8,191.8 737.7,178.5" fill="url(#bond-20)"/>
+<line class="cell" x1="1012.9" y1="165.7" x2="988.8" y2="176.5" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="530.6" y1="165.7" x2="506.5" y2="176.5" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="916.5" y1="721.6" x2="892.3" y2="732.4" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="434.1" y1="721.6" x2="410" y2="732.4" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<defs><linearGradient id="bond-7" gradientUnits="userSpaceOnUse" x1="1004.4" y1="503.3" x2="1009.8" y2="513.8"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="992.9,509.2 1005,503 1010.3,513.5 998.2,519.7 996.1,520.2 993.9,519.9 992,518.7 990.6,516.9 990,514.7 990.2,512.5 991.2,510.5" fill="url(#bond-7)"/>
+<defs><linearGradient id="bond-3" gradientUnits="userSpaceOnUse" x1="522.1" y1="503.3" x2="527.5" y2="513.8"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="510.5,509.2 522.6,503 528,513.5 515.9,519.7 513.8,520.2 511.6,519.9 509.7,518.7 508.3,516.9 507.7,514.7 507.9,512.5 508.9,510.5" fill="url(#bond-3)"/>
+<circle cx="597.7" cy="106.2" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<polygon class="bond" points="623,111.6 672.9,135.1 667.9,145.7 618,122.3 618.1,121.8 618.6,120.6 619.4,118.9 620.3,116.8 621.3,114.8 622.1,113.1 622.7,112" fill="url(#bond-22)"/>
+<defs><linearGradient id="bond-22" gradientUnits="userSpaceOnUse" x1="671.5" y1="134.4" x2="666.5" y2="145.1"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="742.8,167.9 670.1,133.7 665.1,144.4 737.8,178.6" fill="url(#bond-22)"/>
+<circle cx="740.3" cy="173.2" r="43.6" fill="url(#g-c9b68f)" stroke="#83765d" stroke-width="2"/>
+<line class="cell" x1="988.8" y1="176.5" x2="964.7" y2="187.3" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="506.5" y1="176.5" x2="482.4" y2="187.3" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="892.3" y1="732.4" x2="868.2" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="410" y1="732.4" x2="385.9" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<defs><linearGradient id="bond-21" gradientUnits="userSpaceOnUse" x1="785.5" y1="120.4" x2="793.7" y2="128.8"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="763.1,142.5 786.4,119.4 794.7,127.8 771.4,150.8 770.3,151.3 768.7,151 766.9,150.1 765.2,148.7 763.8,146.9 762.9,145.1 762.6,143.5" fill="url(#bond-21)"/>
+<defs><linearGradient id="bond-23" gradientUnits="userSpaceOnUse" x1="730.8" y1="242" x2="742.6" y2="242.7"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="732.5,210.7 730.7,243.4 742.5,244 744.2,211.3 743.8,210.2 742.6,209.2 740.7,208.5 738.5,208.1 736.2,208.2 734.3,208.7 733,209.6" fill="url(#bond-23)"/>
+<polygon class="bond" points="1030.1,490.3 1003.9,503.5 1009.3,514 1035.4,500.8" fill="url(#bond-7)"/>
+<polygon class="bond" points="547.8,490.3 521.6,503.5 526.9,514 553.1,500.8" fill="url(#bond-3)"/>
+<line class="cell" x1="964.7" y1="187.3" x2="940.6" y2="198.1" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="482.4" y1="187.3" x2="458.2" y2="198.1" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="771.8" y1="743.2" x2="820" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="820" y1="743.2" x2="868.2" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="482.4" y1="743.2" x2="530.6" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="530.6" y1="743.2" x2="578.8" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="578.8" y1="743.2" x2="627.1" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="627.1" y1="743.2" x2="675.3" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="675.3" y1="743.2" x2="723.5" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="723.5" y1="743.2" x2="771.8" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="434.1" y1="743.2" x2="482.4" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="743.2" x2="434.1" y2="743.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="868.2" y1="743.2" x2="868.2" y2="696.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="743.2" x2="385.9" y2="696.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<polygon class="bond" points="834.7,71.7 784.5,121.3 792.7,129.7 843,80.1" fill="url(#bond-21)"/>
+<polygon class="bond" points="727.2,311.2 730.9,240.7 742.7,241.3 739,311.8" fill="url(#bond-23)"/>
+<line class="cell" x1="868.2" y1="696.6" x2="868.2" y2="650" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="696.6" x2="385.9" y2="650" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<circle cx="838.8" cy="75.9" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<circle cx="733.1" cy="311.5" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<line class="cell" x1="868.2" y1="650" x2="868.2" y2="603.4" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="650" x2="385.9" y2="603.4" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<circle cx="1032.7" cy="495.5" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<circle cx="550.4" cy="495.5" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<line class="cell" x1="458.2" y1="198.1" x2="434.1" y2="208.9" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="940.6" y1="198.1" x2="916.5" y2="208.9" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="868.2" y1="603.4" x2="868.2" y2="556.8" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="603.4" x2="385.9" y2="556.8" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="868.2" y1="556.8" x2="868.2" y2="510.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="556.8" x2="385.9" y2="510.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<polygon class="bond" points="714.3,321.7 682.3,353.2 690.6,361.5 722.6,330 723.2,328.8 723.1,327.1 722.3,325.2 720.9,323.4 719.1,322 717.3,321.2 715.6,321.1" fill="url(#bond-12)"/>
+<polygon class="bond" points="560.8,476.4 592.7,443.4 601.2,451.6 569.2,484.6 568,485.2 566.3,485.1 564.5,484.2 562.7,482.9 561.2,481.1 560.4,479.3 560.2,477.6" fill="url(#bond-13)"/>
+<line class="cell" x1="868.2" y1="510.2" x2="868.2" y2="463.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="510.2" x2="385.9" y2="463.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="434.1" y1="208.9" x2="410" y2="219.7" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="916.5" y1="208.9" x2="892.3" y2="219.7" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="868.2" y1="463.6" x2="868.2" y2="417" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="463.6" x2="385.9" y2="417" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="868.2" y1="417" x2="868.2" y2="370.4" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="417" x2="385.9" y2="370.4" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<defs><linearGradient id="bond-12" gradientUnits="userSpaceOnUse" x1="683.2" y1="352.3" x2="691.5" y2="360.6"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="637.5,397.2 684.2,351.4 692.4,359.7 645.8,405.6" fill="url(#bond-12)"/>
+<defs><linearGradient id="bond-13" gradientUnits="userSpaceOnUse" x1="591.8" y1="444.4" x2="600.3" y2="452.6"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="637.4,397.3 590.9,445.3 599.4,453.5 645.9,405.5" fill="url(#bond-13)"/>
+<line class="cell" x1="868.2" y1="370.4" x2="868.2" y2="323.8" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="370.4" x2="385.9" y2="323.8" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="892.3" y1="219.7" x2="868.2" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="410" y1="219.7" x2="385.9" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="868.2" y1="323.8" x2="868.2" y2="277.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="323.8" x2="385.9" y2="277.2" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<circle cx="641.7" cy="401.4" r="43.6" fill="url(#g-c9b68f)" stroke="#83765d" stroke-width="2"/>
+<line class="cell" x1="868.2" y1="277.2" x2="868.2" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="277.2" x2="385.9" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="771.8" y1="230.6" x2="820" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="820" y1="230.6" x2="868.2" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="434.1" y1="230.6" x2="482.4" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="482.4" y1="230.6" x2="530.6" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="530.6" y1="230.6" x2="578.8" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="578.8" y1="230.6" x2="627.1" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="627.1" y1="230.6" x2="675.3" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="675.3" y1="230.6" x2="723.5" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="723.5" y1="230.6" x2="771.8" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<line class="cell" x1="385.9" y1="230.6" x2="434.1" y2="230.6" stroke="#7d8a93" stroke-width="3" stroke-linecap="round"/>
+<defs><linearGradient id="bond-14" gradientUnits="userSpaceOnUse" x1="600.3" y1="350.3" x2="591.8" y2="358.5"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="621,371.7 599.4,349.4 590.9,357.6 612.5,379.9 613.7,380.4 615.4,380.3 617.3,379.5 619.1,378.1 620.5,376.4 621.4,374.5 621.5,372.9" fill="url(#bond-14)"/>
+<defs><linearGradient id="bond-15" gradientUnits="userSpaceOnUse" x1="691.5" y1="442.2" x2="683.2" y2="450.6"><stop offset="0" stop-color="#b4bbc1"/><stop offset="0.3" stop-color="#dadde0"/><stop offset="0.65" stop-color="#b4bbc1"/><stop offset="1" stop-color="#7e8387"/></linearGradient></defs><polygon class="bond" points="670.8,421.9 692.4,443.1 684.2,451.5 662.6,430.3 661.9,429 662,427.3 662.9,425.4 664.2,423.7 666,422.2 667.9,421.4 669.6,421.3" fill="url(#bond-15)"/>
+<polygon class="bond" points="554.6,303.3 601.2,351.2 592.7,359.4 546.2,311.5" fill="url(#bond-14)"/>
+<polygon class="bond" points="737.2,487.2 690.6,441.3 682.3,449.7 728.9,495.6" fill="url(#bond-15)"/>
+<circle cx="550.4" cy="307.4" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<circle cx="733.1" cy="491.4" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<circle cx="103" cy="988" r="43.6" fill="url(#g-c9b68f)" stroke="#83765d" stroke-width="2"/>
+<text class="legend" x="168.3" y="1002" font-family="'Open Sans', Avenir, 'Avenir Next', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="40" fill="#4c5a62">Si</text>
+<circle cx="306.7" cy="988" r="25.9" fill="url(#g-f1cfcc)" stroke="#9d8785" stroke-width="2"/>
+<text class="legend" x="354.4" y="1002" font-family="'Open Sans', Avenir, 'Avenir Next', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-size="40" fill="#4c5a62">O</text>
+<g class="axes-outline" stroke="#333b40" stroke-width="1.5" stroke-linejoin="round"><g stroke="#234c29"><polygon class="axis-head" points="1356.9,1011.5 1331.7,1003.9 1331.7,1004.1 1331.7,1004.9 1331.7,1006.1 1331.7,1007.7 1331.7,1009.5 1331.7,1011.5 1331.7,1013.5 1331.7,1015.3 1331.7,1016.9 1331.7,1018.1 1331.7,1018.9 1331.7,1019.1" fill="url(#axis-b-head)"/><ellipse class="axis-base" cx="1331.7" cy="1011.5" rx="0" ry="7.6" transform="rotate(0 1331.7 1011.5)" fill="#34713d" stroke="none"/><polygon class="axis-shaft" points="1283.3,1008.1 1331.7,1008.1 1331.7,1014.9 1283.3,1014.9" fill="url(#axis-b-shaft)"/><text x="1379" y="1023.5" text-anchor="middle" font-family="'Open Sans', Avenir, 'Avenir Next', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-style="italic" font-size="39.95505617977528" fill="#3f8a4a" fill-opacity="1" stroke="none">b</text></g>
+<circle class="axis-origin" cx="1283.3" cy="1011.5" r="6.5" fill="url(#axis-ball)"/>
+<g stroke="#1d3961"><polygon class="axis-shaft" points="1279.9,1005.2 1279.9,964.8 1286.8,964.8 1286.8,1005.2 1286.5,1005.6 1285.8,1005.8 1284.6,1006 1283.3,1006.1 1282,1006 1280.9,1005.8 1280.2,1005.6" fill="url(#axis-c-shaft)"/><ellipse class="axis-base" cx="1283.3" cy="964.8" rx="2" ry="7.6" transform="rotate(-90 1283.3 964.8)" fill="url(#axis-c-base)" stroke="none"/><polygon class="axis-head" points="1283.3,940.4 1275.7,964.6 1275.9,965.2 1276.5,965.7 1277.7,966.1 1279.3,966.5 1281.3,966.7 1283.3,966.7 1285.4,966.7 1287.3,966.5 1288.9,966.1 1290.1,965.7 1290.8,965.2 1290.9,964.6" fill="url(#axis-c-head)"/><text x="1283.3" y="930.3" text-anchor="middle" font-family="'Open Sans', Avenir, 'Avenir Next', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-style="italic" font-size="39.95505617977528" fill="#3567b0" fill-opacity="1" stroke="none">c</text></g>
+<g stroke="#6c2723"><polygon class="axis-shaft" points="1277.2,1010.5 1263.6,1016.6 1266.4,1022.8 1280,1016.7 1280.6,1016.2 1280.9,1015.2 1280.9,1014 1280.5,1012.8 1279.8,1011.6 1278.9,1010.8 1278,1010.4" fill="url(#axis-a-shaft)"/><ellipse class="axis-base" cx="1265" cy="1019.7" rx="4.6" ry="7.6" transform="rotate(155.9 1265 1019.7)" fill="url(#axis-a-base)" stroke="none"/><polygon class="axis-head" points="1246.5,1028 1261,1013.4 1262.1,1012.7 1263.6,1012.6 1265.1,1013.1 1266.6,1014.3 1268,1015.9 1269.1,1017.9 1269.9,1020 1270.2,1022.1 1270,1024 1269.4,1025.5 1268.4,1026.5 1267,1026.9" fill="url(#axis-a-head)"/><text x="1226.4" y="1049" text-anchor="middle" font-family="'Open Sans', Avenir, 'Avenir Next', 'Helvetica Neue', Arial, sans-serif" font-weight="400" font-style="italic" font-size="39.95505617977528" fill="#c4473f" fill-opacity="1" stroke="none">a</text></g>
+</g>
+</svg>

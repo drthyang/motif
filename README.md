@@ -3,43 +3,76 @@
 [![App: not yet live](https://img.shields.io/badge/app-not%20yet%20live-8a8f98)](https://drthyang.github.io/motif/)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-3c8c3c)](LICENSE)
 
-**Crystal structure figures, drawn in the browser.** Clean vector figures from CIF, magnetic CIF, ISODISTORT
-and RMCProfile files, ready for a paper or a slide, with nothing to install.
+**Publication-quality crystal structure figures, in the browser.** MOTIF turns a structure file into a clean
+figure for a paper or a slide: vector (SVG) or raster (PNG at the dpi you choose), sized for the journal you are
+submitting to. Nothing to install.
 
 **▶ [Open MOTIF](https://drthyang.github.io/motif/)**: your file is read on your own machine and never uploaded.
 *The app is not online yet; this link will work once it is published.*
 
 <p align="center">
-  <img src="docs/media/mnf2.svg" alt="The MnF2 antiferromagnet drawn by MOTIF: Mn atoms with their magnetic moments as arrows, F neighbours, bonds and the unit cell" width="80%" />
+  <img src="docs/media/orbital-order.png" alt="Orbital order in LaMnO3 drawn by MOTIF: the Mn eg orbitals alternate in direction from site to site, with the O 2p orbitals along the Mn–O–Mn bonds" width="88%" />
 </p>
 
-*The antiferromagnet MnF₂ as MOTIF draws it: moments along ±c, Mn–F bonds, the unit cell. This image is
-MOTIF's own SVG output.*
+*Orbital order in LaMnO₃: the Mn e<sub>g</sub> orbital of each site lies along its long Mn–O bond, and the O 2p orbitals
+along each Mn–O–Mn line, coloured by the sign of the lobe. Every figure on this page is MOTIF's own output,
+saved with **Save SVG** or **Save PNG**.*
 
 In crystallography the *motif* is the group of atoms repeated at every lattice point.
+
+## Examples
+
+<table>
+  <tr>
+    <td width="50%" align="center"><img src="docs/media/atomic-structure.svg" alt="Quartz: Si and O atoms, Si–O bonds and the unit cell" /><br /><b>Atomic structure</b>: quartz, with its Si–O bonds</td>
+    <td width="50%" align="center"><img src="docs/media/magnetic-structure.svg" alt="MnF2: Mn moments as red arrows along ±c, F neighbours" /><br /><b>Magnetic structure</b>: MnF₂, moments along ±c from the magnetic CIF</td>
+  </tr>
+  <tr>
+    <td width="50%" align="center"><img src="docs/media/distortion-mode.svg" alt="SrTiO3: TiO6 octahedra turned about c, O displacements as green arrows" /><br /><b>Distortion mode</b>: SrTiO₃, the octahedra turned about <i>c</i> (ISODISTORT)</td>
+    <td width="50%" align="center"><img src="docs/media/rmc-configuration.png" alt="An RMCProfile configuration of SrTiO3: a 6 × 6 × 6 supercell of Sr, Ti and O atoms" /><br /><b>RMC configuration</b>: a 6 × 6 × 6 SrTiO₃ supercell; <b>Fold</b> averages it to one cell</td>
+  </tr>
+</table>
+
+<sub>Figures © 2026 Tsung-Han Yang, made with MOTIF from public structures (COD) or files written for MOTIF.</sub>
+
+## Sized for the journal
+
+Choose the publisher, the journal and the column, and MOTIF sets the figure to the width that journal prints,
+keeping its shape, and the text to the journal's size in pt. A figure can also take 1/2, 1/3 or 1/4 of the
+column, for one panel in a row. Rulers beside the figure show its size in cm or in.
+
+<p align="center">
+  <img src="docs/media/app-journal.jpg" alt="The MOTIF page: the orbital example on a 8.8 cm canvas with rulers, and the Canvas panel set to Springer Nature, Nature Communications, single column" width="92%" />
+</p>
+
+Templates, each from the publisher's own author pages: Nature; Nature Communications, Nature Materials and
+Nature Physics; Science; Physical Review; ACS journals; RSC journals; Elsevier journals; J. Phys.: Condens.
+Matter; the IUCr journals; American Mineralogist. The SVG states its size on paper, so it opens at exactly that
+size in Illustrator, Inkscape or Keynote; the PNG is drawn from the same SVG.
 
 ## What it does
 
 - **Reads the files you have:** CIF; magnetic CIF, with moments carried by the magnetic group and time
   reversal; ISODISTORT CIFs, with distortion modes drawn as displacement arrows; RMCProfile `.rmc6f`
-  configurations, as the whole supercell or folded into one averaged cell.
-- **Figures sized for a journal:** the size on paper (a Nature single column, 89 mm, 4:3, by default), with
-  templates for Nature, Science, Physical Review, ACS, RSC, Elsevier, the IUCr journals and other journals that
-  print crystal structures; text in pt; an SVG that opens at exactly that size in Illustrator or Keynote, and a PNG at the dpi you choose,
-  drawn from the same SVG.
+  configurations, as the whole supercell or folded into one averaged cell; VASP POSCAR and CONTCAR; XYZ and
+  extended XYZ; SHELX `.res` and `.ins`, with their symmetry; PDB; Quantum ESPRESSO input; CASTEP `.cell`;
+  FHI-aims `geometry.in`; XSF. The format is shown over the figure.
+- **Vector or raster:** an SVG you can edit, with live text, or a PNG at any dpi, transparent or on white.
 - **Shows the chemistry:** cells or a slab, bonds by distance, bond angles, chains and filled polygons, shared
   sites as pie spheres, and s, p, d and f orbitals as schematic isosurfaces.
 - **Styled your way:** soft, flat, glossy, metal or glass surfaces; bonds in atom colours, dashed or dotted;
-  preset views (clinographic, isometric) or a view along any [uvw] or normal to any (hkl); your settings
-  saved and reused.
+  axis arrows in their own colours; preset views (clinographic, isometric) or a view along any [uvw] or normal
+  to any (hkl); your settings saved and reused.
+- **Works with a mouse, a trackpad or fingers:** drag to turn, pinch to zoom, two fingers to move and twist.
 - **Checked, not just drawn:** symmetry expansion against gemmi, moment directions against pymatgen,
-  displacements against published coordinates, orbitals for orthogonality, each in the test suite.
+  displacements against published coordinates, orbitals for orthogonality, and every file format against the
+  CIF reading of the same crystal, each in the test suite.
 
 ## Quick start
 
 Open [the app](https://drthyang.github.io/motif/) and drop a file on it, or start from one of the feature
 examples on the start page: an atomic structure (quartz), a magnetic structure (MnF₂), a distortion mode (the
-TiO₆ octahedra of SrTiO₃ turned about *c*), orbital order (the Mn e_g and O 2p orbitals of LaMnO₃) and an RMC
+TiO₆ octahedra of SrTiO₃ turned about *c*), orbital order (the Mn e<sub>g</sub> and O 2p orbitals of LaMnO₃) and an RMC
 configuration (its supercell; **Fold** averages it to one cell). Turn the structure with the mouse,
 then press **Save SVG** or **Save PNG**.
 
