@@ -292,16 +292,20 @@ Structure tab; the user's choices of 2026-11-23.
   | Elsevier journals (J. Solid State Chem., J. Alloys Compd.) | 90 mm (single), 140 mm (1.5), 190 mm (double) | 7 pt |
   | J. Phys.: Condens. Matter | 8.5 cm (single), 15 cm (double) | 8 pt (8 to 12 asked) |
   | American Mineralogist | 19 picas, 3.17 in (1 column); 39 picas, 6.5 in (2 columns) | 8 pt (at least 8) |
+  | IUCr journals (Acta Cryst. B, C and E, IUCrJ, J. Appl. Cryst.) | 8.8 cm (1 column; no two-column width given) | capitals 2 mm high (1.5 to 3 mm asked) |
 
   Science gives two sets of widths; the user chose those of its "initial manuscript" page over the 3.5, 5.0
   and 7.3 in of another Science page. APS gives no number for two columns: 17.8 cm (7 in) is the REVTeX
-  two-column page width; Physical Review B and Materials follow the general APS rules. The last six templates
-  were added on 2026-11-23, each from the publisher's own page. Where a journal gives no text size, the
+  two-column page width; Physical Review B and Materials follow the general APS rules. The templates after
+  the first four were added on 2026-11-23, each from the publisher's own page. For the IUCr journals that is the
+  same text in every journal's Notes for authors (section 4.3, journals.iucr.org), read in the browser pane: the
+  figure, lettering included, is narrower than one column (8.8 cm), with lettering "ideally 1.5–3 mm in height"
+  after reduction to one column. Where a journal gives no text size, the
   template sets 7 pt: for Nature Communications the largest size of the Nature journals' guide, for RSC the size
   RSC gives for atom labels in chemical structures. The Elsevier template uses Elsevier's common artwork rules,
   as the journals' own guides could not be read; a journal may have rules beyond these. Not included, because
-  their pages refuse automated access: the IUCr journals, Science Advances and Wiley's journals.
-  For Physical Review the text size is 2 mm over the cap height of the chosen font
+  their pages refuse automated access: Science Advances and Wiley's journals.
+  For Physical Review and the IUCr journals the text size is 2 mm over the cap height of the chosen font
   (measured in the browser), rounded up to half a point: 8 pt in Open Sans. Checked in `tests/journals.test.ts`:
   the widths against the journals' numbers, and capitals at least 2 mm high whatever the font's cap height.
 - **Shape.** A shape can be chosen in either case (1:1, 5:4, 4:3, 3:2, √2:1, 16:10, 16:9, 2:1, landscape or

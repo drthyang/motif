@@ -47,8 +47,10 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   side; up to 100,000 atoms.
 - Journal templates (Layout tab, Canvas): widths and text sizes for Nature, Science, Physical Review and ACS
   (commit 83550d6), and Nature Communications, Nature Materials, RSC, Elsevier, J. Phys.: Condens. Matter and
-  American Mineralogist (ef9dde5), each from the publisher's own page; sources in `src/ui/journals.ts`. The IUCr
-  journals, Science Advances and Wiley's journals are not included: their pages refuse automated access. After a turn by dragging the figure keeps its scale (664d6e8).
+  American Mineralogist (ef9dde5), and the IUCr journals (45579c5, one column, capitals 2 mm), each from the
+  publisher's own page; sources in `src/ui/journals.ts`. Science Advances and Wiley's journals are not included:
+  their pages refuse automated access, and the user is checking them.
+- After a turn by dragging the figure keeps its scale (664d6e8).
 
 ## Documentation
 
