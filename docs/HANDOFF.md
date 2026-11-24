@@ -20,6 +20,7 @@ PLAYWRIGHT=/path/to/node_modules/playwright-core node scripts/browser_check.cjs
 
 It must end with `all browser checks passed`. It relies on the `data-testid`s, `.figure-wrap`,
 `[data-testid=layer-structure]`, `[data-testid=layer-band]` and the tabs `tab-info|structure|visual|layout`.
+It opens olivine through the file input, since olivine is no longer in the Examples menu (ed88c53).
 It was not run on 2026-11-23 (no Playwright on that computer).
 
 ## What MOTIF is now
@@ -59,11 +60,13 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   and a line saying it will work once published. When the app goes live, change the badge back to "app: live"
   and drop that line.
 - Five feature examples (commits 6547441 and 2329288): atomic structure, magnetic structure, distortion mode,
-  orbitals and an RMC configuration folded, listed in `examples/features.json` and described in
+  orbitals and an RMC configuration (opened folded), listed in `examples/features.json` and described in
   `examples/README.md`; the format is in docs/CONVENTIONS.md. The distortion mode is SrTiO3 I4/mcm (COD 2310687,
   the octahedra turned about c, the user's choice), seen down c. The RMC file
   `examples/SrTiO3-supercell_generated.rmc6f` is generated for MOTIF by `scripts/make_rmc_example.py`, not a
-  fit to data. BaTiO3 is no longer a feature; its file stays, under "Structures".
+  fit to data. Since ed88c53 the page offers only these five (numbered cards on the
+  start page, and the Examples menu); the other files in `examples/` stay because the tests use them. A Close
+  button returns to the start page.
 
 ## Open questions for the user (none blocking)
 

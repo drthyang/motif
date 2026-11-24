@@ -6,9 +6,10 @@ domain; each keeps its COD header with the original reference.
 
 ## Feature examples
 
-The app lists these first: as buttons on the start page, and in the Examples menu under "Features". Each is a
-file below plus the settings that show its feature, given in `features.json`. The settings apply only when the
-example is opened from that list; opening the same file by hand gives the plain defaults.
+These five are the only examples the app offers: as five numbered cards (01 to 05) on the start page, and in
+the Examples menu. Each is a file below plus the settings that show its feature, given in `features.json`. The
+settings apply only when the example is opened from the start page or the menu; opening the same file by hand
+gives the plain defaults.
 
 | Example | File | What is set |
 |---------|------|-------------|
@@ -16,7 +17,7 @@ example is opened from that list; opening the same file by hand gives the plain 
 | Magnetic structure | `MnF2-antiferromagnet_handwritten.mcif` | nothing: MnF2 with its moments along +*c* and −*c* |
 | Distortion mode | `SrTiO3-octahedral-rotation_COD-2310687.cif` | one TiO2 layer, 2 × 2 cells (cells 0 to 2 along *a* and *b*, −0.01 to 0.01 along *c*), seen down *c*: the octahedra turned about *c* by the mode R4+ |
 | Orbitals | `perovskite-SrTiO3_COD-9006864.cif` | one TiO6 octahedron (cells −0.5 to 0.5 along *a*, *b*, *c*), Sr hidden, the two e_g orbitals of Ti (dz², dx²−y²), pointing at the O atoms, size 2.4 Å (the farthest point of the surface from the nucleus) |
-| RMC configuration, folded | `SrTiO3-supercell_generated.rmc6f` | the 6 × 6 × 6 configuration folded into one averaged cell |
+| RMC configuration | `SrTiO3-supercell_generated.rmc6f` | the 6 × 6 × 6 configuration, opened folded into one averaged cell |
 
 Only one TiO2 layer is shown in the distortion-mode example: seen down *c*, the layers at *z* = 0 and *z* = 1/2,
 whose octahedra turn in opposite senses, would lie on top of each other.
@@ -24,6 +25,9 @@ whose octahedra turn in opposite senses, would lie on top of each other.
 The format of `features.json` is in [docs/CONVENTIONS.md](../docs/CONVENTIONS.md#feature-examples).
 
 ## All files
+
+The files not used by a feature example are not listed in the app; they are kept because the tests use them,
+and can still be opened with **Open file…**.
 
 | File | Structure | Source |
 |------|-----------|--------|
@@ -59,8 +63,8 @@ in the *ab* plane; the turn about a Ti at *z* = 1/2 exactly opposite to that at 
 is checked against a gemmi reference (20 atoms, `tests/reference/`). The shift, its length and the angle were
 also worked by hand (2026-11-23): 0.07654 × 0.06402 = 0.00490; atan(0.0383 / 1.9526) = 1.12°, with 1.9526 Å half the Ti–Ti distance.
 
-BaTiO3 (`BaTiO3-ferroelectric-distortion_COD-2100858.cif`) is no longer a feature example; it stays here, listed
-under Structures, and is used by `tests/distortion.test.ts`.
+BaTiO3 (`BaTiO3-ferroelectric-distortion_COD-2100858.cif`) is no longer a feature example; it stays here
+because `tests/distortion.test.ts` uses it.
 
 ## The generated RMC configuration
 

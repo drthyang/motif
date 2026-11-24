@@ -351,6 +351,8 @@ Structure tab; the user's choices of 2026-11-23.
     moment arrows, the unit-cell lines, legend, axes, lettering).
   - Layout: canvas size and shape, view direction, scale, saved views, dragging, large structures.
 - A bond or angle rule is set up under Structure and styled under Visual.
+- Above the figure: Open file…, the Examples menu and, while a structure is open, Close, which closes it and
+  returns to the start page (2026-11-23).
 - The quick styles (soft shading; flat colour, outlined; glossy highlight; metallic; clear glass atoms) set
   surfaces, outlines, lettering weight and legend sizes together.
 
@@ -368,11 +370,14 @@ Structure tab; the user's choices of 2026-11-23.
 
 ### Feature examples
 
-- The page lists a few *feature examples* first (start-page buttons, and the Examples menu, group "Features";
-  2026-11-23): each is a structure file in `examples/` and the settings that show its feature. The list is
+- The page offers only the *feature examples* (2026-11-23): five equal cards on the start page, numbered 01 to
+  05 (one row where there is room, one column on a phone), and the Examples menu. Each is a structure file in
+  `examples/` and the settings that show its feature. The other files in `examples/` are not listed; they stay
+  because the tests use them. The list is
   `examples/features.json`, read by `src/ui/examples.ts`; [examples/README.md](../examples/README.md) describes
   each one.
-- An entry has a `title`, a `file` (which must be in `examples/`) and a `note` (shown as the button's tooltip),
+- An entry has a `title`, a `file` (which must be in `examples/`) and a `note` (a few words shown on the card and
+  in the menu),
   and may add:
   - `orbitals`: a list of `{ species, orbitals: [...], size }`, the orbitals drawn on the atoms of a species,
     with their size in Å (optional, more than 0 and at most 20);
@@ -382,8 +387,8 @@ Structure tab; the user's choices of 2026-11-23.
   - `along`: three whole numbers [u v w], not all zero, the direction the view looks along (pointing at the
     viewer), with *c* up, or *b* (then *a*) when *c* lies along the line of sight.
 - An entry with no title or file, a file not in `examples/`, or a malformed setting is refused with its number.
-- The settings apply only when the example is opened from the list; opening the same file by hand gives the
-  plain defaults. A file used only by a feature example is not listed again under "Structures".
+- The settings apply only when the example is opened from the start page or the Examples menu; opening the same
+  file by hand gives the plain defaults.
 - Checked (`tests/features.test.ts`): each example opens and shows its feature (moments for the magnetic one,
   orbitals on every atom of the species named), and the RMC example folds into the five sites of cubic SrTiO3,
   each within 0.02 Å of the published site.
