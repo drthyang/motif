@@ -6,7 +6,8 @@ import { describe, expect, it } from "vitest";
 import { contourLoops, convexHull, orbitalShade, renderSvg } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
 import { ORBITALS, orbitalById, orbitalField, orbitalFrame, orbitalSurface, orbitalUnitSurface } from "../src/scene/orbitals";
-import { buildScene, DEFAULT_ORBITAL_COLOURS, DEFAULT_SPEC, ORBITAL_SCHEMES } from "../src/scene/scene";
+import { bondAxis, buildScene, DEFAULT_ORBITAL_COLOURS, DEFAULT_SPEC, firstShell, ORBITAL_SCHEMES } from "../src/scene/scene";
+import type { Vec3 } from "../src/structure/types";
 import { readCif } from "../src/structure/readCif";
 
 const I = [[1, 0, 0], [0, 1, 0], [0, 0, 1]] as const;
@@ -208,5 +209,48 @@ describe("orbitals: the real spherical harmonics", () => {
     const mesh = renderSvg(buildScene(srtio3, { ...DEFAULT_SPEC, orbitals: [{ species: "Ti", orbitals: ["pz"], size: 1.6, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6, texture: "mesh" }] }), DEFAULT_VIEW);
     const face = /<polygon class="orbital"[^>]*fill="(#[0-9a-f]{6})" stroke="(#[0-9a-f]{6})"/.exec(mesh)!;
     expect(face[1]).not.toBe(face[2]); // grid lines in their own, darker colour
+  });
+});
+
+describe("orbital frames from each atom's bonds: LaMnO3, Pbnm (COD 1006141)", () => {
+  const lmo = readCif(readFileSync("examples/LaMnO3-orbital-order_COD-1006141.cif", "utf8"));
+  const axis = (v: Vec3 | null) => {
+    const n = Math.hypot(...v!);
+    return v!.map((x) => x / n);
+  };
+  const parallel = (u: number[], v: number[]) => Math.abs(u[0]! * v[0]! + u[1]! * v[1]! + u[2]! * v[2]!);
+  it("each Mn's longest Mn-O bond, 2.180 A, alternates between two directions in the ab plane (hand calculation from the published sites)", () => {
+    // From the published O2 (0.7256, 0.3066, 0.0384) and a, b, c: about Mn (1/2, 0, 0) the long bonds are
+    // +-(1.249, 1.762, 0.295) A; about Mn (0, 1/2, 0), +-(1.249, -1.762, -0.295) A.
+    const at = (f: Vec3) => axis(bondAxis(lmo, f, "O", "longest"));
+    expect(Math.hypot(...bondAxis(lmo, [0.5, 0, 0], "O", "longest")!)).toBeCloseTo(2.18, 2);
+    expect(parallel(at([0.5, 0, 0]), axis([1.249, 1.762, 0.295]))).toBeGreaterThan(0.99999);
+    expect(parallel(at([0, 0.5, 0]), axis([1.249, -1.762, -0.295]))).toBeGreaterThan(0.99999);
+    // The two directions are far from parallel: the order alternates.
+    expect(parallel(at([0.5, 0, 0]), at([0, 0.5, 0]))).toBeLessThan(0.4);
+    expect(firstShell(lmo, [0.5, 0, 0], "O").length).toBe(6);
+  });
+
+  it("an O's p axis runs through its two Mn: along c for the apical O1, in the ab plane for O2; drawn on every atom", () => {
+    expect(parallel(axis(bondAxis(lmo, [0.0745, 0.4874, 0.25], "Mn", "bridge")), [0, 0, 1])).toBeCloseTo(1, 9);
+    expect(Math.abs(axis(bondAxis(lmo, [0.7256, 0.3066, 0.0384], "Mn", "bridge"))[2]!)).toBeLessThan(0.1);
+    const scene = buildScene(lmo, { ...DEFAULT_SPEC, orbitals: [
+      { species: "Mn", orbitals: ["dz2"], size: 1.7, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6, zFrom: { neighbour: "O", mode: "longest" } },
+      { species: "O", orbitals: ["pz"], size: 1, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6, zFrom: { neighbour: "Mn", mode: "bridge" } },
+    ] });
+    const mn = scene.orbitals!.filter((o) => o.kind === "dz2");
+    expect(mn.length).toBe(scene.spheres.filter((s) => s.species === "Mn").length);
+    // In the ab plane the Mn orbitals take two directions, alternating (an axis up to its sign: turned so that its x
+    // part is positive). Out of the plane each tilts by 0.295 / 2.180, one way at z = 0 and the other at z = 1/2, so
+    // in all there are four.
+    const flip = (z: Vec3) => z.map((x) => Math.sign(z[0]) * x);
+    expect(new Set(mn.map((o) => flip(o.frame[2]).slice(0, 2).map((x) => x.toFixed(3)).join(","))).size).toBe(2);
+    expect(new Set(mn.map((o) => flip(o.frame[2]).map((x) => x.toFixed(3)).join(","))).size).toBe(4);
+    for (const o of mn) expect(Math.abs(o.frame[2][2])).toBeCloseTo(0.295 / 2.18, 2);
+    for (const o of mn) {
+      const [x, y, z] = o.frame;
+      expect(x[1] * y[2] - x[2] * y[1]).toBeCloseTo(z[0], 9);
+    }
+    expect(renderSvg(scene, DEFAULT_VIEW)).toContain('class="orbital-lobe"');
   });
 });

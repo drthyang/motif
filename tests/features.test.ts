@@ -19,12 +19,12 @@ const open = (file: string, fold = false) => {
 
 describe("feature examples", () => {
   it("each opens, and shows its feature", () => {
-    expect(features.map((f) => f.title)).toEqual(["Atomic structure", "Magnetic structure", "Distortion mode", "Orbitals", "RMC configuration"]);
+    expect(features.map((f) => f.title)).toEqual(["Atomic structure", "Magnetic structure", "Distortion mode", "Orbital order", "RMC configuration"]);
     for (const f of features) {
       const s = open(f.file, f.fold);
       const orbitals = (f.orbitals ?? []).map((o) => {
         for (const id of o.orbitals) expect(orbitalById(id), id).toBeDefined();
-        return { species: o.species, orbitals: [...o.orbitals], size: 1.6, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6 };
+        return { species: o.species, orbitals: [...o.orbitals], size: 1.6, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6, ...(o.zFrom ? { zFrom: o.zFrom } : {}) };
       });
       const scene = buildScene(s, { ...DEFAULT_SPEC, ...(orbitals.length ? { orbitals } : {}) });
       expect(scene.spheres.length, f.title).toBeGreaterThan(0);
@@ -40,7 +40,7 @@ describe("feature examples", () => {
         expect(layer.arrows.length).toBe(o);
       }
       // Orbitals are drawn on every atom of the species named.
-      if (orbitals.length) expect(scene.orbitals!.length).toBe(scene.spheres.filter((x) => x.species === orbitals[0]!.species).length * orbitals[0]!.orbitals.length);
+      if (orbitals.length) expect(scene.orbitals!.length).toBe(orbitals.reduce((n, o) => n + scene.spheres.filter((x) => x.species === o.species).length * o.orbitals.length, 0));
     }
   });
 

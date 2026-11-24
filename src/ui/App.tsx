@@ -320,7 +320,7 @@ export function App() {
   const [angleHover, setAngleHover] = useState<{ rule: number; range: [number, number] } | null>(null);
   const changeAngle = (index: number, change: Partial<(typeof angleRules)[number]>) => setAngleRules((all) => all.map((x, i) => (i === index ? { ...x, ...change } : x)));
   // Orbitals on the atoms of chosen species (see scene/orbitals.ts); reset for each new file.
-  const [orbitalRules, setOrbitalRules] = useState<{ species: string; orbitals: string[]; sizeText: string; colours: [string, string]; opacityText: string; iso: number; texture: OrbitalTexture; zText: string; xText: string }[]>([]);
+  const [orbitalRules, setOrbitalRules] = useState<{ species: string; orbitals: string[]; sizeText: string; colours: [string, string]; opacityText: string; iso: number; texture: OrbitalTexture; zText: string; xText: string; zMode?: "uvw" | "longest" | "bridge"; zNeighbour?: string }[]>([]);
   const [newOrbitalSpecies, setNewOrbitalSpecies] = useState("");
   const changeOrbitalRule = (index: number, change: Partial<(typeof orbitalRules)[number]>) => setOrbitalRules((all) => all.map((r, i) => (i === index ? { ...r, ...change } : r)));
   const sceneOrbitals = useMemo((): OrbitalRule[] => {
@@ -338,6 +338,7 @@ export function App() {
       texture: r.texture,
       z: indices(r.zText),
       x: indices(r.xText),
+      ...(r.zMode && r.zMode !== "uvw" && r.zNeighbour ? { zFrom: { neighbour: r.zNeighbour, mode: r.zMode } } : {}),
     }));
   }, [orbitalRules]);
   const sceneAngles = useMemo(
@@ -461,10 +462,11 @@ export function App() {
       if (target) setView(target);
     }
     if (f.cells) setRangeText(f.cells.map(String));
+    if (f.completeBonds === false) setBondRules((all) => all.map((r) => ({ ...r, complete: false })));
     if (f.hide) setLooks((all) => ({ ...all, ...Object.fromEntries(f.hide!.map((k) => [k, { ...all[k], hidden: true }])) }));
     if (f.orbitals) {
       setOrbitalRules(
-        f.orbitals.map((o) => ({ species: o.species, orbitals: [...o.orbitals], sizeText: String(o.size ?? DEFAULT_ORBITAL_SIZE), colours: [...DEFAULT_ORBITAL_COLOURS] as [string, string], opacityText: String(DEFAULT_ORBITAL_OPACITY), iso: DEFAULT_ISO, texture: "soft" as OrbitalTexture, zText: "", xText: "" })),
+        f.orbitals.map((o) => ({ species: o.species, orbitals: [...o.orbitals], sizeText: String(o.size ?? DEFAULT_ORBITAL_SIZE), colours: [...(o.colours ?? DEFAULT_ORBITAL_COLOURS)] as [string, string], opacityText: String(DEFAULT_ORBITAL_OPACITY), iso: DEFAULT_ISO, texture: "soft" as OrbitalTexture, zText: "", xText: "", ...(o.zFrom ? { zMode: o.zFrom.mode, zNeighbour: o.zFrom.neighbour } : {}) })),
       );
     }
   };
@@ -1444,11 +1446,26 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                       </span>
                     </div>
                   ))}
-                  <div className="row" title="Local z: a crystal direction [u v w], towards a ligand say (empty: the crystal axes, z along c*).">
+                  <div className="row" title="The orbital's local z. Along [u v w]: one crystal direction for every atom (empty: the crystal axes, z along c*). From bonds: each atom's own, so an orbital order shows. Longest bond: along the atom's longest bond to the species chosen (its first shell). Bridge: along the line through its two nearest atoms of that species, as an O between two metals.">
                     <span className="lab">local z</span>
-                    <input type="text" className="indices" placeholder="u v w" data-testid={`orbital-z-${index}`} value={r.zText} onChange={(e) => changeOrbitalRule(index, { zText: e.target.value })} />
+                    <select data-testid={`orbital-zmode-${index}`} value={r.zMode ?? "uvw"} onChange={(e) => changeOrbitalRule(index, { zMode: e.target.value as "uvw" | "longest" | "bridge", zNeighbour: r.zNeighbour ?? contents.species.find((x) => x.key !== r.species)?.key ?? "" })}>
+                      <option value="uvw">along [u v w]</option>
+                      <option value="longest">longest bond to</option>
+                      <option value="bridge">line through two</option>
+                    </select>
+                    {(r.zMode ?? "uvw") === "uvw" ? (
+                      <input type="text" className="indices" placeholder="u v w" data-testid={`orbital-z-${index}`} value={r.zText} onChange={(e) => changeOrbitalRule(index, { zText: e.target.value })} />
+                    ) : (
+                      <select data-testid={`orbital-zneighbour-${index}`} value={r.zNeighbour ?? ""} onChange={(e) => changeOrbitalRule(index, { zNeighbour: e.target.value })}>
+                        {contents.species.map((x) => (
+                          <option key={x.key} value={x.key}>
+                            {nameOf(x.key)}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
-                  {r.zText.trim() !== "" && (
+                  {(r.zMode ?? "uvw") === "uvw" && r.zText.trim() !== "" && (
                     <div className="row" title="Local x: a second crystal direction; its part perpendicular to z is used (empty: from a).">
                       <span className="lab">local x</span>
                       <input type="text" className="indices" placeholder="u v w" value={r.xText} onChange={(e) => changeOrbitalRule(index, { xText: e.target.value })} />

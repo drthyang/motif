@@ -775,28 +775,31 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
   // drawn back to front, opaque, and the group as a whole takes the orbital's opacity, so a see-through lobe has no
   // seams and its overlapping faces do not darken one another. Faces turned away from the viewer are hidden by the
   // lobe's near side and are left out. Atoms of one rule share one surface.
+  // Atoms of one rule share a surface, a field and an outline while their frames agree; frames taken from each atom's
+  // bonds differ from atom to atom, so the frame is part of the key.
+  const orbitalKey = (o: { rule: number; kind: string; frame: View }): string => `${o.rule}|${o.kind}|${o.frame.flat().map((v) => v.toFixed(6)).join(",")}`;
   const surfaces = new Map<string, OrbitalFace[]>();
   const fields = new Map<string, ReturnType<typeof orbitalField>>();
   const outlines = new Map<string, { units: OrbitalUnit[]; x: number; y: number; depth: number }>();
   const field = (o: { rule: number; kind: string; size: number; frame: View; iso?: number }) => {
-    const key = `${o.rule}|${o.kind}`;
+    const key = orbitalKey(o);
     let f = fields.get(key);
     if (!f) fields.set(key, (f = orbitalField(orbitalById(o.kind)!, o.size, o.frame, o.iso)));
     return f;
   };
   let orbitalIndex = 0;
   for (const o of scene.orbitals ?? []) {
-    const key = `${o.rule}|${o.kind}`;
+    const key = orbitalKey(o);
     let faces = surfaces.get(key);
     if (!faces) surfaces.set(key, (faces = orbitalSurface(orbitalById(o.kind)!, o.size, o.frame, o.iso)));
     const sphere = scene.spheres[o.sphere]!;
     const centreDepth = project(sphere.centre)[2];
     if (o.texture !== "mesh") {
       // Each lobe one smooth shape: its outline seen from the viewer, filled with a gradient as an atom is shaded.
-      // Atoms of one rule share the surface and its frame, and the view is orthographic, so on screen their lobes
-      // are one shape moved: it is outlined (with its gradients) once, and moved to each other atom.
+      // Atoms with the same surface and frame, seen in an orthographic view, show one shape moved: it is outlined
+      // (with its gradients) once, and moved to each other such atom.
       const [x, y] = project(sphere.centre);
-      const key = `${o.rule}|${o.kind}`;
+      const key = orbitalKey(o);
       let first = outlines.get(key);
       if (!first) outlines.set(key, (first = { units: orbitalLobes(faces, sphere.centre, centreDepth, project, o, `orb-${orbitalIndex}`), x, y, depth: centreDepth }));
       const [dx, dy, dz] = [x - first.x, y - first.y, centreDepth - first.depth];

@@ -7,7 +7,8 @@
  */
 import { fractionalToCartesian, mulVec, orthogonalizationMatrix } from "../structure/cell";
 import type { CellAtom, Component, Mat3, Structure, Vec3 } from "../structure/types";
-import { DEFAULT_ISO, orbitalById, orbitalFrame } from "./orbitals";
+import { DEFAULT_ISO, orbitalById, orbitalFrame, orbitalFrameAbout } from "./orbitals";
+import { expandToUnitCell } from "../structure/expand";
 import { defaultColour, defaultRadius } from "./elementStyle";
 import { angleKinds, anglesOfRule, bondAngles, DEFAULT_ANGLE_LOOK, type AngleKind, type AngleRule } from "./angles";
 import { atomsAndBonds, type BondColouring, type BondLine, type BondRule } from "./bonds";
@@ -269,6 +270,12 @@ export interface OrbitalRule {
   readonly texture?: OrbitalTexture;
   readonly z?: Vec3 | null;
   readonly x?: Vec3 | null;
+  /**
+   * z taken from each atom's own bonds to atoms of `neighbour` (its first shell: out to 1.25 times the nearest),
+   * instead of one fixed direction: "longest", along its longest such bond; "bridge", along the line through its
+   * two nearest such atoms (for an O between two metals, the M-O-M line). In place of `z` when given.
+   */
+  readonly zFrom?: { readonly neighbour: string; readonly mode: "longest" | "bridge" } | null;
 }
 
 /** An orbital on one atom: which sphere, which orbital, its frame (cartesian unit vectors x, y, z) and its look. */
@@ -518,6 +525,50 @@ export function largestMoment(structure: Structure): number {
   return largest;
 }
 
+/** The cartesian bond vectors from an atom at `frac` to atoms of `neighbour` in its first shell (out to 1.25 times the
+ * nearest), nearest first; every periodic image within one cell is looked at. */
+const cellAtoms = new WeakMap<Structure, ReturnType<typeof expandToUnitCell>["atoms"]>();
+export function firstShell(structure: Structure, frac: Vec3, neighbour: string): Vec3[] {
+  const bonds: { v: Vec3; d: number }[] = [];
+  let atoms = cellAtoms.get(structure);
+  if (!atoms) cellAtoms.set(structure, (atoms = expandToUnitCell(structure).atoms));
+  for (const atom of atoms) {
+    if (atom.species !== neighbour) continue;
+    for (let i = -1; i <= 1; i++) {
+      for (let j = -1; j <= 1; j++) {
+        for (let k = -1; k <= 1; k++) {
+          const df: Vec3 = [atom.frac[0] - frac[0] + i - Math.round(atom.frac[0] - frac[0]), atom.frac[1] - frac[1] + j - Math.round(atom.frac[1] - frac[1]), atom.frac[2] - frac[2] + k - Math.round(atom.frac[2] - frac[2])];
+          const v = fractionalToCartesian(structure.cell, df);
+          const d = Math.hypot(...v);
+          if (d > 0.1) bonds.push({ v, d });
+        }
+      }
+    }
+  }
+  if (bonds.length === 0) return [];
+  // Nearest first; equal lengths in a fixed order, so the choice among equal bonds does not depend on the file's order.
+  bonds.sort((p, q) => p.d - q.d || q.v[0] - p.v[0] || q.v[1] - p.v[1] || q.v[2] - p.v[2]);
+  const reach = 1.25 * bonds[0]!.d;
+  return bonds.filter((b) => b.d <= reach + 1e-9).map((b) => b.v);
+}
+
+/**
+ * An orbital's z axis from the atom's own bonds to `neighbour` (cartesian; null if it has none): "longest", along its
+ * longest bond in the first shell (of two equal longest bonds, opposite ones give the same axis); "bridge", along the
+ * line through its two nearest such atoms.
+ */
+export function bondAxis(structure: Structure, frac: Vec3, neighbour: string, mode: "longest" | "bridge"): Vec3 | null {
+  const shell = firstShell(structure, frac, neighbour);
+  if (shell.length === 0) return null;
+  if (mode === "longest") {
+    const longest = Math.max(...shell.map((v) => Math.hypot(...v)));
+    return shell.find((v) => Math.hypot(...v) >= longest - 0.005)!;
+  }
+  if (shell.length < 2) return shell[0]!;
+  const [p, q] = [shell[0]!, shell[1]!];
+  return [q[0] - p[0], q[1] - p[1], q[2] - p[2]];
+}
+
 /** One sphere per atom in the chosen range (plus neighbours added by bond rules), sticks for the bonds, and the cell outline. */
 export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC): Scene {
   const hiddenSpecies = new Set(Object.entries(spec.looks).filter(([, look]) => look.hidden).map(([species]) => species));
@@ -614,9 +665,11 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
   (spec.orbitals ?? []).forEach((rule, ruleIndex) => {
     const kinds = rule.orbitals.filter((id) => orbitalById(id));
     if (kinds.length === 0 || !(rule.size > 0)) return;
-    const frame = orbitalFrame(structure.cell, rule.z, rule.x);
+    const fixed = orbitalFrame(structure.cell, rule.z, rule.x);
     spheres.forEach((sp, index) => {
       if (sp.species !== rule.species) return;
+      const z = rule.zFrom && sp.frac ? bondAxis(structure, sp.frac, rule.zFrom.neighbour, rule.zFrom.mode) : null;
+      const frame = z ? orbitalFrameAbout(structure.cell, z) : fixed;
       for (const kind of kinds) orbitals.push({ sphere: index, kind, rule: ruleIndex, frame, size: rule.size, colours: rule.colours, opacity: rule.opacity, iso: rule.iso ?? DEFAULT_ISO, texture: rule.texture ?? "soft" });
     });
   });

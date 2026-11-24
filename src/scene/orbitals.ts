@@ -63,14 +63,20 @@ const cross = (a: Vec3, b: Vec3): Vec3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0
 export function orbitalFrame(cell: Cell, z?: Vec3 | null, x?: Vec3 | null): Mat3 {
   if (!z) return [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
   const m = orthogonalizationMatrix(cell);
+  return orbitalFrameAbout(cell, mulVec(m, z), x ? mulVec(m, x) : null);
+}
+
+/** The same with z given as a cartesian direction (and x, if given, too); x and y follow as in `orbitalFrame`. */
+export function orbitalFrameAbout(cell: Cell, z: Vec3, x?: Vec3 | null): Mat3 {
+  const m = orthogonalizationMatrix(cell);
   const toCart = (uvw: Vec3): Vec3 => mulVec(m, uvw);
-  const zc = unit(toCart(z));
+  const zc = unit(z);
   const flat = (v: Vec3): Vec3 | null => {
     const d = v[0] * zc[0] + v[1] * zc[1] + v[2] * zc[2];
     const p: Vec3 = [v[0] - d * zc[0], v[1] - d * zc[1], v[2] - d * zc[2]];
     return Math.hypot(...p) > 1e-6 * Math.hypot(...v) ? unit(p) : null;
   };
-  const xc = (x ? flat(toCart(x)) : null) ?? flat(toCart([1, 0, 0])) ?? flat(toCart([0, 1, 0]))!;
+  const xc = (x ? flat(x) : null) ?? flat(toCart([1, 0, 0])) ?? flat(toCart([0, 1, 0]))!;
   return [xc, cross(zc, xc), zc];
 }
 

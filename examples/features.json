@@ -30,28 +30,49 @@
       ]
     },
     {
-      "title": "Orbitals",
-      "file": "perovskite-SrTiO3_COD-9006864.cif",
-      "note": "SrTiO₃, the eg orbitals of Ti",
+      "title": "Orbital order",
+      "file": "LaMnO3-orbital-order_COD-1006141.cif",
+      "note": "LaMnO₃, Mn eg and O 2p orbitals",
       "cells": [
-        -0.5,
-        -0.5,
-        -0.5,
-        0.5,
-        0.5,
-        0.5
+        0,
+        0,
+        -0.06,
+        2,
+        2,
+        0.06
       ],
-      "hide": [
-        "Sr"
+      "along": [
+        0,
+        0,
+        1
       ],
+      "completeBonds": false,
       "orbitals": [
         {
-          "species": "Ti",
+          "species": "Mn",
           "orbitals": [
-            "dz2",
-            "dx2-y2"
+            "dz2"
           ],
-          "size": 2.4
+          "size": 1.9,
+          "zFrom": {
+            "neighbour": "O",
+            "mode": "longest"
+          }
+        },
+        {
+          "species": "O",
+          "orbitals": [
+            "pz"
+          ],
+          "size": 0.9,
+          "colours": [
+            "#4c9a52",
+            "#d9a520"
+          ],
+          "zFrom": {
+            "neighbour": "Mn",
+            "mode": "bridge"
+          }
         }
       ]
     },

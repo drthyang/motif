@@ -10,7 +10,9 @@ export interface FeatureExample {
   readonly file: string;
   readonly note: string;
   /** Orbitals to draw: on the atoms of a species, which orbitals, and their size (angstrom) if not the default. */
-  readonly orbitals?: readonly { readonly species: string; readonly orbitals: readonly string[]; readonly size?: number }[];
+  readonly orbitals?: readonly { readonly species: string; readonly orbitals: readonly string[]; readonly size?: number; readonly colours?: readonly [string, string]; readonly zFrom?: { readonly neighbour: string; readonly mode: "longest" | "bridge" } }[];
+  /** False: bonds do not add atoms outside the cells shown (a slab stays a slab). */
+  readonly completeBonds?: boolean;
   /** Species left out of the figure. */
   readonly hide?: readonly string[];
   /** For an RMC configuration: fold it into one averaged cell. */
@@ -30,8 +32,8 @@ export function readFeatures(text: string, files: readonly string[]): FeatureExa
     if (typeof e.title !== "string" || typeof e.file !== "string") throw new Error(`${where}: a title and a file are needed`);
     if (!files.includes(e.file)) throw new Error(`${where}: no file ${e.file} in examples/`);
     const orbitals = e.orbitals as FeatureExample["orbitals"] | undefined;
-    if (orbitals !== undefined && (!Array.isArray(orbitals) || orbitals.some((o) => typeof o.species !== "string" || !Array.isArray(o.orbitals) || (o.size !== undefined && !(o.size > 0 && o.size <= 20))))) {
-      throw new Error(`${where}: orbitals are given as { species, orbitals: [...], size (angstrom, optional) }`);
+    if (orbitals !== undefined && (!Array.isArray(orbitals) || orbitals.some((o) => typeof o.species !== "string" || !Array.isArray(o.orbitals) || (o.size !== undefined && !(o.size > 0 && o.size <= 20)) || (o.colours !== undefined && (!Array.isArray(o.colours) || o.colours.length !== 2 || o.colours.some((c: string) => !/^#[0-9a-fA-F]{6}$/.test(c)))) || (o.zFrom !== undefined && (typeof o.zFrom.neighbour !== "string" || !["longest", "bridge"].includes(o.zFrom.mode)))))) {
+      throw new Error(`${where}: orbitals are given as { species, orbitals: [...], size (angstrom, optional), colours (two #rrggbb, optional), zFrom: { neighbour, mode: longest or bridge } (optional) }`);
     }
     const hide = e.hide as string[] | undefined;
     if (hide !== undefined && (!Array.isArray(hide) || hide.some((x) => typeof x !== "string"))) throw new Error(`${where}: hide is a list of species`);
@@ -50,6 +52,7 @@ export function readFeatures(text: string, files: readonly string[]): FeatureExa
       ...(orbitals ? { orbitals } : {}),
       ...(e.fold === true ? { fold: true } : {}),
       ...(hide ? { hide } : {}),
+      ...(e.completeBonds === false ? { completeBonds: false } : {}),
       ...(along ? { along: along as unknown as readonly [number, number, number] } : {}),
       ...(cells ? { cells: cells as unknown as readonly [number, number, number, number, number, number] } : {}),
     };
