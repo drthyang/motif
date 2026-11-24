@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 284 tests, about two seconds
+npx tsc -b && npx vitest run    # 286 tests, about two seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -58,9 +58,11 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   set up). The user's choice (2026-11-23): keep the link in the README, with a grey "app: not yet live" badge
   and a line saying it will work once published. When the app goes live, change the badge back to "app: live"
   and drop that line.
-- Planned by the building session, not yet on `main`: five feature examples (normal structure, magnetic,
-  distortion mode, orbitals, RMC configuration with folding), listed in `examples/features.json`. When they
-  land, `examples/README.md` and the README describe them.
+- Feature examples (commit 6547441): atomic structure, magnetic structure, orbitals and an RMC configuration
+  folded, listed in `examples/features.json` and described in `examples/README.md`; the format is in
+  docs/CONVENTIONS.md. The RMC file `examples/SrTiO3-supercell_generated.rmc6f` is generated for MOTIF by
+  `scripts/make_rmc_example.py`, not a fit to data. Still to come: a distortion-mode example, SrTiO3 I4/mcm
+  (octahedral rotation, the user's choice), waiting on a COD search; BaTiO3 stays under "Structures" until then.
 
 ## Open questions for the user (none blocking)
 

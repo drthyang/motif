@@ -9,7 +9,7 @@ see the [README](../README.md).
 - [How it looks](#how-it-looks): surfaces, bonds, unit cell, arrows, legend and axes, lettering
 - [Figure size, text and saving](#figure-size-text-and-saving)
 - [View and camera](#view-and-camera)
-- [The page](#the-page): tabs, saved settings, large structures
+- [The page](#the-page): tabs, saved settings, feature examples, large structures
 - [How each part is checked](#how-each-part-is-checked)
 - [Steps of the first version](#steps-of-the-first-version)
 - [Building and testing](#building-and-testing)
@@ -360,6 +360,26 @@ Structure tab; the user's choices of 2026-11-23.
 - One of them can be chosen to open the page with; element colours and radii from loaded settings carry over
   to each file opened.
 - A setting the page does not know, or a value it does not accept, is left out and named.
+
+### Feature examples
+
+- The page lists a few *feature examples* first (start-page buttons, and the Examples menu, group "Features";
+  2026-11-23): each is a structure file in `examples/` and the settings that show its feature. The list is
+  `examples/features.json`, read by `src/ui/examples.ts`; [examples/README.md](../examples/README.md) describes
+  each one.
+- An entry has a `title`, a `file` (which must be in `examples/`) and a `note` (shown as the button's tooltip),
+  and may add:
+  - `orbitals`: a list of `{ species, orbitals: [...], size }`, the orbitals drawn on the atoms of a species,
+    with their size in Å (optional, more than 0 and at most 20);
+  - `hide`: a list of species left out of the figure;
+  - `cells`: six numbers, the range shown, from *a*, *b*, *c* then to *a*, *b*, *c* (each "from" below its "to");
+  - `fold`: `true` for an RMC configuration to be folded into one averaged cell.
+- An entry with no title or file, a file not in `examples/`, or a malformed setting is refused with its number.
+- The settings apply only when the example is opened from the list; opening the same file by hand gives the
+  plain defaults. A file used only by a feature example is not listed again under "Structures".
+- Checked (`tests/features.test.ts`): each example opens and shows its feature (moments for the magnetic one,
+  orbitals on every atom of the species named), and the RMC example folds into the five sites of cubic SrTiO3,
+  each within 0.02 Å of the published site.
 
 ### Large structures
 
