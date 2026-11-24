@@ -47,6 +47,11 @@ column, for one panel in a row. Rulers beside the figure show its size in cm or 
   <img src="docs/media/app-journal.jpg" alt="The MOTIF page: the orbital example on a 8.8 cm canvas with rulers, and the Canvas panel set to Springer Nature, Nature Communications, single column" width="92%" />
 </p>
 
+**Text stays the size you set.** Legend names, axis letters and angle labels are given in pt (7 pt by default)
+and are exactly that size in the saved figure, whatever you zoom, however large the structure, and whichever
+width you choose. Placed at its size on paper, every panel of a paper's figures has the same lettering, matching
+the journal's rules, with no rescaling by hand in a drawing program.
+
 Templates, each from the publisher's own author pages: Nature; Nature Communications, Nature Materials and
 Nature Physics; Science; Physical Review; ACS journals; RSC journals; Elsevier journals; J. Phys.: Condens.
 Matter; the IUCr journals; American Mineralogist. The SVG states its size on paper, so it opens at exactly that
@@ -59,7 +64,8 @@ size in Illustrator, Inkscape or Keynote; the PNG is drawn from the same SVG.
   configurations, as the whole supercell or folded into one averaged cell; VASP POSCAR and CONTCAR; XYZ and
   extended XYZ; SHELX `.res` and `.ins`, with their symmetry; PDB; Quantum ESPRESSO input; CASTEP `.cell`;
   FHI-aims `geometry.in`; XSF. The format is shown over the figure.
-- **Vector or raster:** an SVG you can edit, with live text, or a PNG at any dpi, transparent or on white.
+- **Vector or raster:** an SVG you can edit, with live text at a fixed size in pt, or a PNG at any dpi,
+  transparent or on white.
 - **Shows the chemistry:** cells or a slab, bonds by distance, bond angles, chains and filled polygons, shared
   sites as pie spheres, and s, p, d and f orbitals as schematic isosurfaces.
 - **Styled your way:** soft, flat, glossy, metal or glass surfaces; bonds in atom colours, dashed or dotted;
