@@ -53,6 +53,9 @@ export interface JournalSize {
 }
 
 export interface Journal {
+  /** Who publishes the journal(s); the page lists publishers first, then their journals. */
+  readonly publisher: string;
+  /** The journal, or the journals that share these sizes and text (one template, the user's wish). */
   readonly name: string;
   readonly sizes: readonly Omit<JournalSize, "journal">[];
   /** The text size the template sets, in pt, or how to find it from the font. */
@@ -63,6 +66,7 @@ export interface Journal {
 
 export const JOURNALS: readonly Journal[] = [
   {
+    publisher: "Springer Nature",
     name: "Nature",
     sizes: [
       { id: "nature-1", label: "single column, 89 mm", width: 8.9, unit: "cm" },
@@ -73,6 +77,7 @@ export const JOURNALS: readonly Journal[] = [
     note: "Nature: text 5 to 7 pt, lines 0.25 to 1 pt, height at most 17 cm.",
   },
   {
+    publisher: "AAAS",
     name: "Science",
     sizes: [
       { id: "science-1", label: "1 column, 5.7 cm", width: 5.7, unit: "cm" },
@@ -83,6 +88,7 @@ export const JOURNALS: readonly Journal[] = [
     note: "Science: lettering about 7 pt, not smaller than 5 pt, sans serif.",
   },
   {
+    publisher: "American Physical Society",
     name: "Physical Review",
     sizes: [
       { id: "aps-1", label: "1 column, 8.5 cm", width: 8.5, unit: "cm" },
@@ -92,7 +98,8 @@ export const JOURNALS: readonly Journal[] = [
     note: "Physical Review: capitals and numerals at least 2 mm high, lines at least 0.5 pt.",
   },
   {
-    name: "ACS journals",
+    publisher: "American Chemical Society",
+    name: "JACS, Inorg. Chem., Chem. Mater.",
     // JACS, Inorganic Chemistry and Chemistry of Materials give the same rules.
     sizes: [
       { id: "acs-1", label: "single column, 3.33 in", width: 3.33, unit: "in" },
@@ -103,6 +110,7 @@ export const JOURNALS: readonly Journal[] = [
   },
   {
     // One template for the journals whose figures have the same sizes and text (the user's wish, 2026-11-23).
+    publisher: "Springer Nature",
     name: "Nature Communications, Nature Materials",
     sizes: [
       { id: "ncomms-1", label: "single column, 88 mm", width: 8.8, unit: "cm" },
@@ -112,7 +120,8 @@ export const JOURNALS: readonly Journal[] = [
     note: "Nature Communications, Nature Materials: text 5 to 7 pt sans serif, the same size in every figure; at most 180 mm wide.",
   },
   {
-    name: "RSC journals",
+    publisher: "Royal Society of Chemistry",
+    name: "Dalton Trans., CrystEngComm, J. Mater. Chem.",
     sizes: [
       { id: "rsc-1", label: "single column, 8.3 cm", width: 8.3, unit: "cm" },
       { id: "rsc-2", label: "double column, 17.1 cm", width: 17.1, unit: "cm" },
@@ -121,7 +130,8 @@ export const JOURNALS: readonly Journal[] = [
     note: "RSC (Dalton Trans., CrystEngComm, J. Mater. Chem.): text legible (no size given; 7 pt as for atom labels), at most 23.3 cm long.",
   },
   {
-    name: "Elsevier journals",
+    publisher: "Elsevier",
+    name: "J. Solid State Chem., J. Alloys Compd.",
     sizes: [
       { id: "elsevier-1", label: "single column, 90 mm", width: 9, unit: "cm" },
       { id: "elsevier-1.5", label: "1.5 columns, 140 mm", width: 14, unit: "cm" },
@@ -131,6 +141,7 @@ export const JOURNALS: readonly Journal[] = [
     note: "Elsevier (J. Solid State Chem., J. Alloys Compd.): text 7 pt, subscripts at least 6 pt, lines 0.25 pt. Elsevier's common sizes; check the journal's own guide.",
   },
   {
+    publisher: "IOP Publishing",
     name: "J. Phys.: Condens. Matter",
     sizes: [
       { id: "jpcm-1", label: "single column, 8.5 cm", width: 8.5, unit: "cm" },
@@ -140,12 +151,14 @@ export const JOURNALS: readonly Journal[] = [
     note: "J. Phys.: Condens. Matter (IOP): text 8 to 12 pt at the final size; Times, Helvetica, Courier or Symbol.",
   },
   {
-    name: "IUCr journals",
+    publisher: "IUCr",
+    name: "Acta Cryst., IUCrJ, J. Appl. Cryst.",
     sizes: [{ id: "iucr-1", label: "1 column, 8.8 cm", width: 8.8, unit: "cm" }],
     text: { capitalsMm: 2 },
     note: "IUCr (Acta Cryst., IUCrJ, J. Appl. Cryst.): narrower than one column with lettering; lettering ideally 1.5 to 3 mm high.",
   },
   {
+    publisher: "Mineralogical Society of America",
     name: "American Mineralogist",
     sizes: [
       { id: "ammin-1", label: "1 column, 19 picas (3.17 in)", width: 3.17, unit: "in" },
@@ -169,6 +182,12 @@ export function partWidth(width: number, part: PartId): number {
   const share = PARTS.find((p) => p.id === part)!.share;
   return Math.round(width * share * 100) / 100;
 }
+
+/** The publishers, in the order of JOURNALS, each once. */
+export const PUBLISHERS: readonly string[] = [...new Set(JOURNALS.map((j) => j.publisher))];
+
+/** The templates of one publisher. */
+export const journalsOf = (publisher: string): readonly Journal[] => JOURNALS.filter((j) => j.publisher === publisher);
 
 export const journalSize = (id: string): (JournalSize & { readonly of: Journal }) | undefined => {
   for (const j of JOURNALS) {

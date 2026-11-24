@@ -277,8 +277,9 @@ Structure tab; the user's choices of 2026-11-23.
 - The page shows the whole canvas, as large as the frame allows.
 - **Journal templates** (Layout tab, Canvas, "journal"; 2026-11-23). Choosing one sets the size on paper to
   the width the journal asks for, keeping the chosen shape, sets the legend, axis and angle text to the
-  journal's size in pt, and shows the journal's limits. Journals with the same widths and text are one template
-  (the user's wish). Under "width" the figure takes the full width, 1/2 or 1/3 of it (one panel in a row of two
+  journal's size in pt, and shows the journal's limits. The choice is made in steps: publisher, journal, column
+  (the user's wish); choosing a publisher or a journal takes its first column at once. Journals with the same
+  widths and text are one template (the user's wish). Under "width" the figure takes the full width, 1/2 or 1/3 of it (one panel in a row of two
   or three), rounded to 0.01 cm or in; the text keeps the journal's size. Values and their sources (each journal's own author
   pages, read 2026-11-23) are in the header of `src/ui/journals.ts`:
 

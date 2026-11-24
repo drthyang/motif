@@ -43,7 +43,7 @@ import {
   type SavedSettings,
   type SettingField,
 } from "./settings";
-import { JOURNALS, PARTS, partWidth, journalSize, journalTextPt, type PartId } from "./journals";
+import { PARTS, PUBLISHERS, journalsOf, partWidth, journalSize, journalTextPt, type PartId } from "./journals";
 import { type FeatureExample, readFeatures } from "./examples";
 import featuresText from "../../examples/features.json?raw";
 import type { Structure } from "../structure/types";
@@ -2141,33 +2141,66 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 return (
                   <>
                     <div className="row">
-                      <span className="lab">journal</span>
+                      <span className="lab">publisher</span>
                       <select
                         className="grow"
-                        data-testid="canvas-journal"
-                        value={current ? current.id : ""}
-                        title="Set the width a journal asks for, and its text size"
-                        onChange={(e) => apply(e.target.value, journalPart)}
+                        data-testid="canvas-publisher"
+                        value={chosen ? chosen.of.publisher : ""}
+                        title="Choose the publisher, then the journal and the column width it asks for"
+                        onChange={(e) => {
+                          const first = journalsOf(e.target.value)[0];
+                          if (first) apply(first.sizes[0]!.id, journalPart);
+                        }}
                       >
-                        <option value="">{current ? "" : "Journal template…"}</option>
-                        {JOURNALS.map((j) => (
-                          <optgroup key={j.name} label={j.name}>
-                            {j.sizes.map((x) => (
-                              <option key={x.id} value={x.id}>
-                                {j.name}, {x.label}
-                              </option>
-                            ))}
-                          </optgroup>
+                        {!chosen && <option value="">Journal template…</option>}
+                        {PUBLISHERS.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
                         ))}
                       </select>
                     </div>
+                    {chosen && (
+                      <>
+                        <div className="row">
+                          <span className="lab">journal</span>
+                          <select
+                            className="grow"
+                            data-testid="canvas-journal-name"
+                            value={chosen.of.name}
+                            disabled={journalsOf(chosen.of.publisher).length < 2}
+                            onChange={(e) => {
+                              const j = journalsOf(chosen.of.publisher).find((x) => x.name === e.target.value);
+                              if (j) apply(j.sizes[0]!.id, journalPart);
+                            }}
+                          >
+                            {journalsOf(chosen.of.publisher).map((j) => (
+                              <option key={j.name} value={j.name}>
+                                {j.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="row">
+                          <span className="lab">column</span>
+                          <select className="grow" data-testid="canvas-journal" value={current ? current.id : ""} onChange={(e) => apply(e.target.value, journalPart)}>
+                            {!current && <option value="">changed by hand…</option>}
+                            {chosen.of.sizes.map((x) => (
+                              <option key={x.id} value={x.id}>
+                                {x.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                    {chosen && (
                     <div className="row">
                       <span className="lab">width</span>
                       <select
                         data-testid="canvas-journal-part"
                         value={journalPart}
-                        disabled={!chosen}
-                        title="The whole width of the template, or half or a third of it (one panel in a row of two or three). The text size stays the journal's."
+                        title="The whole column width, or half or a third of it (one panel in a row of two or three). The text size stays the journal's."
                         onChange={(e) => (chosen ? apply(chosen.id, e.target.value as PartId) : setJournalPart(e.target.value as PartId))}
                       >
                         {PARTS.map((p) => (
@@ -2182,6 +2215,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                         </span>
                       )}
                     </div>
+                    )}
                     {current && (
                       <p className="sub" data-testid="journal-note">
                         {current.of.note} Text set to {journalTextPt(current.of, capHeight(fontFamily))} pt{"capitalsMm" in current.of.text ? ` (capitals ${current.of.text.capitalsMm} mm in ${fontFamily})` : ""}.

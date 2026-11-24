@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Tsung-Han Yang
 
 import { describe, expect, it } from "vitest";
-import { JOURNALS, PARTS, partWidth, journalSize, journalTextPt } from "../src/ui/journals";
+import { JOURNALS, PARTS, PUBLISHERS, journalsOf, partWidth, journalSize, journalTextPt } from "../src/ui/journals";
 
 const pt = (s: { width: number; unit: "cm" | "in" }) => (s.unit === "in" ? s.width * 72 : (s.width / 2.54) * 72);
 
@@ -52,6 +52,13 @@ describe("journal templates", () => {
     const key = (j: (typeof JOURNALS)[number]) => JSON.stringify([j.sizes.map((s) => [s.width, s.unit]), j.text]);
     const keys = JOURNALS.map(key);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("templates are listed by publisher, then journal; every template under exactly one publisher", () => {
+    expect(PUBLISHERS[0]).toBe("Springer Nature");
+    expect(journalsOf("Springer Nature").map((j) => j.name)).toEqual(["Nature", "Nature Communications, Nature Materials"]);
+    expect(PUBLISHERS.flatMap((p) => journalsOf(p)).length).toBe(JOURNALS.length);
+    expect(new Set(PUBLISHERS).size).toBe(PUBLISHERS.length);
   });
 
   it("a figure can take the whole width, a half or a third", () => {
