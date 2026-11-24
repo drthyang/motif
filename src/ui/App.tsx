@@ -263,7 +263,7 @@ export function App() {
   const [showVacancy, setShowVacancy] = useState(true);
   const [showLegend, setShowLegend] = useState(true);
   const [letterWeight, setLetterWeight] = useState(DEFAULT_SPEC.letterWeight);
-  const [legendFollows, setLegendFollows] = useState(false);
+  const [legendFollows, setLegendFollows] = useState(DEFAULT_SPEC.legendFollowsZoom);
   const [legendSizeText, setLegendSizeText] = useState("1");
   const [axesSizeText, setAxesSizeText] = useState("1");
   const sizeOf = (text: string): number => (Number(text) >= 0.2 && Number(text) <= 4 ? Number(text) : 1);

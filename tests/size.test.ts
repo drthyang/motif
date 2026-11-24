@@ -8,6 +8,9 @@ import { crc32, withResolution } from "../src/render/png";
 import { AXES_FONT, AXIS_LENGTH, axisArrows, BAND, bandHeight, DEFAULT_CANVAS, fitView, LEGEND_FONT, legendLayout, ptPerUnit, renderSvg, structureHeight, type Canvas } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
 import { buildScene, DEFAULT_SPEC } from "../src/scene/scene";
+
+/** The legend at its own designed size (not following the structure), as these sizes are stated for. */
+const FIXED = { ...DEFAULT_SPEC, legendFollowsZoom: false };
 import { readCif } from "../src/structure/readCif";
 
 const halite = readCif(readFileSync("examples/halite-NaCl_COD-9008678.cif", "utf8"));
@@ -20,7 +23,7 @@ const axisSizes = (svg: string): number[] => [...svg.matchAll(/font-style="itali
 
 describe("size on paper", () => {
   it("the SVG states the size in cm, and its drawing has the same shape", () => {
-    const svg = renderSvg(buildScene(halite), DEFAULT_VIEW, paper);
+    const svg = renderSvg(buildScene(halite, FIXED), DEFAULT_VIEW, paper);
     const head = /<svg [^>]*width="([^"]+)" height="([^"]+)" viewBox="0 0 ([\d.]+) ([\d.]+)"/.exec(svg)!;
     expect([head[1], head[2]]).toEqual(["8.5cm", "6.5cm"]);
     expect(Number(head[4]) / Number(head[3])).toBeCloseTo(6.5 / 8.5, 9);
@@ -33,7 +36,7 @@ describe("size on paper", () => {
   });
 
   it("a text size in pt is that size in the saved figure: legend 9 pt, axis letters 8 pt", () => {
-    const scene = buildScene(halite, { ...DEFAULT_SPEC, legendFontPt: 9, axesFontPt: 8 });
+    const scene = buildScene(halite, { ...FIXED, legendFontPt: 9, axesFontPt: 8 });
     const svg = renderSvg(scene, DEFAULT_VIEW, paper);
     const legend = sizes(svg, "legend");
     expect(legend.length).toBe(2);
@@ -44,7 +47,7 @@ describe("size on paper", () => {
   });
 
   it("a text size in pt does not change with the legend or axes size, or with the paper size", () => {
-    const spec = { ...DEFAULT_SPEC, legendFontPt: 9, axesFontPt: 8 };
+    const spec = { ...FIXED, legendFontPt: 9, axesFontPt: 8 };
     const a = renderSvg(buildScene(halite, spec), DEFAULT_VIEW, paper);
     const b = renderSvg(buildScene(halite, { ...spec, legendSize: 0.5, axesSize: 1.6 }), DEFAULT_VIEW, paper);
     expect(sizes(b, "legend")).toEqual(sizes(a, "legend"));
@@ -55,7 +58,7 @@ describe("size on paper", () => {
   });
 
   it("without a text size the figure is as before: legend 92 units, axis letters 76", () => {
-    const svg = renderSvg(buildScene(halite), DEFAULT_VIEW, DEFAULT_CANVAS);
+    const svg = renderSvg(buildScene(halite, FIXED), DEFAULT_VIEW, DEFAULT_CANVAS);
     expect(sizes(svg, "legend")).toEqual([92, 92]);
     expect(new Set(axisSizes(svg))).toEqual(new Set([76]));
   });
@@ -63,7 +66,7 @@ describe("size on paper", () => {
 
 describe("legend and axes follow their text size in pt", () => {
   it("at 7 pt the largest legend sphere keeps its designed ratio to the text (44 : 92), and the axes theirs (140 : 76)", () => {
-    const scene = buildScene(halite, { ...DEFAULT_SPEC, legendFontPt: 7, axesFontPt: 7 });
+    const scene = buildScene(halite, { ...FIXED, legendFontPt: 7, axesFontPt: 7 });
     const items = legendLayout(scene, paper, 1e9);
     const largest = Math.max(...items.map((i) => i.r));
     expect(items[0]!.fontSize * unitPt).toBeCloseTo(7, 9);
@@ -87,8 +90,8 @@ describe("legend and axes follow their text size in pt", () => {
   });
 
   it("the band under the structure shrinks with them, and the structure gets the room", () => {
-    const usual = buildScene(halite);
-    const small = buildScene(halite, { ...DEFAULT_SPEC, legendFontPt: 7, axesFontPt: 7 });
+    const usual = buildScene(halite, FIXED);
+    const small = buildScene(halite, { ...FIXED, legendFontPt: 7, axesFontPt: 7 });
     expect(bandHeight(usual, paper)).toBe(BAND);
     const k = Math.max(7 / unitPt / LEGEND_FONT, 7 / unitPt / AXES_FONT);
     expect(bandHeight(small, paper)).toBeCloseTo(BAND * k, 9);

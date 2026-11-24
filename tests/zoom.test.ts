@@ -6,10 +6,11 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_CANVAS, fitView, layout, legendLayout, renderSvg, structureCentre, structureHeight } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
 import { MAX_ZOOM, MIN_ZOOM, NO_ZOOM, isZoomed, panBy, zoomAbout, zoomToBox, zoomedFit } from "../src/render/zoom";
-import { buildScene } from "../src/scene/scene";
+import { buildScene, DEFAULT_SPEC } from "../src/scene/scene";
 import { readCif } from "../src/structure/readCif";
 
-const scene = buildScene(readCif(readFileSync("examples/quartz_COD-9009666.cif", "utf8")));
+// The legend at its own size (not following the structure), so the zoom does not touch it.
+const scene = buildScene(readCif(readFileSync("examples/quartz_COD-9009666.cif", "utf8")), { ...DEFAULT_SPEC, legendFollowsZoom: false });
 const base = fitView(scene, DEFAULT_VIEW, DEFAULT_CANVAS);
 const centre = structureCentre(scene, DEFAULT_CANVAS);
 const atoms = (zoom = NO_ZOOM) => layout(scene, DEFAULT_VIEW, DEFAULT_CANVAS, zoomedFit(base, zoom, centre));

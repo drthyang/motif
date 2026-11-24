@@ -251,7 +251,8 @@ Structure tab; the user's choices of 2026-11-23.
 - The size of the legend and the size of the axis arrows (length, thickness, head and letters
   together) can each be set as a multiple of the usual size.
 - The legend can follow the size of the structure: its largest sphere as large as that atom is
-  drawn, letters in proportion (within limits), so it scales with the zoom.
+  drawn, letters in proportion (within limits), so it scales with the zoom. On by default (the user's choice,
+  2026-11-23); off, the legend keeps its own size whatever the zoom.
 
 ### Lettering
 

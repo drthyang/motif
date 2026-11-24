@@ -184,7 +184,9 @@ describe("legend", () => {
     const base = { ...fitView(scene, DEFAULT_VIEW, DEFAULT_CANVAS), scale: 40 }; // well inside the limits
     const zoomed = { ...base, scale: 60 };
     expect(size(renderSvg(scene, DEFAULT_VIEW, DEFAULT_CANVAS, zoomed)) / size(renderSvg(scene, DEFAULT_VIEW, DEFAULT_CANVAS, base))).toBeCloseTo(1.5, 1);
-    const fixed = buildScene(olivine);
+    // On by default (the user's choice, 2026-11-23).
+    expect(DEFAULT_SPEC.legendFollowsZoom).toBe(true);
+    const fixed = buildScene(olivine, { ...DEFAULT_SPEC, legendFollowsZoom: false });
     expect(size(renderSvg(fixed, DEFAULT_VIEW, DEFAULT_CANVAS, zoomed))).toBe(size(renderSvg(fixed, DEFAULT_VIEW, DEFAULT_CANVAS, base)));
   });
 
