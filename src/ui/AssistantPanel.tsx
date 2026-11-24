@@ -3,9 +3,10 @@
 
 /**
  * The assistant on the page: say how the figure should look, and it changes the figure with the page's own
- * controls, saying where each one is. The chatbox (at the figure's lower right) is where one talks to it; the
- * Assistant tab holds the connection (Claude, OpenAI or Gemini with your key, or Ollama / LM Studio on this
- * computer) and the whole conversation. Both show the one conversation of useAssistant.ts.
+ * controls, saying where each one is. The drawer at the foot of the side panel (under every tab, so the figure
+ * stays in full view) is where one talks to it; the Assistant tab holds the connection (Claude, OpenAI or Gemini
+ * with your key, or Ollama / LM Studio on this computer) and the whole conversation. Both show the one
+ * conversation of useAssistant.ts.
  */
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -102,11 +103,6 @@ export function AssistantPanel({ chat }: { chat: AssistantChat }) {
       <div className="assistant-head">
         <span className="sub">{connectionName(chat)}</span>
         <span className="row">
-          {!chat.boxOpen && (
-            <button className="plain-text" data-testid="assistant-open-box" onClick={() => chat.setBoxOpen(true)}>
-              Open the chatbox
-            </button>
-          )}
           {chat.lines.length > 0 && (
             <button className="plain-text" data-testid="assistant-clear" disabled={chat.busy} onClick={chat.clear}>
               New chat
@@ -183,47 +179,46 @@ export function AssistantPanel({ chat }: { chat: AssistantChat }) {
       </div>
 
       <div className="assistant-lines" data-testid="assistant-lines">
-        <ChatLines lines={chat.lines} busy={chat.busy} empty={`Say how the figure should look, here or in the chatbox at the figure's lower right, for example: ${EXAMPLES}. The assistant changes the controls and says where each one is.`} />
+        <ChatLines lines={chat.lines} busy={chat.busy} empty={`Say how the figure should look, here or in the drawer at the foot of the other tabs, for example: ${EXAMPLES}. The assistant changes the controls and says where each one is.`} />
       </div>
       <ChatInput chat={chat} onSetup={() => undefined} prefix="assistant" rows={2} className="assistant-input" />
     </div>
   );
 }
 
-/** The chatbox over the figure's lower right corner; folded, a small button. */
-export function AssistantChatbox({ chat, onSetup }: { chat: AssistantChat; onSetup: () => void }) {
-  if (!chat.boxOpen) {
-    return (
-      <button className="chatbox-fab" data-testid="chatbox-open" title="Ask the assistant to change the figure" onClick={() => chat.setBoxOpen(true)}>
-        Assistant
-      </button>
-    );
-  }
+/** The drawer at the foot of the side panel: a bar when shut; open, the conversation and the input. */
+export function AssistantDrawer({ chat, onSetup }: { chat: AssistantChat; onSetup: () => void }) {
+  const open = chat.drawerOpen;
   return (
-    <div className="chatbox" data-testid="chatbox" role="dialog" aria-label="Assistant">
-      <div className="chatbox-head">
-        <b>Assistant</b>
-        <span className="sub chatbox-model" title={connectionName(chat)}>
-          {connectionName(chat)}
-        </span>
-        <span className="chatbox-actions">
-          <button className="plain-text" data-testid="chatbox-setup" onClick={onSetup}>
-            Setup
-          </button>
-          {chat.lines.length > 0 && (
-            <button className="plain-text" data-testid="chatbox-clear" disabled={chat.busy} onClick={chat.clear}>
-              New
+    <div className={`drawer${open ? " open" : ""}`} data-testid="drawer" role="region" aria-label="Assistant">
+      <div className="drawer-head">
+        <button className="drawer-toggle" data-testid="drawer-toggle" aria-expanded={open} title={open ? "Shut the assistant's drawer" : "Open the assistant's drawer"} onClick={() => chat.setDrawerOpen(!open)}>
+          <b>Assistant</b>
+          <span className="sub drawer-model">{connectionName(chat)}</span>
+          {chat.busy && !open && <span className="sub">working…</span>}
+          <span className="drawer-chevron" aria-hidden="true">{open ? "▾" : "▴"}</span>
+        </button>
+        {open && (
+          <span className="drawer-actions">
+            <button className="plain-text" data-testid="drawer-setup" onClick={onSetup}>
+              Setup
             </button>
-          )}
-          <button className="chatbox-fold" data-testid="chatbox-fold" title="Fold the chatbox" aria-label="Fold the chatbox" onClick={() => chat.setBoxOpen(false)}>
-            ▾
-          </button>
-        </span>
+            {chat.lines.length > 0 && (
+              <button className="plain-text" data-testid="drawer-clear" disabled={chat.busy} onClick={chat.clear}>
+                New chat
+              </button>
+            )}
+          </span>
+        )}
       </div>
-      <div className="chatbox-lines" data-testid="chatbox-lines">
-        <ChatLines lines={chat.lines} busy={chat.busy} empty={chat.unset ? "Choose a model in Setup, then say how the figure should look." : "How should the figure look? For example: “look along [110]”."} />
-      </div>
-      <ChatInput chat={chat} onSetup={onSetup} prefix="chatbox" rows={1} className="chatbox-input" />
+      {open && (
+        <>
+          <div className="drawer-lines" data-testid="drawer-lines">
+            <ChatLines lines={chat.lines} busy={chat.busy} empty={chat.unset ? "Choose a model in Setup, then say how the figure should look." : "Say how the figure should look, for example: “look along [110]” or “make the O atoms smaller”."} />
+          </div>
+          <ChatInput chat={chat} onSetup={onSetup} prefix="drawer" rows={1} className="drawer-input" />
+        </>
+      )}
     </div>
   );
 }

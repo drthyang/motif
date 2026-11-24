@@ -43,7 +43,7 @@ import {
   type SettingField,
 } from "./settings";
 import { Rulers } from "./Rulers";
-import { AssistantChatbox, AssistantPanel } from "./AssistantPanel";
+import { AssistantDrawer, AssistantPanel } from "./AssistantPanel";
 import { useAssistant } from "./useAssistant";
 import { splitPair, type FigureState, type Page } from "../agent/tools";
 import { sizeLabel } from "./ruler";
@@ -1131,7 +1131,7 @@ export function App() {
     }),
     [],
   );
-  // One conversation, shown in the chatbox at the figure and in the Assistant tab.
+  // One conversation, shown in the drawer under the side tabs and in the Assistant tab.
   const chat = useAssistant(assistantPage);
 
   return (
@@ -1352,7 +1352,6 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   <div className="layer" data-testid="layer-structure" data-hidden={previewLive ? "yes" : "no"} style={{ opacity: previewLive ? 0 : 1 }} dangerouslySetInnerHTML={{ __html: structureSvg }} />
                   <div className="layer" data-testid="layer-band" dangerouslySetInnerHTML={{ __html: bandSvg }} />
                 </div>
-                <AssistantChatbox chat={chat} onSetup={() => setTab("assistant")} />
                 <canvas
                   ref={preview.canvasRef}
                   className="preview"
@@ -2714,6 +2713,8 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             </Section>
             </div>
             </TabContext.Provider>
+            {/* Under every other tab; the Assistant tab shows the same conversation itself. */}
+            {tab !== "assistant" && <AssistantDrawer chat={chat} onSetup={() => setTab("assistant")} />}
           </aside>
         )}
       </main>

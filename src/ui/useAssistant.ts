@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Tsung-Han Yang
 
 /**
- * The assistant's conversation and connection, held once for the page: the chatbox at the figure and the Assistant
+ * The assistant's conversation and connection, held once for the page: the drawer under the side tabs and the Assistant
  * tab (setup and the whole conversation) both show this one. The connection choice and the keys stay in this browser.
  */
 
@@ -17,7 +17,7 @@ import type { Page } from "../agent/tools";
 const CONFIG_KEY = "motif.assistant";
 /** Where each key is kept in this browser (Claude's under the name it has had from the start). */
 const KEY_STORE: Record<string, string> = { "api-key": "motif.assistant.key", openai: "motif.assistant.key.openai", gemini: "motif.assistant.key.gemini" };
-const BOX_KEY = "motif.assistant.box";
+const DRAWER_KEY = "motif.assistant.drawer";
 
 export const TRANSPORT_NAMES: Record<Transport, string> = { "api-key": "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama", lmstudio: "LM Studio" };
 
@@ -68,12 +68,13 @@ export interface AssistantChat {
   readonly unset: boolean;
   readonly lines: readonly Line[];
   readonly busy: boolean;
-  readonly boxOpen: boolean;
+  /** The drawer under the side tabs is open. */
+  readonly drawerOpen: boolean;
   readonly setTransport: (t: Transport) => void;
   readonly setServerUrl: (url: string) => void;
   readonly setModel: (model: string) => void;
   readonly setApiKey: (key: string) => void;
-  readonly setBoxOpen: (open: boolean) => void;
+  readonly setDrawerOpen: (open: boolean) => void;
   /** Send the user's words; false if nothing was sent (no words, busy, or no model chosen). */
   readonly send: (words: string) => Promise<boolean>;
   readonly stop: () => void;
@@ -89,7 +90,7 @@ export function useAssistant(page: Page): AssistantChat {
   const [lines, setLines] = useState<Line[]>([]);
   const [history, setHistory] = useState<MessageParam[]>([]);
   const [busy, setBusy] = useState(false);
-  const [boxOpen, setBoxOpenState] = useState(() => read(BOX_KEY) !== "closed");
+  const [drawerOpen, setDrawerOpenState] = useState(() => read(DRAWER_KEY) !== "shut");
   const stopper = useRef<AbortController | null>(null);
 
   const keep = (s: Stored) => {
@@ -200,7 +201,7 @@ export function useAssistant(page: Page): AssistantChat {
     unset,
     lines,
     busy,
-    boxOpen,
+    drawerOpen,
     setTransport: (transport) => keep({ ...stored, transport, model: "" }),
     setServerUrl: (serverUrl) => keep({ ...stored, serverUrl }),
     setModel: (m) => keep({ ...stored, model: m }),
@@ -208,9 +209,9 @@ export function useAssistant(page: Page): AssistantChat {
       setKeys((k) => ({ ...k, [stored.transport]: key }));
       write(KEY_STORE[stored.transport]!, key);
     },
-    setBoxOpen: (open) => {
-      setBoxOpenState(open);
-      write(BOX_KEY, open ? "open" : "closed");
+    setDrawerOpen: (open) => {
+      setDrawerOpenState(open);
+      write(DRAWER_KEY, open ? "open" : "shut");
     },
     send,
     stop: () => stopper.current?.abort(),
