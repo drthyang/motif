@@ -248,4 +248,14 @@ describe("colour and size", () => {
           }
         }
   });
+
+  it("default colours tell apart elements often found together (Nb and Se were two near greens)", () => {
+    const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    const apart = (a: string, b: string) => {
+      const [p, q] = [rgb(defaultColour(a)), rgb(defaultColour(b))];
+      return Math.hypot(p[0]! - q[0]!, p[1]! - q[1]!, p[2]! - q[2]!);
+    };
+    // Elements often found together: transition metals with chalcogens, and neighbouring chalcogens.
+    for (const [a, b] of [["Nb", "Se"], ["Ga", "Se"], ["Ga", "Nb"], ["Mo", "Se"], ["W", "Se"], ["S", "Se"], ["Se", "Te"]]) expect(apart(a!, b!), `${a}–${b}`).toBeGreaterThan(60);
+  });
 });

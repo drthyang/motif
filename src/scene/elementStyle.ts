@@ -20,9 +20,9 @@ const RADII: readonly number[] = [
 
 const COLOURS: Readonly<Record<string, string>> = {
   H: "#dfe3e6", D: "#dfe3e6", C: "#6b7379", N: "#6f8fc9", O: "#f1cfcc", F: "#9fcf9a", Na: "#b99ad6", Mg: "#9cc79a",
-  Al: "#b8a9c4", Si: "#c9b68f", P: "#d49a5c", S: "#d9c25a", Cl: "#8fc48b", K: "#9a7fc0", Ca: "#8fb8a0",
+  Al: "#b8a9c4", Si: "#c9b68f", P: "#d49a5c", S: "#d9c25a", Se: "#e08a3c", Cl: "#8fc48b", K: "#9a7fc0", Ca: "#8fb8a0",
   Ti: "#5f89b8", V: "#7f9a9e", Cr: "#7a8fb5", Mn: "#8e6bb0", Fe: "#c77b3b", Co: "#3d6fb3", Ni: "#4d9a68",
-  Cu: "#b5533c", Zn: "#8b98a6", Sr: "#6fae8f", Y: "#7fbfc0", Zr: "#86b8b0", Ba: "#5a9a7a", La: "#7fb3d1",
+  Cu: "#b5533c", Zn: "#8b98a6", Ga: "#a8899b", Sr: "#6fae8f", Y: "#7fbfc0", Zr: "#86b8b0", Ba: "#5a9a7a", La: "#7fb3d1",
   Tb: "#c2343c", W: "#b3bac1", Pb: "#7b848c", Bi: "#c5cad0",
 };
 
