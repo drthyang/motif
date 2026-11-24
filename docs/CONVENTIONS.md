@@ -168,6 +168,50 @@ by atom with the CIF.
 - Filled bond triangles take the pale tint of their atoms unless a colour is chosen for them.
 - Each rule has its own bond colour and thickness.
 
+### Coordination polyhedra (2026-11-24)
+
+The user's choices, 2026-11-24 (commit e016d7f):
+
+- **From a bond rule.** "Polyhedra round X" on a bond rule draws, round each centre atom inside the range, the
+  convex hull of the neighbours the rule bonds it to (TiO6 octahedra, SiO4 tetrahedra). Faces in one plane are
+  merged into one face (corners within 0.01 Å of a face's plane lie in it), so a cube has 6 square faces.
+  Neighbours all in one plane give a flat polygon; fewer than three, or all on a line, give nothing
+  (`src/scene/polyhedra.ts`).
+- **Corners are complete.** The neighbours outside the range are always added, as "complete" does; while
+  polyhedra are on, that checkbox shows checked and cannot be changed.
+- **Looks.** Glass by default; Solid and Line art can be chosen.
+  - Glass: see-through faces (55 % solid by default, set with "faces % solid") shaded by the light, every edge
+    drawn, the centre atom inside.
+  - Solid: opaque shaded front faces with their edges; the centre atom is hidden.
+  - Line art: white front faces, visible edges in ink, hidden edges thin and dashed; the centre atom is hidden.
+- **Colour.** The centre atom's colour, or one chosen (↺ resets it). A shared site (Fe/Mg in olivine) takes its
+  elements' colours mixed by occupancy.
+- **Bonds inside.** The rule's own bonds inside the polyhedra are left out, unless "Also draw the X–Y bonds
+  inside" is ticked.
+- **Depth.** Each polyhedron is drawn as one unit at its centre's depth: back faces and edges, then the centre
+  atom, the bonds inside and the pieces of cell edges inside, then the front faces and edges
+  (`layoutPolyhedra` in `src/render/svg.ts`). A face is at the back when its outward normal points away from the
+  viewer. Corner atoms keep their own depth. Exact clipping where a polyhedron passes through other atoms may come
+  later.
+- The rule's summary line counts them by shape ("18 octahedra"). The assistant can switch polyhedra on or off
+  and set their look and colour (`change_bonds`); `describe_figure` gives each rule's polyhedra ("off" or the
+  look).
+- **Speed.** The RMC 6 × 6 × 6 supercell gives 251 octahedra: 71 ms for the scene and 56 ms for the SVG. The GPU
+  preview leaves polyhedra out while the view moves, as it does filled triangles.
+- **Checked** (`tests/polyhedra.test.ts`):
+  - the hulls of an octahedron (8 faces, 12 edges, Euler's formula), a cube (6 square faces), a tetrahedron and
+    a square (flat);
+  - counts and corner distances against gemmi:
+    - cubic SrTiO3 (COD 9006864), 2 × 2 × 1 cells: 18 octahedra, Ti–O = *a*/2 = 1.953 Å;
+    - quartz, 2 × 2 × 1 cells: 20 tetrahedra, Si–O 1.607 and 1.611 Å;
+    - olivine, one cell: 4 SiO4 and 19 (Fe,Mg)O6;
+    - LaMnO3, one layer: 12 octahedra, Mn–O 1.906, 1.968 and 2.180 Å;
+  - an octahedron seen down [111]: 4 back faces before the Ti, 4 front faces after; in line art 3 dashed edges
+    and 9 solid.
+
+  The SrTiO3 numbers were also worked by hand (2026-11-24): Ti sits at the origin, so cells 0 to 2, 0 to 2, 0 to 1
+  hold 3 × 3 × 2 = 18 Ti, and Ti–O = 3.90528 / 2 = 1.9526 Å.
+
 ### Bond angles
 
 - A bond angle is the angle between two drawn bonds that meet at an atom. An *angle rule* names
@@ -483,6 +527,9 @@ Structure tab; the user's choices of 2026-11-23.
     of a species; optional are their size in Å (more than 0 and at most 20), `colours` (two `#rrggbb`, for the
     two signs) and `zFrom` (`{ neighbour, mode }`, mode `longest` or `bridge`: the local z from each atom's
     bonds, as under Orbitals);
+  - `polyhedra`: a list of `{ centre, neighbour, upTo }`, coordination polyhedra round each `centre` atom with
+    its `neighbour` atoms as corners, in the default look; the bond rule between the two is used if MOTIF
+    suggested one, else one is added up to `upTo` Å (more than 0.1 and at most 10);
   - `hide`: a list of species left out of the figure;
   - `cells`: six numbers, the range shown, from *a*, *b*, *c* then to *a*, *b*, *c* (each "from" below its "to");
   - `fold`: `true` for an RMC configuration to be folded into one averaged cell;
@@ -492,8 +539,10 @@ Structure tab; the user's choices of 2026-11-23.
 - An entry with no title or file, a file not in `examples/`, or a malformed setting is refused with its number.
 - The settings apply only when the example is opened from the start page or the Examples menu; opening the same
   file by hand gives the plain defaults.
-- Checked (`tests/features.test.ts`): each example opens and shows its feature (moments for the magnetic one,
-  orbitals on every atom of the species named), and the RMC example opens as its supercell and folds into the five sites of cubic SrTiO3,
+- The first card was "Atomic structure" (quartz) until 2026-11-24; at the user's request it is now "Coordination
+  polyhedra", cubic SrTiO3 with its TiO6 octahedra (e016d7f).
+- Checked (`tests/features.test.ts`): each example opens and shows its feature (18 octahedra for the
+  polyhedra one, moments for the magnetic one, orbitals on every atom of the species named), and the RMC example opens as its supercell and folds into the five sites of cubic SrTiO3,
   each within 0.02 Å of the published site.
 
 ### Large structures
@@ -504,7 +553,7 @@ Structure tab; the user's choices of 2026-11-23.
   movement stops.
 - The preview is given the same scene and places every atom with the same formula as the SVG (tested), and
   shades spheres the same way, pie spheres included, but it is simpler: arrows as bars, a plain cell, bonds
-  with square ends, and no bands, filled triangles, angle marks or labels. Where two atoms overlap the preview
+  with square ends, and no bands, filled triangles, polyhedra, angle marks or labels. Where two atoms overlap the preview
   shows the true intersection of the spheres, the SVG the nearer atom whole.
 - It is never what is saved: Save always writes the vector figure. Small structures are simply redrawn as
   SVG, and so is everything in a browser that cannot draw in a worker (the page says so).
@@ -590,6 +639,7 @@ Each step is checked against an independent reference before the next one starts
 | Distortion modes | hand calculations from the published BaTiO3 and SrTiO3 I4/mcm coordinates | `tests/distortion.test.ts` |
 | Journal templates | the widths and text rules on the journals' author pages | `tests/journals.test.ts` |
 | Orbitals | orthogonality of the harmonics; the solid against the drawn surface; cuts against atoms | `tests/orbitals.test.ts` |
+| Coordination polyhedra | hulls of regular solids (Euler's formula); counts and corner distances against gemmi; the drawing order seen down [111] | `tests/polyhedra.test.ts` |
 | GPU preview | the same atom placement as the SVG; in a real browser, the saved SVG is identical with the preview on, off and showing, the two pictures of one view agree, and the page works without worker drawing | `scripts/browser_check.cjs` |
 
 ## Steps of the first version
@@ -611,6 +661,7 @@ Each step is checked against an independent reference before the next one starts
 | 13 | Figure size on paper, aspect ratios, text in pt (defaults: Nature single column, 4:3, 7 pt) | done (2026-11-23) |
 | 14 | Saved settings: named, kept in the browser, exported and imported as a file | done (2026-11-23) |
 | 15 | Bond styles: atom colours, dashed and dotted; filled triangles cut to the gap | done (2026-11-23) |
+| 16 | Coordination polyhedra from a bond rule: glass, solid or line art | done (2026-11-24) |
 
 Examples and screenshots in this repository use published structures only.
 

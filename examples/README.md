@@ -22,6 +22,9 @@ gives the plain defaults.
 Only one TiO2 layer is shown in the distortion-mode example: seen down *c*, the layers at *z* = 0 and *z* = 1/2,
 whose octahedra turn in opposite senses, would lie on top of each other.
 
+Quartz (`quartz_COD-9009666.cif`) was the first feature example ("Atomic structure") until 2026-11-24, when the
+user asked for a polyhedron example in its place; it stays because the tests use it.
+
 The format of `features.json` is in [docs/CONVENTIONS.md](../docs/CONVENTIONS.md#feature-examples).
 
 ## All files
@@ -42,6 +45,16 @@ and can still be opened with **Open file…**.
 | `SrTiO3-octahedral-rotation_COD-2310687.cif` | SrTiO3, tetragonal I4/mcm, as the mode R4+ of the cubic perovskite: ISODISTORT's mode decomposition (see below) | COD 2310687 |
 | `BaTiO3-ferroelectric-distortion_COD-2100858.cif` | BaTiO3, tetragonal P4mm, as the polar mode GM4- of the cubic perovskite: ISODISTORT's mode decomposition of COD 2100858 against the cubic cell of 2100862 (Buttner & Maslen 1992) | COD 2100858 |
 | `SrTiO3-supercell_generated.rmc6f` | an illustrative RMCProfile configuration of cubic SrTiO3, made for MOTIF (see below) | generated from COD 9006864 |
+
+## The coordination-polyhedra example
+
+`perovskite-SrTiO3_COD-9006864.cif` is cubic SrTiO3 (tausonite, Pm-3m, *a* = 3.90528 Å; Mitchell, Chakhmouradian &
+Woodward 2000), from the COD. Shown in 2 × 2 × 1 cells with a TiO6 octahedron round every Ti, in the
+glass look; the corner O atoms outside the cells are added, so every octahedron is whole.
+
+Checked (`tests/polyhedra.test.ts`, `tests/features.test.ts`) against gemmi: 18 octahedra, each Ti–O = *a*/2 =
+1.953 Å. Also worked by hand (2026-11-24): Ti sits at the origin, so cells 0 to 2 along *a* and *b* and 0 to 1
+along *c* hold 3 × 3 × 2 = 18 Ti, and 3.90528 / 2 = 1.9526 Å.
 
 ## The distortion-mode example
 
@@ -84,8 +97,8 @@ plane is opposite in the *z* = 0 and *z* = 1/2 layers. The p axis of the apical 
 the *ab* plane. The symmetry expansion is checked against a gemmi reference (20 atoms, `tests/reference/`). The
 bond lengths and vectors were also recomputed by hand on 2026-11-23 from the file's cell, sites and operations.
 
-The cubic SrTiO3 file (COD 9006864) is no longer an orbital example; it stays because other tests and the
-generated RMC configuration use it.
+The cubic SrTiO3 file (COD 9006864) is no longer an orbital example; it is now the coordination-polyhedra
+example, and the generated RMC configuration is made from it.
 
 ## The generated RMC configuration
 

@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 363 tests, about three seconds
+npx tsc -b && npx vitest run    # 376 tests, about three seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -48,6 +48,11 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   longer used by the page, and orbitals no longer count towards the GPU preview. Since f239ef1 an orbital's local z can come from each atom's own bonds
   ("longest bond to" a species, or "line through two" atoms of it), so an orbital order shows. Details and
   checks in docs/CONVENTIONS.md, "Orbitals".
+- Coordination polyhedra (e016d7f, docs/CONVENTIONS.md "Coordination polyhedra"), the user's choices of
+  2026-11-24: from a bond rule ("Polyhedra round X"); glass by default, solid or line art; each drawn as one unit
+  at its centre's depth (exact clipping may come later); a shared site coloured by its elements mixed by
+  occupancy. Checked against gemmi counts and distances (`tests/polyhedra.test.ts`). The GPU preview leaves them
+  out while the view moves.
 - SVG is the source of truth; PNG is drawn from the same SVG. Three parts: `src/structure` (file to
   atoms), `src/scene` (what is shown, plain data), `src/render` (scene + view to SVG), plus `src/preview`
   (GPU drawing while a large structure moves) and `src/ui`.
@@ -106,9 +111,10 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   set up). The user's choice (2026-11-23): keep the link in the README, with a grey "app: not yet live" badge
   and a line saying it will work once published. When the app goes live, change the badge back to "app: live"
   and drop that line.
-- Five feature examples (commits 6547441, 2329288 and f239ef1): atomic structure, magnetic structure, distortion
-  mode, orbital order and an RMC configuration (opened folded), listed in `examples/features.json` and described in
-  `examples/README.md`; the format is in docs/CONVENTIONS.md. The distortion mode is SrTiO3 I4/mcm (COD 2310687,
+- Five feature examples (commits 6547441, 2329288, f239ef1 and e016d7f): coordination polyhedra, magnetic
+  structure, distortion mode, orbital order and an RMC configuration (opened as its supercell), listed in `examples/features.json` and described in
+  `examples/README.md`; the format is in docs/CONVENTIONS.md. The first is cubic SrTiO3 (COD 9006864) with its
+  TiO6 octahedra, 2 × 2 × 1 cells; it replaced quartz ("atomic structure") on 2026-11-24 at the user's request. The distortion mode is SrTiO3 I4/mcm (COD 2310687,
   the octahedra turned about c, the user's choice), seen down c. The orbital order is LaMnO3 (COD 1006141): Mn
   dz² along each Mn's long bond, O pz along each Mn–O–Mn line (the user's choice). The RMC file
   `examples/SrTiO3-supercell_generated.rmc6f` is generated for MOTIF by `scripts/make_rmc_example.py`, not a

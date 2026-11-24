@@ -67,8 +67,8 @@ size in Illustrator, Inkscape or Keynote; the PNG is drawn from the same SVG.
   FHI-aims `geometry.in`; XSF. The format is shown over the figure.
 - **Vector or raster:** an SVG you can edit, with live text at a fixed size in pt, or a PNG at any dpi,
   transparent or on white.
-- **Shows the chemistry:** cells or a slab, bonds by distance, bond angles, chains and filled polygons, shared
-  sites as pie spheres, and s, p, d and f orbitals as schematic isosurfaces.
+- **Shows the chemistry:** cells or a slab, bonds by distance, coordination polyhedra (glass, solid or line art),
+  bond angles, chains and filled polygons, shared sites as pie spheres, and s, p, d and f orbitals as schematic isosurfaces.
 - **Styled your way:** soft, flat, glossy, metal or glass surfaces; bonds in atom colours, dashed or dotted;
   axis arrows in their own colours; preset views (clinographic, isometric) or a view along any [uvw] or normal
   to any (hkl); your settings saved and reused.
@@ -83,7 +83,7 @@ size in Illustrator, Inkscape or Keynote; the PNG is drawn from the same SVG.
 ## Quick start
 
 Open [the app](https://drthyang.github.io/motif/) and drop a file on it, or start from one of the feature
-examples on the start page: an atomic structure (quartz), a magnetic structure (MnF₂), a distortion mode (the
+examples on the start page: coordination polyhedra (the TiO₆ octahedra of SrTiO₃), a magnetic structure (MnF₂), a distortion mode (the
 TiO₆ octahedra of SrTiO₃ turned about *c*), orbital order (the Mn e<sub>g</sub> and O 2p orbitals of LaMnO₃) and an RMC
 configuration (its supercell; **Fold** averages it to one cell). Turn the structure with the mouse,
 then press **Save SVG** or **Save PNG**.
