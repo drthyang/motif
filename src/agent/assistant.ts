@@ -4,10 +4,11 @@
 /**
  * The in-page assistant: how it reaches a model, and one exchange with it.
  *
- * Models as in MATERIA (the user's choice, 2026-11-24): Claude with the user's own API key, sent from this browser
- * straight to the API; or a local model on Ollama or LM Studio, on which nothing leaves the computer. With Claude,
- * what the tools report (the cell, the elements, the settings) goes to Anthropic. The connection code for the local
- * servers is MATERIA's (localServer.ts, ollama.ts, ollamaNative.ts, lmstudio.ts).
+ * Models as in MATERIA (the user's choice, 2026-11-24): Claude, OpenAI or Gemini with the user's own API key, sent
+ * from this browser straight to that provider; or a local model on Ollama or LM Studio, on which nothing leaves the
+ * computer. With a key, what the tools report (the cell, the elements, the settings) goes to that provider. The
+ * connection code for the local servers is MATERIA's (localServer.ts, ollama.ts, ollamaNative.ts, lmstudio.ts);
+ * OpenAI and Gemini go through one translation to their Chat Completions API (openaiCompatible.ts).
  *
  * One exchange: the user's words go to the model with the tools (tools.ts); each tool it calls is carried out on the
  * page and its answer sent back, until the model answers in words, or MAX_STEPS calls have been made.
@@ -19,14 +20,19 @@ import { plainFetch } from "./localServer";
 import { ollamaBase } from "./ollama";
 import { ollamaNativeFetch } from "./ollamaNative";
 import { lmstudioBase } from "./lmstudio";
+import { chatCompletionsClient, PROVIDERS, ProviderError } from "./openaiCompatible";
 import { runTool, TOOLS, type Page } from "./tools";
 
-export type Transport = "api-key" | "ollama" | "lmstudio";
+/** "api-key" is Claude with the user's key; "openai" and "gemini" likewise with theirs. */
+export type Transport = "api-key" | "openai" | "gemini" | "ollama" | "lmstudio";
+
+/** Connections that need the user's key. */
+export const KEYED: readonly Transport[] = ["api-key", "openai", "gemini"];
 
 export interface AssistantConfig {
   readonly transport: Transport;
   readonly model: string;
-  /** The user's Anthropic key (api-key only); kept in this browser. */
+  /** The user's key for Claude, OpenAI or Gemini; kept in this browser. */
   readonly apiKey?: string;
   /** The local server's address (Ollama or LM Studio), when not the usual one. */
   readonly serverUrl?: string;
@@ -61,7 +67,7 @@ Rules:
 - Colours are "#rrggbb". Distances are in angstrom.`;
 
 /** The client for the chosen connection. */
-export function clientFor(config: AssistantConfig): Anthropic {
+export function clientFor(config: AssistantConfig): MessagesClient {
   if (config.transport === "ollama") {
     // Ollama through its native chat (the only endpoint that takes a context length), with plain headers.
     return new Anthropic({ apiKey: "ollama", baseURL: ollamaBase(config.serverUrl ?? ""), dangerouslyAllowBrowser: true, maxRetries: 1, fetch: ollamaNativeFetch(() => ({ numCtx: LOCAL_CONTEXT, numPredict: MAX_ANSWER })) });
@@ -69,7 +75,11 @@ export function clientFor(config: AssistantConfig): Anthropic {
   if (config.transport === "lmstudio") {
     return new Anthropic({ apiKey: "lmstudio", baseURL: lmstudioBase(config.serverUrl ?? ""), dangerouslyAllowBrowser: true, maxRetries: 1, fetch: plainFetch });
   }
-  if (!config.apiKey) throw new Error("No API key. Add your Anthropic key in the assistant's settings, or choose a local model.");
+  if (config.transport === "openai" || config.transport === "gemini") {
+    if (!config.apiKey) throw new Error(`No API key. Add your ${PROVIDERS[config.transport].name} key in the assistant's Setup, or choose a local model.`);
+    return chatCompletionsClient(config.transport, config.apiKey);
+  }
+  if (!config.apiKey) throw new Error("No API key. Add your Anthropic key in the assistant's Setup, or choose a local model.");
   return new Anthropic({ apiKey: config.apiKey, dangerouslyAllowBrowser: true, maxRetries: 2 });
 }
 
@@ -140,6 +150,16 @@ export async function exchange(
 
 /** A readable sentence for a failed request. */
 export function describeError(e: unknown, config: AssistantConfig): string {
+  if (config.transport === "openai" || config.transport === "gemini") {
+    const { name, company } = PROVIDERS[config.transport];
+    if (e instanceof ProviderError) {
+      if (e.status === 401 || e.status === 403 || /api key/i.test(e.message)) return `The ${name} key was rejected. Check it in the assistant's Setup.`;
+      if (e.status === 429) return `${company} says too many requests, or the key's quota is used up: ${e.message}`;
+      return `${company} answered with an error: ${e.message}`;
+    }
+    if (e instanceof TypeError && /fetch/i.test(e.message)) return `Could not reach ${company} from this browser.`;
+    return e instanceof Error ? e.message : String(e);
+  }
   if (config.transport !== "api-key") {
     const where = config.transport === "ollama" ? "Ollama" : "LM Studio";
     const address = config.serverUrl || (config.transport === "ollama" ? "http://localhost:11434" : "http://localhost:1234");

@@ -275,7 +275,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 /* The file's format, over the figure at the left (as the RMC switch is). */
 .tool-label.format { color: var(--secondary); font-weight: 600; margin-right: 10px; }
 /* The Assistant tab: a quiet conversation, the page's own controls doing the work. */
-.assistant { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; min-height: 60vh; }
+/* Named apart from .said.assistant (a reply), which must not take the panel's height. */
+.assistant-panel { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; min-height: 60vh; }
 .assistant-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .assistant-head .row { margin: 0; min-height: 0; }
 button.plain-text { border: 0; background: none; height: auto; padding: 2px 4px; color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--control); }
@@ -290,8 +291,24 @@ button.plain-text:hover:not(:disabled) { background: none; text-decoration-color
 .said.step { color: var(--faint); font-size: var(--fz-small); padding-left: 10px; border-left: 2px solid var(--line); }
 .said.step.failed { color: var(--warn-ink); border-left-color: var(--warn-ink); }
 .said.error { color: var(--warn-ink); background: var(--warn-bg); padding: 7px 11px; border-radius: var(--radius); font-size: var(--fz-small); }
-.assistant-input { display: flex; gap: 8px; align-items: flex-end; position: sticky; bottom: 0; background: var(--surface); padding: 10px 0 4px; border-top: 1px solid var(--line); }
+/* Held over the tab body's bottom padding too, so no line shows below it. */
+.assistant-input { display: flex; gap: 8px; align-items: flex-end; position: sticky; bottom: -24px; margin-bottom: -24px; background: var(--surface); padding: 10px 0 28px; border-top: 1px solid var(--line); }
 .assistant-input textarea { flex: 1; resize: vertical; min-height: 44px; font: inherit; font-size: var(--fz-body); padding: 8px 10px; border: 1px solid var(--control); border-radius: var(--radius); }
 .assistant-input textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
 /* Five tabs on one line in the side column. */
 .tabs button { font-size: 13.5px; }
+/* The chatbox over the figure's lower right corner: the assistant at hand while the figure is in view. */
+.chatbox, .chatbox-fab { position: absolute; right: 12px; bottom: 12px; z-index: 4; }
+.chatbox { width: min(340px, calc(100% - 24px)); display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 24px rgba(20, 24, 28, 0.14); }
+.chatbox-head { display: flex; align-items: baseline; gap: 8px; padding: 8px 8px 6px 12px; border-bottom: 1px solid var(--line); }
+.chatbox-model { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chatbox-actions { display: inline-flex; align-items: center; gap: 2px; flex: none; }
+.chatbox-fold { border: 0; background: none; height: 24px; width: 26px; padding: 0; color: var(--secondary); font-size: 15px; border-radius: 6px; }
+.chatbox-fold:hover { background: var(--muted); color: var(--ink); }
+.chatbox-lines { display: flex; flex-direction: column; gap: 7px; max-height: 230px; overflow-y: auto; padding: 10px 12px; }
+.chatbox-lines .said, .chatbox-lines .sub { font-size: var(--fz-small); }
+.chatbox-input { display: flex; gap: 6px; align-items: flex-end; padding: 8px; border-top: 1px solid var(--line); }
+.chatbox-input textarea { flex: 1; resize: none; min-height: 34px; max-height: 120px; font: inherit; font-size: var(--fz-small); padding: 7px 9px; border: 1px solid var(--control); border-radius: var(--radius); field-sizing: content; }
+.chatbox-input textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.chatbox-fab { height: 32px; padding: 0 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 3px 12px rgba(20, 24, 28, 0.12); }
+.chatbox-fab:hover { background: var(--muted); }

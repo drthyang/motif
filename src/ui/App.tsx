@@ -43,7 +43,8 @@ import {
   type SettingField,
 } from "./settings";
 import { Rulers } from "./Rulers";
-import { AssistantPanel } from "./AssistantPanel";
+import { AssistantChatbox, AssistantPanel } from "./AssistantPanel";
+import { useAssistant } from "./useAssistant";
 import { splitPair, type FigureState, type Page } from "../agent/tools";
 import { sizeLabel } from "./ruler";
 import { isDoubleTap, rollFor, twoFingerStep, type Touch } from "./touch";
@@ -1130,6 +1131,8 @@ export function App() {
     }),
     [],
   );
+  // One conversation, shown in the chatbox at the figure and in the Assistant tab.
+  const chat = useAssistant(assistantPage);
 
   return (
     <div className="shell">
@@ -1349,6 +1352,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   <div className="layer" data-testid="layer-structure" data-hidden={previewLive ? "yes" : "no"} style={{ opacity: previewLive ? 0 : 1 }} dangerouslySetInnerHTML={{ __html: structureSvg }} />
                   <div className="layer" data-testid="layer-band" dangerouslySetInnerHTML={{ __html: bandSvg }} />
                 </div>
+                <AssistantChatbox chat={chat} onSetup={() => setTab("assistant")} />
                 <canvas
                   ref={preview.canvasRef}
                   className="preview"
@@ -1448,7 +1452,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             <div className="tab-body">
             {/* Kept mounted, so the conversation stays when another tab is open. */}
             <div hidden={tab !== "assistant"} className="assistant-tab">
-              <AssistantPanel page={assistantPage} />
+              <AssistantPanel chat={chat} />
             </div>
             <Section tab="info" title="File" hint="What the file says. Nothing here changes the figure.">
               <table data-testid="info">
