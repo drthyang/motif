@@ -191,8 +191,16 @@ The user's choices, 2026-11-24 (commit e016d7f):
 - **Depth.** Each polyhedron is drawn as one unit at its centre's depth: back faces and edges, then the centre
   atom, the bonds inside and the pieces of cell edges inside, then the front faces and edges
   (`layoutPolyhedra` in `src/render/svg.ts`). A face is at the back when its outward normal points away from the
-  viewer. Corner atoms keep their own depth. Exact clipping where a polyhedron passes through other atoms may come
-  later.
+  viewer. Exact clipping where a polyhedron passes through atoms other than its own may come later.
+- **Corner atoms cut exactly** (the user's request, 2026-11-24, commit acb71ee). A corner atom is drawn twice:
+  whole, before every polyhedron it is a corner of, so their faces cover the part of it behind them; and again
+  after all of them, cut to the part of its near surface in front of them. A point of that near surface is in
+  front of a polyhedron when it lies outside the plane of one of the polyhedron's faces that turn to the viewer
+  and meet at the corner, or when the line of sight misses the polyhedron (outside its outline on screen). Such a
+  plane passes through the atom's centre, so it cuts the atom in a great circle, seen as a half-ellipse. This
+  assumes the planes of faces away from the corner are farther from it than the atom's radius, which holds for
+  real atoms and polyhedra. Until then a corner atom was drawn whole at its own depth, and the faces and edges
+  of a polyhedron drawn after it ran across it to its centre.
 - The rule's summary line counts them by shape ("18 octahedra"). The assistant can switch polyhedra on or off
   and set their look and colour (`change_bonds`); `describe_figure` gives each rule's polyhedra ("off" or the
   look).
@@ -207,10 +215,15 @@ The user's choices, 2026-11-24 (commit e016d7f):
     - olivine, one cell: 4 SiO4 and 19 (Fe,Mg)O6;
     - LaMnO3, one layer: 12 octahedra, Mn–O 1.906, 1.968 and 2.180 Å;
   - an octahedron seen down [111]: 4 back faces before the Ti, 4 front faces after; in line art 3 dashed edges
-    and 9 solid.
+    and 9 solid;
+  - the cut of corner atoms, by ray casting against the octahedron |*x*| + |*y*| + |*z*| ≤ *a*/2 of cubic SrTiO3 in
+    the default view: at every sample point of all six O discs more than a pixel from the cut's edge (over 1000
+    points, over 200 each in front and behind), the drawn cut agrees with whether the atom's surface is in front.
 
   The SrTiO3 numbers were also worked by hand (2026-11-24): Ti sits at the origin, so cells 0 to 2, 0 to 2, 0 to 1
-  hold 3 × 3 × 2 = 18 Ti, and Ti–O = 3.90528 / 2 = 1.9526 Å.
+  hold 3 × 3 × 2 = 18 Ti, and Ti–O = 3.90528 / 2 = 1.9526 Å. So was the LaMnO3 count: in the slab −0.06 to
+  0.06 along *c* only the Mn at *z* = 0 lie, at (½, 0, 0) and (0, ½, 0) and their translations, which in cells
+  0 to 2 along *a* and *b* number 2 × 3 + 3 × 2 = 12.
 
 ### Bond angles
 
@@ -539,9 +552,10 @@ Structure tab; the user's choices of 2026-11-23.
 - An entry with no title or file, a file not in `examples/`, or a malformed setting is refused with its number.
 - The settings apply only when the example is opened from the start page or the Examples menu; opening the same
   file by hand gives the plain defaults.
-- The first card was "Atomic structure" (quartz) until 2026-11-24; at the user's request it is now "Coordination
-  polyhedra", cubic SrTiO3 with its TiO6 octahedra (e016d7f).
-- Checked (`tests/features.test.ts`): each example opens and shows its feature (18 octahedra for the
+- The first card was "Atomic structure" (quartz) until 2026-11-24, when the user asked for a polyhedron example
+  instead: first cubic SrTiO3 with its TiO6 octahedra (e016d7f), then, by the user's choice the same day, one
+  layer of LaMnO3 seen down *c*, whose MnO6 octahedra are tilted and stretched by Jahn–Teller (8ed3cbd).
+- Checked (`tests/features.test.ts`): each example opens and shows its feature (12 octahedra for the
   polyhedra one, moments for the magnetic one, orbitals on every atom of the species named), and the RMC example opens as its supercell and folds into the five sites of cubic SrTiO3,
   each within 0.02 Å of the published site.
 

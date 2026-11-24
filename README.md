@@ -83,7 +83,7 @@ size in Illustrator, Inkscape or Keynote; the PNG is drawn from the same SVG.
 ## Quick start
 
 Open [the app](https://drthyang.github.io/motif/) and drop a file on it, or start from one of the feature
-examples on the start page: coordination polyhedra (the TiO₆ octahedra of SrTiO₃), a magnetic structure (MnF₂), a distortion mode (the
+examples on the start page: coordination polyhedra (the tilted MnO₆ octahedra of LaMnO₃), a magnetic structure (MnF₂), a distortion mode (the
 TiO₆ octahedra of SrTiO₃ turned about *c*), orbital order (the Mn e<sub>g</sub> and O 2p orbitals of LaMnO₃) and an RMC
 configuration (its supercell; **Fold** averages it to one cell). Turn the structure with the mouse,
 then press **Save SVG** or **Save PNG**.

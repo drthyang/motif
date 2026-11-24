@@ -48,13 +48,17 @@ and can still be opened with **Open file…**.
 
 ## The coordination-polyhedra example
 
-`perovskite-SrTiO3_COD-9006864.cif` is cubic SrTiO3 (tausonite, Pm-3m, *a* = 3.90528 Å; Mitchell, Chakhmouradian &
-Woodward 2000), from the COD. Shown in 2 × 2 × 1 cells with a TiO6 octahedron round every Ti, in the
-glass look; the corner O atoms outside the cells are added, so every octahedron is whole.
+The first example uses the LaMnO3 file of the orbital-order example (COD 1006141, Pbnm, 298 K; see below), with the
+same slab and view: one MnO2 layer, cells 0 to 2 along *a* and *b* and −0.06 to 0.06 along *c*, seen down *c*.
+Instead of orbitals it draws an MnO6 octahedron round every Mn, in the glass look, on the Mn–O bonds MOTIF suggests
+(a rule up to 2.4 Å would be added if none were suggested). The octahedra are tilted, and each is stretched along
+one Mn–O bond by Jahn–Teller. The user chose it (2026-11-24) over cubic SrTiO3, whose straight octahedra were the
+first try. Bonds do not add atoms outside the slab, but a polyhedron's corners always do, so the apical O above
+and below each octahedron are drawn.
 
-Checked (`tests/polyhedra.test.ts`, `tests/features.test.ts`) against gemmi: 18 octahedra, each Ti–O = *a*/2 =
-1.953 Å. Also worked by hand (2026-11-24): Ti sits at the origin, so cells 0 to 2 along *a* and *b* and 0 to 1
-along *c* hold 3 × 3 × 2 = 18 Ti, and 3.90528 / 2 = 1.9526 Å.
+Checked (`tests/polyhedra.test.ts`, `tests/features.test.ts`) against gemmi: 12 octahedra, with Mn–O 1.906,
+1.968 and 2.180 Å. The count was also worked by hand (2026-11-24): in that slab only the Mn at *z* = 0 lie, at
+(½, 0, 0) and (0, ½, 0) and their translations, which in cells 0 to 2 along *a* and *b* number 2 × 3 + 3 × 2 = 12.
 
 ## The distortion-mode example
 
@@ -97,8 +101,8 @@ plane is opposite in the *z* = 0 and *z* = 1/2 layers. The p axis of the apical 
 the *ab* plane. The symmetry expansion is checked against a gemmi reference (20 atoms, `tests/reference/`). The
 bond lengths and vectors were also recomputed by hand on 2026-11-23 from the file's cell, sites and operations.
 
-The cubic SrTiO3 file (COD 9006864) is no longer an orbital example; it is now the coordination-polyhedra
-example, and the generated RMC configuration is made from it.
+The cubic SrTiO3 file (COD 9006864) is no longer a feature example; it stays because the tests use it and the
+generated RMC configuration is made from it.
 
 ## The generated RMC configuration
 
