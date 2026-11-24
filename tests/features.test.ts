@@ -19,7 +19,7 @@ const open = (file: string, fold = false) => {
 
 describe("feature examples", () => {
   it("each opens, and shows its feature", () => {
-    expect(features.map((f) => f.title)).toEqual(["Atomic structure", "Magnetic structure", "Distortion mode", "Orbitals", "RMC configuration, folded"]);
+    expect(features.map((f) => f.title)).toEqual(["Atomic structure", "Magnetic structure", "Distortion mode", "Orbitals", "RMC configuration"]);
     for (const f of features) {
       const s = open(f.file, f.fold);
       const orbitals = (f.orbitals ?? []).map((o) => {

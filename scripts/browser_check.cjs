@@ -22,7 +22,7 @@ const check = (name, ok, detail = "") => {
 
 async function setUp(page, query) {
   await page.goto(URL_BASE + query);
-  await page.selectOption("[data-testid=example]", "olivine-FeMg_COD-1541262");
+  await page.setInputFiles("[data-testid=file]", path.join(__dirname, "..", "examples", "olivine-FeMg_COD-1541262.cif"));
   // The bonds (Fe/Mg-O and Si-O) are added by the page when the file opens.
   await page.click("[data-testid=tab-layout]");
   await page.fill("[data-testid=view-az]", "40");

@@ -52,10 +52,9 @@ import type { Structure } from "../structure/types";
 const EXAMPLES = Object.entries(
   import.meta.glob<string>("../../examples/*.{cif,mcif,rmc6f}", { query: "?raw", import: "default", eager: true }),
 ).map(([path, text]) => ({ file: path.split("/").pop()!, name: path.split("/").pop()!.replace(/\.(m?cif|rmc6f)$/, ""), text }));
-// The feature examples, first in the list: a file and the settings that show its feature.
+// The examples the page offers: each a file and the settings that show one feature (examples/features.json).
+// The other files in examples/ are kept for the tests and are not listed.
 const FEATURES: (FeatureExample & { text: string })[] = readFeatures(featuresText, EXAMPLES.map((x) => x.file)).map((f) => ({ ...f, text: EXAMPLES.find((x) => x.file === f.file)!.text }));
-// The other structures, after the features (files that only a feature uses are not listed again).
-const STRUCTURES = EXAMPLES.filter((x) => !/\.rmc6f$/.test(x.file));
 
 /** A full turn for a drag across this many CSS px. */
 const DRAG_PX_PER_TURN = 700;
@@ -441,6 +440,16 @@ export function App() {
       return null;
     }
   }, []);
+  /** Close the structure: back to the start page. */
+  const closeStructure = () => {
+    lastFile.current = null;
+    lastScene.current = null;
+    setStructure(null);
+    setFileName("");
+    setError("");
+    setZoom(NO_ZOOM);
+    setTurnScale(null);
+  };
   /** Open a feature example with the settings that show its feature. */
   const loadFeature = (f: (typeof FEATURES)[number]) => {
     if (f.fold !== undefined) foldRmc.current = f.fold;
@@ -916,28 +925,22 @@ export function App() {
             data-testid="example"
             value=""
             onChange={(e) => {
-              const feature = FEATURES.find((x) => `feature:${x.title}` === e.target.value);
-              if (feature) return loadFeature(feature);
-              const example = EXAMPLES.find((x) => x.name === e.target.value);
-              if (example) load(example.text, example.file);
+              const feature = FEATURES.find((x) => x.title === e.target.value);
+              if (feature) loadFeature(feature);
             }}
           >
             <option value="">Examples…</option>
-            <optgroup label="Features">
-              {FEATURES.map((x) => (
-                <option key={x.title} value={`feature:${x.title}`}>
-                  {x.title}: {x.note}
-                </option>
-              ))}
-            </optgroup>
-            <optgroup label="Structures">
-              {STRUCTURES.map((x) => (
-                <option key={x.name} value={x.name}>
-                  {x.name}
-                </option>
-              ))}
-            </optgroup>
+            {FEATURES.map((x) => (
+              <option key={x.title} value={x.title}>
+                {x.title}: {x.note}
+              </option>
+            ))}
           </select>
+          {structure && (
+            <button data-testid="close" title="Close this structure and go back to the start page" onClick={closeStructure}>
+              Close
+            </button>
+          )}
           {scene && (
             <>
               <label className="check" title="Leave the background of the saved figure transparent">
@@ -1142,17 +1145,11 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
               <p className="empty-title">Drop a structure file here</p>
               <p>CIF, magnetic CIF or RMCProfile configuration (.rmc6f). Or use <b>Open file…</b> above, or start from an example:</p>
               <div className="examples features">
-                {FEATURES.map((x) => (
-                  <button key={x.title} data-testid={`feature-${x.title}`} title={x.note} onClick={() => loadFeature(x)}>
+                {FEATURES.map((x, i) => (
+                  <button key={x.title} data-testid={`feature-${x.title}`} title={`${x.title}: ${x.note}`} onClick={() => loadFeature(x)}>
+                    <span className="number">{String(i + 1).padStart(2, "0")}</span>
                     <b>{x.title}</b>
-                    <span>{x.note}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="examples">
-                {STRUCTURES.map((x) => (
-                  <button key={x.name} data-testid={`start-${x.name}`} onClick={() => load(x.text, x.file)}>
-                    {x.name.replace(/_(COD-\d+|handwritten)$/, "").replace(/-/g, " ")}
+                    <span className="note">{x.note}</span>
                   </button>
                 ))}
               </div>
