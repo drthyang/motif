@@ -34,9 +34,14 @@
  * - American Mineralogist (MSA): 19 picas, "approx. 3 inches" (1 column; 3.17 in), up to 39 picas, 6.5 in (2 columns); the smallest
  *   character at least 8 pt; lines thicker than 0.5 pt; sans serif. ammin.msaweb.org, Manuscript information.
  *
- * Not included, because their pages could not be read (refused to automated access): the IUCr journals (Acta
- * Crystallographica, IUCrJ, Journal of Applied Crystallography), Science Advances, and Wiley's journals
- * (Angewandte Chemie, Advanced Materials, Chemistry - A European Journal).
+ * - IUCr journals (Acta Crystallographica B, C and E, IUCrJ, Journal of Applied Crystallography; one shared text):
+ *   "the greatest width including lettering is less than the width of a column in the journal (8.8 cm)"; lettering
+ *   "ideally 1.5-3 mm in height" after reduction to one column; no two-column width given. journals.iucr.org, each
+ *   journal's Notes for authors, section 4.3 (read in the browser pane, 2026-11-23). The template sets capitals
+ *   2 mm high in the chosen font, within that range (8 pt in Open Sans).
+ *
+ * Not included, because their pages could not be read (refused to automated access): Science Advances, and
+ * Wiley's journals (Angewandte Chemie, Advanced Materials, Chemistry - A European Journal).
  */
 export interface JournalSize {
   readonly id: string;
@@ -141,6 +146,12 @@ export const JOURNALS: readonly Journal[] = [
     ],
     text: { pt: 8 },
     note: "J. Phys.: Condens. Matter (IOP): text 8 to 12 pt at the final size; Times, Helvetica, Courier or Symbol.",
+  },
+  {
+    name: "IUCr journals",
+    sizes: [{ id: "iucr-1", label: "1 column, 8.8 cm", width: 8.8, unit: "cm" }],
+    text: { capitalsMm: 2 },
+    note: "IUCr (Acta Cryst., IUCrJ, J. Appl. Cryst.): narrower than one column with lettering; lettering ideally 1.5 to 3 mm high.",
   },
   {
     name: "American Mineralogist",

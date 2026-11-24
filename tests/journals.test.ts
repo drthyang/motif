@@ -29,6 +29,14 @@ describe("journal templates", () => {
     // American Mineralogist: 19 and 39 picas (6 picas to the inch).
     expect(pt(journalSize("ammin-1")!) / 12).toBeCloseTo(19, 1);
     expect(pt(journalSize("ammin-2")!) / 12).toBe(39);
+    // IUCr: one column, 8.8 cm; capitals 2 mm high, inside the 1.5 to 3 mm asked for.
+    expect(journalSize("iucr-1")!.width).toBe(8.8);
+    expect(journalTextPt(journalSize("iucr-1")!.of, 0.714)).toBe(8);
+    for (const h of [0.65, 0.7, 0.75]) {
+      const capitals = ((journalTextPt(journalSize("iucr-1")!.of, h) * h) / 72) * 25.4;
+      expect(capitals).toBeGreaterThanOrEqual(1.5);
+      expect(capitals).toBeLessThanOrEqual(3);
+    }
     // Each template's text is within what its journal allows.
     expect(journalTextPt(journalSize("jpcm-1")!.of, 0.7)).toBeGreaterThanOrEqual(8);
     expect(journalTextPt(journalSize("ammin-1")!.of, 0.7)).toBeGreaterThanOrEqual(8);
