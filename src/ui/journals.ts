@@ -211,3 +211,32 @@ export function journalTextPt(journal: Journal, capHeight: number): number {
   if ("pt" in journal.text) return journal.text.pt;
   return Math.ceil(((journal.text.capitalsMm * PT_PER_MM) / capHeight) * 2) / 2;
 }
+
+/**
+ * A template from everyday words (the assistant's, or a person's): publisher by name or initials ("APS"), journal by
+ * name, column as "one column", "single", "double", "1.5 columns" ..., width as "full", "1/2", "half", "third" or
+ * "quarter". Returns the size and share, or a sentence saying what can be given.
+ */
+export function matchJournal(req: { publisher?: string; journal?: string; column?: string; width?: string }, currentPart: PartId): { id: string; part: PartId } | string {
+  const initials = (t: string) => t.split(/[\s,]+/).filter((w) => /^[A-Z]/.test(w)).map((w) => w[0]).join("").toLowerCase();
+  const fit = (have: string, want?: string) => {
+    if (!want) return true;
+    const w = want.toLowerCase().trim();
+    return have.toLowerCase().includes(w) || initials(have) === w.replace(/[^a-z]/g, "") || w.split(/[\s,]+/).every((x) => have.toLowerCase().includes(x));
+  };
+  const words: Record<string, number> = { single: 1, one: 1, double: 2, two: 2, three: 3, "one and a half": 1.5 };
+  const columns = (t: string): number | null => {
+    const m = /(\d+(?:\.\d+)?|one and a half|single|double|one|two|three)\b/.exec(t.toLowerCase());
+    return m ? (words[m[1]!] ?? Number(m[1])) : null;
+  };
+  const columnFits = (label: string, want?: string) => !want || fit(label, want) || (columns(want) !== null && columns(want) === columns(label));
+  const shares: Record<string, PartId> = { full: "1", "1": "1", whole: "1", "1/2": "1/2", half: "1/2", "1/3": "1/3", third: "1/3", "1/4": "1/4", quarter: "1/4" };
+  const part = req.width ? shares[req.width.toLowerCase().replace(/\b(width|column|of|the|a)\b/g, "").trim()] : currentPart;
+  if (!part) return 'width must be "full", "1/2", "1/3" or "1/4".';
+  const templates = JOURNALS.filter((j) => fit(j.publisher, req.publisher) && fit(j.name, req.journal));
+  if (templates.length === 0) return `No journal template matches. Give publisher and journal as one of: ${JOURNALS.map((j) => `"${j.publisher}" / "${j.name}"`).join("; ")}.`;
+  const template = templates[0]!;
+  const size = template.sizes.find((s) => columnFits(s.label, req.column)) ?? (req.column ? null : template.sizes[0]!);
+  if (!size) return `${template.name} has no column "${req.column}". Give column as one of: ${template.sizes.map((s) => `"${s.label.split(",")[0]}"`).join(", ")}.`;
+  return { id: size.id, part };
+}

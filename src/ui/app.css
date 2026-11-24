@@ -129,7 +129,7 @@ kbd { font: inherit; font-size: 11px; line-height: 1.45; padding: 0 5px; color: 
 
 /* The side column: tabs as bold words with a black bar under the open one; sections divided by thin rules. */
 .side { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); }
-.tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 0 12px; border-bottom: 1px solid var(--line); flex: none; }
+.tabs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 0 12px; border-bottom: 1px solid var(--line); flex: none; }
 .tabs button { justify-content: center; border: 0; border-radius: 0; background: none; padding: 14px 4px 11px; height: auto; color: var(--faint); font-weight: 600; font-size: var(--fz-body); letter-spacing: -0.01em; white-space: nowrap; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .tabs button:hover:not(:disabled) { background: none; color: var(--ink); }
 .tabs button.on { color: var(--ink); border-bottom-color: var(--ink); }
@@ -274,3 +274,24 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .tools.rmc-switch { margin-right: 8px; }
 /* The file's format, over the figure at the left (as the RMC switch is). */
 .tool-label.format { color: var(--secondary); font-weight: 600; margin-right: 10px; }
+/* The Assistant tab: a quiet conversation, the page's own controls doing the work. */
+.assistant { display: flex; flex-direction: column; gap: 10px; padding-top: 14px; min-height: 60vh; }
+.assistant-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.assistant-head .row { margin: 0; min-height: 0; }
+button.plain-text { border: 0; background: none; height: auto; padding: 2px 4px; color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--control); }
+button.plain-text:hover:not(:disabled) { background: none; text-decoration-color: var(--ink); }
+.assistant-setup { display: flex; flex-direction: column; gap: 2px; }
+.assistant-setup .lab { width: 74px; flex: none; color: var(--secondary); }
+.assistant-setup select { flex: 1; min-width: 0; }
+.assistant-lines { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.said { margin: 0; line-height: 1.5; font-size: var(--fz-body); }
+.said.you { align-self: flex-end; max-width: 88%; background: var(--muted); padding: 7px 11px; border-radius: 10px 10px 2px 10px; }
+.said.assistant { color: var(--ink); }
+.said.step { color: var(--faint); font-size: var(--fz-small); padding-left: 10px; border-left: 2px solid var(--line); }
+.said.step.failed { color: var(--warn-ink); border-left-color: var(--warn-ink); }
+.said.error { color: var(--warn-ink); background: var(--warn-bg); padding: 7px 11px; border-radius: var(--radius); font-size: var(--fz-small); }
+.assistant-input { display: flex; gap: 8px; align-items: flex-end; position: sticky; bottom: 0; background: var(--surface); padding: 10px 0 4px; border-top: 1px solid var(--line); }
+.assistant-input textarea { flex: 1; resize: vertical; min-height: 44px; font: inherit; font-size: var(--fz-body); padding: 8px 10px; border: 1px solid var(--control); border-radius: var(--radius); }
+.assistant-input textarea:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+/* Five tabs on one line in the side column. */
+.tabs button { font-size: 13.5px; }

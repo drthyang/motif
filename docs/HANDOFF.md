@@ -84,13 +84,9 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   offered. The browser tab still says "MOTIF · Crystal Structure Visualizer".
 - Proposed, not started: click an atom or bond in the figure to edit it; undo/redo; symmetrize a folded RMC
   cell with a space group (RMCProfile Workbench has the method).
-- Parked by the user (2026-11-24, "keep this in mind, maybe later"): an MCP server and agent like MATERIA's.
-  Proposal: first an MCP server in `src/mcp/` shaped like MATERIA's (registry, host with file roots, stdio
-  bundle), about ten tools (open a file, distances and angles, cells, bonds and fills, view, style, journal
-  template, save SVG/PNG, saved settings); the in-app chat later, reusing MATERIA's agent code; registration
-  in the hub `scattering-agent-tools` only with the user's yes (another repo). Useful for "find and show"
-  requests, matching panels, MATERIA results to figures; not for one figure shaped by eye. Do not start
-  without the user.
+- In-app assistant built 2026-11-24 (the user asked for it after parking it): see docs/CONVENTIONS.md, "Assistant".
+  Not built: the MCP server (registry, stdio) for agents outside the page, and hub registration in
+  `scattering-agent-tools` (another repo; only with the user's yes). The user has not yet tried it with Claude.
 - Firefox not yet tested; the browser check not run since the latest changes (orbitals cut against atoms
   included).
 

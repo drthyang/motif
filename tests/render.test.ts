@@ -184,4 +184,14 @@ describe("drawing", () => {
     expect(renderSvg(s, DEFAULT_VIEW)).not.toContain("<rect");
     expect(renderSvg(s, DEFAULT_VIEW, { ...DEFAULT_CANVAS, background: "#ffffff" })).toContain('<rect width="1440" height="1100" fill="#ffffff"/>');
   });
+
+  it("an axis pointing exactly at the viewer, even a hair past it in floating point, draws without NaN", () => {
+    const scene = buildScene(readCif(readFileSync("examples/quartz_COD-9009666.cif", "utf8")));
+    // Looking down c, with the view matrix's last row a hair longer than 1 (as a turn's last step can leave it).
+    const along: View = [[1, 0, 0], [0, 1, 0], [0, 0, 1 + 4e-16]] as unknown as View;
+    for (const axesKeepReadable of [true, false]) {
+      const svg = renderSvg({ ...scene, axesKeepReadable }, along, DEFAULT_CANVAS);
+      expect(svg).not.toContain("NaN");
+    }
+  });
 });

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Tsung-Han Yang
 
 import { describe, expect, it } from "vitest";
-import { JOURNALS, PARTS, PUBLISHERS, journalsOf, partWidth, journalSize, journalTextPt } from "../src/ui/journals";
+import { JOURNALS, PARTS, PUBLISHERS, journalsOf, matchJournal, partWidth, journalSize, journalTextPt } from "../src/ui/journals";
 
 const pt = (s: { width: number; unit: "cm" | "in" }) => (s.unit === "in" ? s.width * 72 : (s.width / 2.54) * 72);
 
@@ -80,5 +80,17 @@ describe("journal templates", () => {
     expect(journalTextPt(aps, 0.698)).toBe(8.5);
     // Whatever the font, the capitals are at least 2 mm high.
     for (const h of [0.65, 0.7, 0.72, 0.75]) expect(((journalTextPt(aps, h) * h) / 72) * 25.4).toBeGreaterThanOrEqual(2);
+  });
+
+  it("templates found from everyday words, as the assistant or a person says them", () => {
+    expect(matchJournal({ publisher: "APS", column: "one column", width: "half" }, "1")).toEqual({ id: "aps-1", part: "1/2" });
+    expect(matchJournal({ journal: "Physical Review", column: "1 column", width: "1/2" }, "1")).toEqual({ id: "aps-1", part: "1/2" });
+    expect(matchJournal({ journal: "Nature", column: "double" }, "1")).toEqual({ id: "nature-2", part: "1" });
+    expect(matchJournal({ journal: "Nature", column: "1.5 columns" }, "1")).toEqual({ id: "nature-1.5", part: "1" });
+    expect(matchJournal({ journal: "Nature Physics", width: "quarter" }, "1")).toEqual({ id: "ncomms-1", part: "1/4" });
+    expect(matchJournal({ publisher: "ACS", column: "single" }, "1/3")).toEqual({ id: "acs-1", part: "1/3" });
+    expect(matchJournal({ journal: "Physical Review", column: "three columns" }, "1")).toMatch(/no column/);
+    expect(matchJournal({ journal: "Journal of Nothing" }, "1")).toMatch(/No journal template matches/);
+    expect(matchJournal({ journal: "Science", width: "two thirds" }, "1")).toMatch(/width must be/);
   });
 });

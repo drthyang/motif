@@ -1425,7 +1425,9 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
     if (px * -0.5 + py * -0.7 < 0) [px, py] = [-px, -py];
     // 0 in the screen plane, 1 end on. A readable arrow also keeps the shape of an arrow: its head is drawn as if
     // it were tilted no more than AXIS_MAX_TILT, since a cone seen nearly end on is a disc with a stub.
-    const tilt = scene.axesKeepReadable === false || n < 0.12 * full ? Math.abs(a.depth) : Math.min(Math.abs(a.depth), AXIS_MAX_TILT);
+    // At most 1: an axis pointing straight at the viewer can come out a hair above 1 in floating point, and the
+    // square roots below would then give NaN.
+    const tilt = Math.min(1, scene.axesKeepReadable === false || n < 0.12 * full ? Math.abs(a.depth) : Math.min(Math.abs(a.depth), AXIS_MAX_TILT));
     const [tx, ty] = [ox + a.dx, oy + a.dy]; // tip
     const headOnScreen = headPx * Math.sqrt(Math.max(0, 1 - tilt * tilt));
     const [bx, by] = [tx - ux * headOnScreen, ty - uy * headOnScreen]; // centre of the cone's base

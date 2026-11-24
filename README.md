@@ -72,6 +72,9 @@ size in Illustrator, Inkscape or Keynote; the PNG is drawn from the same SVG.
 - **Styled your way:** soft, flat, glossy, metal or glass surfaces; bonds in atom colours, dashed or dotted;
   axis arrows in their own colours; preset views (clinographic, isometric) or a view along any [uvw] or normal
   to any (hkl); your settings saved and reused.
+- **An assistant that knows the knobs:** say "make the O atoms red" or "size it for Physical Review, half a
+  column", and it changes the controls and tells you where each one is. Claude with your own API key, or a local
+  model (Ollama, LM Studio) on which nothing leaves your computer.
 - **Works with a mouse, a trackpad or fingers:** drag to turn, pinch to zoom, two fingers to move and twist.
 - **Checked, not just drawn:** symmetry expansion against gemmi, moment directions against pymatgen,
   displacements against published coordinates, orbitals for orthogonality, and every file format against the

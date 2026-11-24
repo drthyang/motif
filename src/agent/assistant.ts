@@ -76,9 +76,14 @@ export type AssistantEvent =
   | { readonly kind: "tool"; readonly name: string; readonly input: unknown; readonly result: string; readonly isError: boolean }
   | { readonly kind: "stopped"; readonly reason: string };
 
-/** The part of the client an exchange uses (a test gives a scripted stand-in). */
+/**
+ * The part of the client an exchange uses (a test gives a scripted stand-in). Answers are streamed, as the local
+ * servers' translation (ollamaNative.ts) returns them, and read whole with finalMessage().
+ */
 export interface MessagesClient {
-  readonly messages: { readonly create: (params: Anthropic.MessageCreateParamsNonStreaming, options?: { signal?: AbortSignal }) => Promise<Anthropic.Message> };
+  readonly messages: {
+    readonly stream: (params: Anthropic.MessageCreateParamsNonStreaming, options?: { signal?: AbortSignal }) => { finalMessage: () => Promise<Anthropic.Message> };
+  };
 }
 
 /**
@@ -100,10 +105,9 @@ export async function exchange(
       onEvent({ kind: "stopped", reason: "Stopped." });
       return messages;
     }
-    const reply = await client.messages.create(
-      { model, max_tokens: MAX_ANSWER, system: SYSTEM_PROMPT, tools: TOOLS as unknown as Anthropic.Tool[], messages },
-      signal ? { signal } : undefined,
-    );
+    const reply = await client.messages
+      .stream({ model, max_tokens: MAX_ANSWER, system: SYSTEM_PROMPT, tools: TOOLS as unknown as Anthropic.Tool[], messages }, signal ? { signal } : undefined)
+      .finalMessage();
     messages.push({ role: "assistant", content: reply.content });
     for (const block of reply.content) if (block.type === "text" && block.text.trim()) onEvent({ kind: "text", text: block.text.trim() });
     const calls = reply.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");

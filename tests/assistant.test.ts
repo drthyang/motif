@@ -25,10 +25,11 @@ function scripted(replies: Anthropic.ContentBlock[][]) {
   let i = 0;
   const client: MessagesClient = {
     messages: {
-      create: async (params) => {
+      stream: (params) => {
         sent.push(structuredClone(params));
         const content = replies[Math.min(i++, replies.length - 1)]!;
-        return { id: `m${i}`, type: "message", role: "assistant", model: "fake", content, stop_reason: content.some((b) => b.type === "tool_use") ? "tool_use" : "end_turn", stop_sequence: null, usage: { input_tokens: 0, output_tokens: 0 } } as unknown as Anthropic.Message;
+        const message = { id: `m${i}`, type: "message", role: "assistant", model: "fake", content, stop_reason: content.some((b) => b.type === "tool_use") ? "tool_use" : "end_turn", stop_sequence: null, usage: { input_tokens: 0, output_tokens: 0 } } as unknown as Anthropic.Message;
+        return { finalMessage: async () => message };
       },
     },
   };

@@ -43,9 +43,11 @@ import {
   type SettingField,
 } from "./settings";
 import { Rulers } from "./Rulers";
+import { AssistantPanel } from "./AssistantPanel";
+import { splitPair, type FigureState, type Page } from "../agent/tools";
 import { sizeLabel } from "./ruler";
 import { isDoubleTap, rollFor, twoFingerStep, type Touch } from "./touch";
-import { PARTS, PUBLISHERS, journalsOf, partWidth, journalSize, journalTextPt, type PartId } from "./journals";
+import { PARTS, PUBLISHERS, journalsOf, matchJournal, partWidth, journalSize, journalTextPt, type PartId } from "./journals";
 import { type FeatureExample, readFeatures } from "./examples";
 import featuresText from "../../examples/features.json?raw";
 import type { Structure } from "../structure/types";
@@ -961,6 +963,173 @@ export function App() {
   });
 
   const cell = structure?.cell;
+  /** A journal template: the width it prints (a share of it), keeping the shape, and its text size. */
+  const applyJournal = (id: string, part: PartId) => {
+    const size = journalSize(id);
+    if (!size) return;
+    const width = partWidth(size.width, part);
+    const height = ratio !== null ? width / ratio : (width * canvas.height) / canvas.width;
+    setCanvasFixed(true);
+    setCanvasUnit(size.unit);
+    setCanvasSizeText([`${width}`, short(height)]);
+    const pt = String(journalTextPt(size.of, capHeight(fontFamily)));
+    setFontPtText({ legend: pt, axes: pt, angle: pt });
+    setJournalChoice(size.id);
+    setJournalPart(part);
+  };
+
+  // ---- The assistant's view of the page (agent/tools.ts): the same state and setters the panel uses.
+  const ruleIndex = (between: string): number => {
+    const pair = splitPair(between);
+    if (!pair) return -1;
+    return bondRules.findIndex((r) => (r.centre === pair[0] && r.neighbour === pair[1]) || (r.centre === pair[1] && r.neighbour === pair[0]));
+  };
+  const pageNow: Page = {
+    hasStructure: () => structure !== null,
+    describe: (): FigureState => {
+      const c = structure!.cell;
+      const species = scene ? [...new Set(scene.spheres.map((x) => x.style))] : [];
+      return {
+        file: fileName,
+        format: structure!.format ?? "",
+        cell: `a ${c.a.toFixed(4)}, b ${c.b.toFixed(4)}, c ${c.c.toFixed(4)} Å; α ${c.alpha.toFixed(2)}, β ${c.beta.toFixed(2)}, γ ${c.gamma.toFixed(2)}°`,
+        elements: [...new Set([...contents.species.map((x) => x.key), ...species])].map((key) => ({
+          element: key,
+          count: scene ? scene.spheres.filter((x) => x.style === key).length : 0,
+          colour: scene?.styles[key]?.colour ?? "",
+          radius: scene?.styles[key]?.radius ?? 0,
+          hidden: looks[key]?.hidden === true,
+        })),
+        bonds: bondRules.map((r, i) => ({
+          between: `${r.centre}–${r.neighbour}`,
+          upTo: r.max,
+          count: bondCount(i),
+          colour: r.colour ?? DEFAULT_STICK.colour,
+          thickness: r.width ?? DEFAULT_STICK.width,
+          line: r.line ?? "solid",
+          colouring: r.colouring === "atoms" ? "atom colours" : "one colour",
+          fillTriangles: r.fill === true,
+          ...(r.fill ? { triangleColour: r.fillColour ?? scene?.ruleInfo[sceneRule(i)]?.fillColour ?? "" } : {}),
+          highlight: r.band === true,
+        })),
+        pairs: pairs.map((p) => ({ between: `${p.centre}–${p.neighbour}`, distances: p.distances.slice(0, 4).map((d) => Number(d.toFixed(3))) })),
+        cells: `from ${rangeText.slice(0, 3).join(", ")} to ${rangeText.slice(3).join(", ")}`,
+        view: viewLine,
+        canvas: canvas.physical ? `${canvas.physical.width} × ${canvas.physical.height} ${canvas.physical.unit} on paper` : `fits the frame (${canvas.width} × ${canvas.height} px)`,
+        journal: journalSize(journalChoice) ? `${journalSize(journalChoice)!.journal}, ${journalSize(journalChoice)!.label}, ${journalPart} width` : "none",
+        settings: Object.fromEntries(Object.entries(settingFields).filter(([k]) => !["savedViews", "elementLooks"].includes(k)).map(([k, f]) => [k, f.value])),
+      };
+    },
+    applySettings: (values) => applySettings(settingFields, values),
+    setElement: (element, change) => {
+      const key = contents.species.map((x) => x.key).find((k) => k.toLowerCase() === element.trim().toLowerCase());
+      if (!key) return `There is no ${element} in this structure (it has ${contents.species.map((x) => x.key).join(", ")}).`;
+      if (change.colour !== undefined && !/^#[0-9a-fA-F]{6}$/.test(change.colour)) return `"${change.colour}" is not a colour "#rrggbb".`;
+      if (change.radius !== undefined && !(change.radius > 0.02 && change.radius <= 5)) return "The radius must be between 0.02 and 5 Å.";
+      setLooks((l) => ({
+        ...l,
+        [key]: {
+          ...l[key],
+          ...(change.colour !== undefined ? { colour: change.colour.toLowerCase() } : {}),
+          ...(change.radius !== undefined ? { radiusText: String(change.radius) } : {}),
+          ...(change.hidden !== undefined ? { hidden: change.hidden } : {}),
+        },
+      }));
+      return null;
+    },
+    addBonds: (centre, neighbour, upTo) => {
+      const pair = pairs.find((p) => (p.centre === centre && p.neighbour === neighbour) || (p.centre === neighbour && p.neighbour === centre));
+      if (!pair) return `${centre} and ${neighbour} are not a pair in this structure. Pairs: ${pairs.map((p) => `${p.centre}–${p.neighbour}`).join(", ")}.`;
+      if (ruleIndex(`${centre}-${neighbour}`) >= 0) return `${pair.centre}–${pair.neighbour} bonds are already drawn; change them with change_bonds.`;
+      if (upTo < pair.distances[0]! - 1e-9) return `The shortest ${pair.centre}–${pair.neighbour} distance is ${pair.distances[0]!.toFixed(3)} Å; ${upTo} Å would draw none.`;
+      setBondRules((r) => [...r, { centre: pair.centre, neighbour: pair.neighbour, max: upTo, maxText: String(upTo), complete: false }]);
+      return null;
+    },
+    changeBonds: (between, change) => {
+      const i = ruleIndex(between);
+      if (i < 0) return `No ${between} bonds are drawn. Drawn: ${bondRules.map((r) => `${r.centre}–${r.neighbour}`).join(", ") || "none"}.`;
+      for (const c of [change.colour, change.triangleColour]) if (c !== undefined && !/^#[0-9a-fA-F]{6}$/.test(c)) return `"${c}" is not a colour "#rrggbb".`;
+      if (change.upTo !== undefined && !(change.upTo > 0.1 && change.upTo <= 10)) return "up_to must be between 0.1 and 10 Å.";
+      if (change.thickness !== undefined && !(change.thickness > 0.005 && change.thickness <= 1)) return "The thickness must be between 0.005 and 1 Å.";
+      changeRule(i, {
+        ...(change.upTo !== undefined ? { max: change.upTo, maxText: String(change.upTo) } : {}),
+        ...(change.colour !== undefined ? { colour: change.colour.toLowerCase() } : {}),
+        ...(change.thickness !== undefined ? { width: change.thickness, widthText: String(change.thickness) } : {}),
+        ...(change.line !== undefined ? { line: change.line } : {}),
+        ...(change.colouring !== undefined ? { colouring: change.colouring === "atom colours" ? ("atoms" as const) : ("single" as const) } : {}),
+        ...(change.fillTriangles !== undefined ? { fill: change.fillTriangles } : {}),
+        ...(change.triangleColour !== undefined ? { fill: true, fillColour: change.triangleColour.toLowerCase() } : {}),
+        ...(change.highlight !== undefined ? { band: change.highlight } : {}),
+      });
+      return null;
+    },
+    removeBonds: (between) => {
+      const i = ruleIndex(between);
+      if (i < 0) return `No ${between} bonds are drawn.`;
+      setBondRules((all) => all.filter((_, k) => k !== i));
+      return null;
+    },
+    setView: (req) => {
+      if (!structure || !axes) return "No structure is open.";
+      const three = (v: readonly number[] | undefined) => v && v.length === 3 && v.every(Number.isFinite) && v.some((x) => x !== 0);
+      if (req.along) {
+        if (!three(req.along)) return "along must be three numbers, not all zero.";
+        lookAlong({ kind: "uvw", indices: req.along as [number, number, number] });
+        return null;
+      }
+      if (req.normalTo) {
+        if (!three(req.normalTo)) return "normal_to must be three numbers, not all zero.";
+        lookAlong({ kind: "hkl", indices: req.normalTo as [number, number, number] });
+        return null;
+      }
+      if (req.preset) {
+        const preset = VIEW_PRESETS.find((p) => p.id === req.preset);
+        if (!preset) return `No view preset "${req.preset}": ${VIEW_PRESETS.map((p) => p.id).join(", ")}.`;
+        goTo(presetView(structure.cell, preset.id));
+        return null;
+      }
+      const now = numbersFromView(axes, view, upAxis);
+      const up = req.up ? (["a", "b", "c"].indexOf(req.up) as Axis) : upAxis;
+      const next = { up, turn: req.turn ?? now.turn, tilt: req.tilt ?? now.tilt, roll: req.roll ?? now.roll };
+      if (Math.abs(next.tilt) > 90) return "tilt must be between -90 and 90 degrees.";
+      applyNumbers(next);
+      return null;
+    },
+    setCells: (from, to) => {
+      if (from.some((f, k) => f >= to[k]!)) return 'Each "from" must be below its "to".';
+      const cells = (to[0]! - from[0]!) * (to[1]! - from[1]!) * (to[2]! - from[2]!);
+      if (cells > 1000) return `That is ${Math.round(cells)} cells; at most 1000.`;
+      setRangeText([...from, ...to].map(String));
+      return null;
+    },
+    useJournal: (req) => {
+      const found = matchJournal(req, journalPart);
+      if (typeof found === "string") return found;
+      applyJournal(found.id, found.part);
+      return null;
+    },
+  };
+  const pageRef = useRef(pageNow);
+  pageRef.current = pageNow;
+  // For the assistant's trials only ("?probe" in the address): the figure as the assistant sees it, read only.
+  if (QUERY.has("probe")) (window as unknown as { __motifDescribe?: () => FigureState | null }).__motifDescribe = () => (pageRef.current.hasStructure() ? pageRef.current.describe() : null);
+  // The tools call through the ref, so an exchange that spans several renders always sees the page as it is now.
+  const assistantPage = useMemo<Page>(
+    () => ({
+      hasStructure: () => pageRef.current.hasStructure(),
+      describe: () => pageRef.current.describe(),
+      applySettings: (v) => pageRef.current.applySettings(v),
+      setElement: (e, c) => pageRef.current.setElement(e, c),
+      addBonds: (a, b, d) => pageRef.current.addBonds(a, b, d),
+      changeBonds: (p, c) => pageRef.current.changeBonds(p, c),
+      removeBonds: (p) => pageRef.current.removeBonds(p),
+      setView: (v) => pageRef.current.setView(v),
+      setCells: (f, t) => pageRef.current.setCells(f, t),
+      useJournal: (r) => pageRef.current.useJournal(r),
+    }),
+    [],
+  );
+
   return (
     <div className="shell">
       <header className="topbar">
@@ -1276,6 +1445,10 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             </div>
             <TabContext.Provider value={tab}>
             <div className="tab-body">
+            {/* Kept mounted, so the conversation stays when another tab is open. */}
+            <div hidden={tab !== "assistant"} className="assistant-tab">
+              <AssistantPanel page={assistantPage} />
+            </div>
             <Section tab="info" title="File" hint="What the file says. Nothing here changes the figure.">
               <table data-testid="info">
                 <tbody>
@@ -2227,19 +2400,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
               {(() => {
                 const chosen = journalSize(journalChoice);
                 const current = chosen && canvasFixed && canvasUnit === chosen.unit && Number(canvasSizeText[0]) === partWidth(chosen.width, journalPart) ? chosen : undefined;
-                const apply = (id: string, part: PartId) => {
-                  const size = journalSize(id);
-                  if (!size) return;
-                  const width = partWidth(size.width, part);
-                  const height = ratio !== null ? width / ratio : (width * canvas.height) / canvas.width;
-                  setCanvasFixed(true);
-                  setCanvasUnit(size.unit);
-                  setCanvasSizeText([`${width}`, short(height)]);
-                  const pt = String(journalTextPt(size.of, capHeight(fontFamily)));
-                  setFontPtText({ legend: pt, axes: pt, angle: pt });
-                  setJournalChoice(size.id);
-                  setJournalPart(part);
-                };
+                const apply = applyJournal;
                 return (
                   <>
                     <div className="row">
@@ -2716,12 +2877,13 @@ function Controls({ active, turntable, snap, touch }: { active: ControlId | null
 
 /** A card of the side column that can be folded away. The "?" holds the longer explanation. */
 
-type TabId = "info" | "structure" | "visual" | "layout";
+type TabId = "info" | "structure" | "visual" | "layout" | "assistant";
 const TABS: { id: TabId; label: string }[] = [
   { id: "info", label: "Info" },
   { id: "structure", label: "Structure" },
   { id: "visual", label: "Visual" },
   { id: "layout", label: "Layout" },
+  { id: "assistant", label: "Assistant" },
 ];
 const TabContext = createContext<TabId>("structure");
 

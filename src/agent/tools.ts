@@ -168,6 +168,30 @@ export const TOOLS: readonly ToolSpec[] = [
 ];
 
 const BOND_PLACE = "Structure › Bonds (distance), Visual › Bonds (look)";
+
+/** A change in plain words: {colour: "#ff0000", radius: 0.4} -> "colour #ff0000, radius 0.4 Å". */
+function inWords(change: Record<string, unknown>): string {
+  const say: Record<string, (v: unknown) => string> = {
+    colour: (v) => `colour ${v}`,
+    radius: (v) => `radius ${v} Å`,
+    hidden: (v) => (v ? "hidden" : "shown"),
+    upTo: (v) => `up to ${v} Å`,
+    thickness: (v) => `thickness ${v} Å`,
+    line: (v) => `${v} line`,
+    colouring: (v) => `${v}`,
+    fillTriangles: (v) => (v ? "triangles filled" : "triangles not filled"),
+    triangleColour: (v) => `triangle colour ${v}`,
+    highlight: (v) => (v ? "highlight band" : "no highlight band"),
+    along: (v) => `along [${(v as number[]).join(" ")}]`,
+    normalTo: (v) => `normal to (${(v as number[]).join(" ")})`,
+    preset: (v) => `${v} view`,
+    up: (v) => `${v} up`,
+    turn: (v) => `turn ${v}°`,
+    tilt: (v) => `tilt ${v}°`,
+    roll: (v) => `roll ${v}°`,
+  };
+  return Object.entries(change).map(([k, v]) => (say[k] ? say[k](v) : `${k} ${JSON.stringify(v)}`)).join(", ");
+}
 const done = (what: string, place: string) => `Done: ${what}. On the page: ${place}.`;
 
 /** Words of a setting, for find_setting. */
@@ -210,7 +234,7 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
       };
       if (Object.keys(change).length === 0) return fail("Give a colour, a radius or hidden.");
       const error = page.setElement(element, change);
-      return error ? fail(error) : { text: done(`${element}: ${JSON.stringify(change)}`, change.hidden === undefined ? "Visual › Atoms" : "Structure › Elements shown") };
+      return error ? fail(error) : { text: done(`${element}: ${inWords(change)}`, change.hidden === undefined ? "Visual › Atoms" : "Structure › Elements shown") };
     }
     case "add_bonds": {
       const pair = splitPair(String(input["between"] ?? ""));
@@ -218,7 +242,7 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
       if (!pair) return fail('Name two elements, e.g. "Nb-Nb".');
       if (!(upTo > 0 && upTo <= 10)) return fail("up_to must be a distance in angstrom between 0 and 10.");
       const error = page.addBonds(pair[0], pair[1], upTo);
-      return error ? fail(error) : { text: done(`${pair.join("–")} bonds up to ${upTo} Å`, BOND_PLACE) };
+      return error ? fail(error) : { text: done(`${pair.join("–")} bonds up to ${upTo} Å`, "Structure › Bonds (their look: Visual › Bonds)") };
     }
     case "change_bonds": {
       const between = String(input["between"] ?? "");
@@ -234,7 +258,9 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
       };
       if (Object.keys(change).length === 0) return fail("Say what to change about these bonds.");
       const error = page.changeBonds(between, change);
-      return error ? fail(error) : { text: done(`${between} bonds: ${JSON.stringify(change)}`, BOND_PLACE) };
+      // Only the place of what changed: the distance limit is under Structure, the look under Visual.
+      const place = change.upTo !== undefined && Object.keys(change).length === 1 ? "Structure › Bonds" : change.upTo !== undefined ? BOND_PLACE : "Visual › Bonds";
+      return error ? fail(error) : { text: done(`${between} bonds: ${inWords(change as Record<string, unknown>)}`, place) };
     }
     case "remove_bonds": {
       const error = page.removeBonds(String(input["between"] ?? ""));
@@ -252,7 +278,7 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
       };
       if (Object.keys(req).length === 0) return fail("Give a direction, a plane, a preset, or turn/tilt/roll.");
       const error = page.setView(req);
-      return error ? fail(error) : { text: done(`view ${JSON.stringify(req)}`, "Layout › Direction, or the buttons over the figure") };
+      return error ? fail(error) : { text: done(`view ${inWords(req as Record<string, unknown>)}`, "Layout › Direction, or the buttons over the figure") };
     }
     case "set_cells": {
       const from = input["from"];
@@ -260,13 +286,13 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
       const ok = (v: unknown) => Array.isArray(v) && v.length === 3 && v.every((x) => typeof x === "number" && Number.isFinite(x));
       if (!ok(from) || !ok(to)) return fail("from and to must each be three numbers.");
       const error = page.setCells(from as number[], to as number[]);
-      return error ? fail(error) : { text: done(`cells from ${JSON.stringify(from)} to ${JSON.stringify(to)}`, "Structure › Cells shown") };
+      return error ? fail(error) : { text: done(`cells from (${(from as number[]).join(", ")}) to (${(to as number[]).join(", ")})`, "Structure › Cells shown") };
     }
     case "use_journal": {
       const req = Object.fromEntries(["publisher", "journal", "column", "width"].filter((k) => typeof input[k] === "string").map((k) => [k, input[k] as string]));
       if (Object.keys(req).length === 0) return fail("Name at least a publisher or a journal.");
       const error = page.useJournal(req);
-      return error ? fail(error) : { text: done(`journal template ${JSON.stringify(req)}`, "Layout › Canvas") };
+      return error ? fail(error) : { text: done(`journal template ${Object.values(req).join(", ")}`, "Layout › Canvas") };
     }
     default:
       return fail(`There is no tool "${name}".`);

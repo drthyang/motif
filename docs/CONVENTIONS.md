@@ -488,6 +488,30 @@ Structure tab; the user's choices of 2026-11-23.
 - Measured on an Apple M5 Pro in Chromium, per frame while dragging, without and with the preview: 729 atoms
   17 ms / 8 ms; 4,913 atoms 167 ms / 8 ms; 19,683 atoms 667 ms / 16 ms.
 
+### Assistant (2026-11-24)
+
+The Assistant tab: the user says how the figure should look, and the assistant changes it through the page's own
+controls, then says where each control is, so the user learns where to find it.
+
+- **Models** (the user's choice): Claude with the user's own API key, sent from the browser straight to Anthropic;
+  or a local model on Ollama or LM Studio, on which nothing leaves the computer. With Claude, what the tools read
+  about the figure (cell, elements, settings) goes to Anthropic with the user's words; the page says so. The key and
+  the choice stay in this browser. The local-server code is MATERIA's (`src/agent/localServer.ts`, `ollama.ts`,
+  `ollamaNative.ts`, `lmstudio.ts`), so a local model runs with a 32k context and the same SDK.
+- **Scope** (the user's choice): look and layout only. Tools (`src/agent/tools.ts`): describe_figure, find_setting,
+  change_settings (the page's saved-settings list, through its own checks), set_element, add_bonds, change_bonds,
+  remove_bonds, set_view, set_cells, use_journal. No opening files, no saving figures.
+- **Catalogue** (`src/agent/catalogue.ts`): every setting with its place ("Visual › Bonds"), what it does and the
+  values it takes. A test holds it to the page's own list and every place to a section of the page.
+- **One exchange** (`src/agent/assistant.ts`): the user's words, then tool calls carried out on the page, until the
+  model answers in words, at most 12 calls; Stop ends it. Each tool answer names only the place of what changed.
+- **Journal words** (`matchJournal` in `src/ui/journals.ts`): publishers by name or initials (APS, ACS), columns as
+  "one column", "single", "double", "1.5 columns", widths as "full", "half", "third", "quarter".
+- **Checked:** tools against a stand-in page, the exchange with a scripted model (`tests/agentTools.test.ts`,
+  `tests/assistant.test.ts`); and a trial of ten requests on a local model, the page's state read after each
+  (`scripts/assistant_trial.cjs`, `?probe` in the address; a 2-minute limit per request, 30 minutes in all).
+  On gemma4:26b (Ollama): 10 of 10 in 1.3 minutes (2026-11-24). No paid API calls in development.
+
 ## How each part is checked
 
 Each step is checked against an independent reference before the next one starts.
