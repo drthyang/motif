@@ -22,6 +22,8 @@
  *   nature.com/ncomms, How to submit. The template sets 7 pt, the largest size of the Nature-branded journals' guide.
  * - Nature Materials: at most 180 mm wide; 5 to 7 pt sans serif. nature.com/nmat, formatting guide, and its
  *   "Guide to preparing final artwork" for Nature-branded research journals: 88 mm (1 column), 180 mm (2).
+ * - Nature Physics: at most 180 mm wide; 5 to 7 pt sans serif. nature.com/nphys, Submission guidelines, "AIP and
+ *   formatting" (read 2026-11-23); a Nature-branded research journal, so 88 mm and 180 mm as in that guide.
  * - RSC journals (Dalton Transactions, CrystEngComm, Journal of Materials Chemistry A and C, one shared text):
  *   8.3 cm (single column), 17.1 cm (double); no longer than 23.3 cm. rsc.org, each journal's author guidelines.
  *   No text size for figures; the template sets 7 pt, the size RSC gives for atom labels in chemical structures.
@@ -111,13 +113,13 @@ export const JOURNALS: readonly Journal[] = [
   {
     // One template for the journals whose figures have the same sizes and text (the user's wish, 2026-11-23).
     publisher: "Springer Nature",
-    name: "Nature Communications, Nature Materials",
+    name: "Nature Communications, Nature Materials, Nature Physics",
     sizes: [
       { id: "ncomms-1", label: "single column, 88 mm", width: 8.8, unit: "cm" },
       { id: "ncomms-2", label: "double column, 180 mm", width: 18, unit: "cm" },
     ],
     text: { pt: 7 },
-    note: "Nature Communications, Nature Materials: text 5 to 7 pt sans serif, the same size in every figure; at most 180 mm wide.",
+    note: "Nature Communications, Nature Materials, Nature Physics: text 5 to 7 pt sans serif, the same size in every figure; at most 180 mm wide.",
   },
   {
     publisher: "Royal Society of Chemistry",

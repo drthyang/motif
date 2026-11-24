@@ -23,7 +23,7 @@ describe("journal templates", () => {
     // Journals that often print crystal structures.
     expect(["ncomms-1", "ncomms-2"].map((id) => journalSize(id)!.width)).toEqual([8.8, 18]);
     // Nature Communications and Nature Materials share one template (same sizes, same text).
-    expect(journalSize("ncomms-1")!.journal).toBe("Nature Communications, Nature Materials");
+    expect(journalSize("ncomms-1")!.journal).toBe("Nature Communications, Nature Materials, Nature Physics");
     expect(["rsc-1", "rsc-2"].map((id) => journalSize(id)!.width)).toEqual([8.3, 17.1]);
     expect(["elsevier-1", "elsevier-1.5", "elsevier-2"].map((id) => journalSize(id)!.width)).toEqual([9, 14, 19]);
     expect(["jpcm-1", "jpcm-2"].map((id) => journalSize(id)!.width)).toEqual([8.5, 15]);
@@ -56,7 +56,7 @@ describe("journal templates", () => {
 
   it("templates are listed by publisher, then journal; every template under exactly one publisher", () => {
     expect(PUBLISHERS[0]).toBe("Springer Nature");
-    expect(journalsOf("Springer Nature").map((j) => j.name)).toEqual(["Nature", "Nature Communications, Nature Materials"]);
+    expect(journalsOf("Springer Nature").map((j) => j.name)).toEqual(["Nature", "Nature Communications, Nature Materials, Nature Physics"]);
     expect(PUBLISHERS.flatMap((p) => journalsOf(p)).length).toBe(JOURNALS.length);
     expect(new Set(PUBLISHERS).size).toBe(PUBLISHERS.length);
   });

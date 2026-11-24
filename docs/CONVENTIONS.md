@@ -289,7 +289,7 @@ Structure tab; the user's choices of 2026-11-23.
   | Science | 5.7, 12.1, 18.4 cm (1, 2, 3 columns) | 7 pt (not smaller than 5) |
   | Physical Review | 8.5 cm (1 column), 17.8 cm (2 columns) | capitals and numerals 2 mm high |
   | ACS journals (JACS, Inorg. Chem., Chem. Mater.) | 3.33 in (single), 7 in (double) | 7 pt (at least 4.5) |
-  | Nature Communications, Nature Materials (one template) | 88 mm (single), 180 mm (double) | 7 pt (5 to 7 asked) |
+  | Nature Communications, Nature Materials, Nature Physics (one template) | 88 mm (single), 180 mm (double) | 7 pt (5 to 7 asked) |
   | RSC journals (Dalton Trans., CrystEngComm, J. Mater. Chem. A and C) | 8.3 cm (single), 17.1 cm (double) | 7 pt (no figure text size given) |
   | Elsevier journals (J. Solid State Chem., J. Alloys Compd.) | 90 mm (single), 140 mm (1.5), 190 mm (double) | 7 pt |
   | J. Phys.: Condens. Matter | 8.5 cm (single), 15 cm (double) | 8 pt (8 to 12 asked) |
