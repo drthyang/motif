@@ -1,0 +1,29 @@
+{
+  "about": "The feature examples, in the order the app lists them: each is a structure file in this folder and the settings that show its feature, applied when it is opened from the list. Opening the same file by hand gives the plain defaults.",
+  "examples": [
+    {
+      "title": "Atomic structure",
+      "file": "quartz_COD-9009666.cif",
+      "note": "Quartz, with Si-O bonds"
+    },
+    {
+      "title": "Magnetic structure",
+      "file": "MnF2-antiferromagnet_handwritten.mcif",
+      "note": "MnF2, moments along +c and -c"
+    },
+    {
+      "title": "Orbitals",
+      "file": "perovskite-SrTiO3_COD-9006864.cif",
+      "note": "A TiO6 octahedron of SrTiO3, the two eg orbitals of Ti pointing at O",
+      "cells": [-0.5, -0.5, -0.5, 0.5, 0.5, 0.5],
+      "hide": ["Sr"],
+      "orbitals": [{ "species": "Ti", "orbitals": ["dz2", "dx2-y2"], "size": 2.4 }]
+    },
+    {
+      "title": "RMC configuration, folded",
+      "file": "SrTiO3-supercell_generated.rmc6f",
+      "note": "A 6 x 6 x 6 SrTiO3 configuration folded into one averaged cell",
+      "fold": true
+    }
+  ]
+}

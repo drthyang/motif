@@ -119,6 +119,9 @@ kbd { font: inherit; font-size: 11px; line-height: 1.45; padding: 0 5px; color: 
 .examples { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; margin: 22px 0; }
 .examples button { padding: 6px 14px; height: 36px; text-transform: none; }
 .examples button:hover { background: var(--accent); }
+.examples.features { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin-bottom: 8px; }
+.examples.features button { height: auto; padding: 10px 14px; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; white-space: normal; }
+.examples.features button span { font-size: var(--fz-small); color: var(--secondary); font-weight: 400; }
 
 /* The side column: tabs as bold words with a black bar under the open one; sections divided by thin rules. */
 .side { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line); }

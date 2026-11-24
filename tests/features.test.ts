@@ -1,0 +1,53 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
+import { readdirSync, readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { buildScene, DEFAULT_ORBITAL_COLOURS, DEFAULT_SPEC } from "../src/scene/scene";
+import { orbitalById } from "../src/scene/orbitals";
+import { expandToUnitCell } from "../src/structure/expand";
+import { readCif } from "../src/structure/readCif";
+import { isRmc6f, readRmc6f } from "../src/structure/readRmc6f";
+import { readFeatures } from "../src/ui/examples";
+
+const files = readdirSync("examples");
+const features = readFeatures(readFileSync("examples/features.json", "utf8"), files);
+const open = (file: string, fold = false) => {
+  const text = readFileSync(`examples/${file}`, "utf8");
+  return isRmc6f(text, file) ? readRmc6f(text, file, { fold }) : readCif(text);
+};
+
+describe("feature examples", () => {
+  it("each opens, and shows its feature", () => {
+    expect(features.map((f) => f.title)).toEqual(["Atomic structure", "Magnetic structure", "Orbitals", "RMC configuration, folded"]);
+    for (const f of features) {
+      const s = open(f.file, f.fold);
+      const orbitals = (f.orbitals ?? []).map((o) => {
+        for (const id of o.orbitals) expect(orbitalById(id), id).toBeDefined();
+        return { species: o.species, orbitals: [...o.orbitals], size: 1.6, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6 };
+      });
+      const scene = buildScene(s, { ...DEFAULT_SPEC, ...(orbitals.length ? { orbitals } : {}) });
+      expect(scene.spheres.length, f.title).toBeGreaterThan(0);
+      if (f.title === "Magnetic structure") expect(scene.arrows.length).toBeGreaterThan(0);
+      // Orbitals are drawn on every atom of the species named.
+      if (orbitals.length) expect(scene.orbitals!.length).toBe(scene.spheres.filter((x) => x.species === orbitals[0]!.species).length * orbitals[0]!.orbitals.length);
+    }
+  });
+
+  it("the RMC example folds into the five sites of cubic SrTiO3, each averaged to within 0.02 A of the published site", () => {
+    const f = features.find((x) => x.fold)!;
+    const whole = open(f.file, false);
+    expect(whole.sites.length).toBe(1080);
+    const folded = open(f.file, true);
+    expect(folded.rmc!.folded).toBe(true);
+    expect(folded.sites.length).toBe(5);
+    const a = folded.cell.a;
+    expect(a).toBeCloseTo(3.90528, 4);
+    const ideal: Record<string, number[][]> = { Sr: [[0.5, 0.5, 0.5]], Ti: [[0, 0, 0]], O: [[0.5, 0, 0], [0, 0.5, 0], [0, 0, 0.5]] };
+    for (const site of folded.sites) {
+      const near = Math.min(...ideal[site.element]!.map((p) => Math.hypot(...p.map((x, i) => ((site.frac[i]! - x + 1.5) % 1) - 0.5)) * a));
+      expect(near, site.element).toBeLessThan(0.02);
+    }
+    expect(expandToUnitCell(folded).atoms.length).toBe(5);
+  });
+});

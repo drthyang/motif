@@ -1,0 +1,50 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Tsung-Han Yang
+
+/**
+ * The feature examples (examples/features.json): each a structure file shipped with the page and the settings
+ * that show its feature, applied when it is opened from the list. Plain data; the app applies it.
+ */
+export interface FeatureExample {
+  readonly title: string;
+  readonly file: string;
+  readonly note: string;
+  /** Orbitals to draw: on the atoms of a species, which orbitals, and their size (angstrom) if not the default. */
+  readonly orbitals?: readonly { readonly species: string; readonly orbitals: readonly string[]; readonly size?: number }[];
+  /** Species left out of the figure. */
+  readonly hide?: readonly string[];
+  /** For an RMC configuration: fold it into one averaged cell. */
+  readonly fold?: boolean;
+  /** The cells shown: from a, b, c, then to a, b, c (in cell edges). */
+  readonly cells?: readonly [number, number, number, number, number, number];
+}
+
+/** The feature examples from the text of features.json; an entry whose file is not among `files` is refused. */
+export function readFeatures(text: string, files: readonly string[]): FeatureExample[] {
+  const data = JSON.parse(text) as { examples?: unknown };
+  if (!Array.isArray(data.examples)) throw new Error("features.json: no list of examples");
+  return data.examples.map((e: Record<string, unknown>, i: number) => {
+    const where = `features.json, example ${i + 1}`;
+    if (typeof e.title !== "string" || typeof e.file !== "string") throw new Error(`${where}: a title and a file are needed`);
+    if (!files.includes(e.file)) throw new Error(`${where}: no file ${e.file} in examples/`);
+    const orbitals = e.orbitals as FeatureExample["orbitals"] | undefined;
+    if (orbitals !== undefined && (!Array.isArray(orbitals) || orbitals.some((o) => typeof o.species !== "string" || !Array.isArray(o.orbitals) || (o.size !== undefined && !(o.size > 0 && o.size <= 20))))) {
+      throw new Error(`${where}: orbitals are given as { species, orbitals: [...], size (angstrom, optional) }`);
+    }
+    const hide = e.hide as string[] | undefined;
+    if (hide !== undefined && (!Array.isArray(hide) || hide.some((x) => typeof x !== "string"))) throw new Error(`${where}: hide is a list of species`);
+    const cells = e.cells as number[] | undefined;
+    if (cells !== undefined && (!Array.isArray(cells) || cells.length !== 6 || cells.some((x) => typeof x !== "number") || [0, 1, 2].some((i) => cells[i]! >= cells[i + 3]!))) {
+      throw new Error(`${where}: cells are six numbers, from a, b, c then to a, b, c`);
+    }
+    return {
+      title: e.title,
+      file: e.file,
+      note: typeof e.note === "string" ? e.note : "",
+      ...(orbitals ? { orbitals } : {}),
+      ...(e.fold === true ? { fold: true } : {}),
+      ...(hide ? { hide } : {}),
+      ...(cells ? { cells: cells as unknown as readonly [number, number, number, number, number, number] } : {}),
+    };
+  });
+}

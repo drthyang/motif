@@ -44,12 +44,18 @@ import {
   type SettingField,
 } from "./settings";
 import { JOURNALS, journalSize, journalTextPt } from "./journals";
+import { type FeatureExample, readFeatures } from "./examples";
+import featuresText from "../../examples/features.json?raw";
 import type { Structure } from "../structure/types";
 
 // Published structures shipped with the page (see examples/README.md).
 const EXAMPLES = Object.entries(
-  import.meta.glob<string>("../../examples/*.{cif,mcif}", { query: "?raw", import: "default", eager: true }),
-).map(([path, text]) => ({ file: path.split("/").pop()!, name: path.split("/").pop()!.replace(/\.m?cif$/, ""), text }));
+  import.meta.glob<string>("../../examples/*.{cif,mcif,rmc6f}", { query: "?raw", import: "default", eager: true }),
+).map(([path, text]) => ({ file: path.split("/").pop()!, name: path.split("/").pop()!.replace(/\.(m?cif|rmc6f)$/, ""), text }));
+// The feature examples, first in the list: a file and the settings that show its feature.
+const FEATURES: (FeatureExample & { text: string })[] = readFeatures(featuresText, EXAMPLES.map((x) => x.file)).map((f) => ({ ...f, text: EXAMPLES.find((x) => x.file === f.file)!.text }));
+// The other structures, after the features (files that only a feature uses are not listed again).
+const STRUCTURES = EXAMPLES.filter((x) => !/\.rmc6f$/.test(x.file));
 
 /** A full turn for a drag across this many CSS px. */
 const DRAG_PX_PER_TURN = 700;
@@ -433,6 +439,18 @@ export function App() {
       setError(`${name}: ${e instanceof Error ? e.message : String(e)}`);
     }
   }, []);
+  /** Open a feature example with the settings that show its feature. */
+  const loadFeature = (f: (typeof FEATURES)[number]) => {
+    if (f.fold !== undefined) foldRmc.current = f.fold;
+    load(f.text, f.file);
+    if (f.cells) setRangeText(f.cells.map(String));
+    if (f.hide) setLooks((all) => ({ ...all, ...Object.fromEntries(f.hide!.map((k) => [k, { ...all[k], hidden: true }])) }));
+    if (f.orbitals) {
+      setOrbitalRules(
+        f.orbitals.map((o) => ({ species: o.species, orbitals: [...o.orbitals], sizeText: String(o.size ?? DEFAULT_ORBITAL_SIZE), colours: [...DEFAULT_ORBITAL_COLOURS] as [string, string], opacityText: String(DEFAULT_ORBITAL_OPACITY), iso: DEFAULT_ISO, texture: "soft" as OrbitalTexture, zText: "", xText: "" })),
+      );
+    }
+  };
 
   // What the file holds: its elements, and its species (an element, or several sharing a site).
   const contents = useMemo(() => {
@@ -890,16 +908,27 @@ export function App() {
             data-testid="example"
             value=""
             onChange={(e) => {
+              const feature = FEATURES.find((x) => `feature:${x.title}` === e.target.value);
+              if (feature) return loadFeature(feature);
               const example = EXAMPLES.find((x) => x.name === e.target.value);
               if (example) load(example.text, example.file);
             }}
           >
             <option value="">Examples…</option>
-            {EXAMPLES.map((x) => (
-              <option key={x.name} value={x.name}>
-                {x.name}
-              </option>
-            ))}
+            <optgroup label="Features">
+              {FEATURES.map((x) => (
+                <option key={x.title} value={`feature:${x.title}`}>
+                  {x.title}: {x.note}
+                </option>
+              ))}
+            </optgroup>
+            <optgroup label="Structures">
+              {STRUCTURES.map((x) => (
+                <option key={x.name} value={x.name}>
+                  {x.name}
+                </option>
+              ))}
+            </optgroup>
           </select>
           {scene && (
             <>
@@ -1104,8 +1133,16 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             <div className="empty">
               <p className="empty-title">Drop a structure file here</p>
               <p>CIF, magnetic CIF or RMCProfile configuration (.rmc6f). Or use <b>Open file…</b> above, or start from an example:</p>
+              <div className="examples features">
+                {FEATURES.map((x) => (
+                  <button key={x.title} data-testid={`feature-${x.title}`} title={x.note} onClick={() => loadFeature(x)}>
+                    <b>{x.title}</b>
+                    <span>{x.note}</span>
+                  </button>
+                ))}
+              </div>
               <div className="examples">
-                {EXAMPLES.map((x) => (
+                {STRUCTURES.map((x) => (
                   <button key={x.name} data-testid={`start-${x.name}`} onClick={() => load(x.text, x.file)}>
                     {x.name.replace(/_(COD-\d+|handwritten)$/, "").replace(/-/g, " ")}
                   </button>
