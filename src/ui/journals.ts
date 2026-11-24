@@ -102,22 +102,14 @@ export const JOURNALS: readonly Journal[] = [
     note: "ACS (JACS, Inorg. Chem., Chem. Mater.): lettering at least 4.5 pt, lines at least 0.5 pt, height at most 9.17 in with the caption.",
   },
   {
-    name: "Nature Communications",
+    // One template for the journals whose figures have the same sizes and text (the user's wish, 2026-11-23).
+    name: "Nature Communications, Nature Materials",
     sizes: [
       { id: "ncomms-1", label: "single column, 88 mm", width: 8.8, unit: "cm" },
       { id: "ncomms-2", label: "double column, 180 mm", width: 18, unit: "cm" },
     ],
     text: { pt: 7 },
-    note: "Nature Communications: sans serif, the same size in every figure (no size given; 7 pt as in the Nature journals' guide).",
-  },
-  {
-    name: "Nature Materials",
-    sizes: [
-      { id: "nmat-1", label: "1 column, 88 mm", width: 8.8, unit: "cm" },
-      { id: "nmat-2", label: "2 columns, 180 mm", width: 18, unit: "cm" },
-    ],
-    text: { pt: 7 },
-    note: "Nature Materials: text 5 to 7 pt sans serif, at most 180 mm wide.",
+    note: "Nature Communications, Nature Materials: text 5 to 7 pt sans serif, the same size in every figure; at most 180 mm wide.",
   },
   {
     name: "RSC journals",
@@ -163,6 +155,20 @@ export const JOURNALS: readonly Journal[] = [
     note: "American Mineralogist: the smallest character at least 8 pt, lines thicker than 0.5 pt, sans serif.",
   },
 ];
+
+/** A figure can take the whole width of a template, or half or a third of it (one panel in a row of two or three). */
+export const PARTS = [
+  { id: "1", label: "full width", share: 1 },
+  { id: "1/2", label: "1/2 width", share: 1 / 2 },
+  { id: "1/3", label: "1/3 width", share: 1 / 3 },
+] as const;
+export type PartId = (typeof PARTS)[number]["id"];
+
+/** The width of a share of a template's width, rounded to 0.01 of its unit (cm or in). */
+export function partWidth(width: number, part: PartId): number {
+  const share = PARTS.find((p) => p.id === part)!.share;
+  return Math.round(width * share * 100) / 100;
+}
 
 export const journalSize = (id: string): (JournalSize & { readonly of: Journal }) | undefined => {
   for (const j of JOURNALS) {

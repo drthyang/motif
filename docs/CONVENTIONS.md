@@ -277,7 +277,9 @@ Structure tab; the user's choices of 2026-11-23.
 - The page shows the whole canvas, as large as the frame allows.
 - **Journal templates** (Layout tab, Canvas, "journal"; 2026-11-23). Choosing one sets the size on paper to
   the width the journal asks for, keeping the chosen shape, sets the legend, axis and angle text to the
-  journal's size in pt, and shows the journal's limits. Values and their sources (each journal's own author
+  journal's size in pt, and shows the journal's limits. Journals with the same widths and text are one template
+  (the user's wish). Under "width" the figure takes the full width, 1/2 or 1/3 of it (one panel in a row of two
+  or three), rounded to 0.01 cm or in; the text keeps the journal's size. Values and their sources (each journal's own author
   pages, read 2026-11-23) are in the header of `src/ui/journals.ts`:
 
   | Journal | Widths | Text |
@@ -286,8 +288,7 @@ Structure tab; the user's choices of 2026-11-23.
   | Science | 5.7, 12.1, 18.4 cm (1, 2, 3 columns) | 7 pt (not smaller than 5) |
   | Physical Review | 8.5 cm (1 column), 17.8 cm (2 columns) | capitals and numerals 2 mm high |
   | ACS journals (JACS, Inorg. Chem., Chem. Mater.) | 3.33 in (single), 7 in (double) | 7 pt (at least 4.5) |
-  | Nature Communications | 88 mm (single), 180 mm (double) | 7 pt (no size given) |
-  | Nature Materials | 88 mm (1 column), 180 mm (2) | 7 pt (5 to 7 asked) |
+  | Nature Communications, Nature Materials (one template) | 88 mm (single), 180 mm (double) | 7 pt (5 to 7 asked) |
   | RSC journals (Dalton Trans., CrystEngComm, J. Mater. Chem. A and C) | 8.3 cm (single), 17.1 cm (double) | 7 pt (no figure text size given) |
   | Elsevier journals (J. Solid State Chem., J. Alloys Compd.) | 90 mm (single), 140 mm (1.5), 190 mm (double) | 7 pt |
   | J. Phys.: Condens. Matter | 8.5 cm (single), 15 cm (double) | 8 pt (8 to 12 asked) |

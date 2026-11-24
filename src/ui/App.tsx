@@ -43,7 +43,7 @@ import {
   type SavedSettings,
   type SettingField,
 } from "./settings";
-import { JOURNALS, journalSize, journalTextPt } from "./journals";
+import { JOURNALS, PARTS, partWidth, journalSize, journalTextPt, type PartId } from "./journals";
 import { type FeatureExample, readFeatures } from "./examples";
 import featuresText from "../../examples/features.json?raw";
 import type { Structure } from "../structure/types";
@@ -95,6 +95,8 @@ export function App() {
   const [canvasSizeText, setCanvasSizeText] = useState<[string, string]>(["8.9", "6.675"]);
   // The journal template last chosen; it shows as chosen while the size on paper is still its width.
   const [journalChoice, setJournalChoice] = useState("");
+  // Which share of the template's width the figure takes: all, half or a third.
+  const [journalPart, setJournalPart] = useState<PartId>("1");
   const canvasSize: [number, number] = [Number(canvasSizeText[0]), Number(canvasSizeText[1])];
   const [sideMin, sideMax] = canvasUnit === "cm" ? [1, 100] : [0.4, 40];
   const canvasSizeOk =
@@ -2122,7 +2124,20 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             <Section tab="layout" title="Canvas" hint="Fit the frame: the figure is 1440 px wide and as high as the frame on the page makes it. Size on paper: the width and height you give, in cm or in; the SVG states that size, so a drawing program places it at exactly that size, and the PNG is that size at the dpi given under Save. Lines, spheres and the legend keep their proportions to the figure; text given in pt under Lettering keeps its size. A journal template sets the width a journal asks for (keeping the shape) and the text size, from the journal's own author pages.">
               {(() => {
                 const chosen = journalSize(journalChoice);
-                const current = chosen && canvasFixed && canvasUnit === chosen.unit && Number(canvasSizeText[0]) === chosen.width ? chosen : undefined;
+                const current = chosen && canvasFixed && canvasUnit === chosen.unit && Number(canvasSizeText[0]) === partWidth(chosen.width, journalPart) ? chosen : undefined;
+                const apply = (id: string, part: PartId) => {
+                  const size = journalSize(id);
+                  if (!size) return;
+                  const width = partWidth(size.width, part);
+                  const height = ratio !== null ? width / ratio : (width * canvas.height) / canvas.width;
+                  setCanvasFixed(true);
+                  setCanvasUnit(size.unit);
+                  setCanvasSizeText([`${width}`, short(height)]);
+                  const pt = String(journalTextPt(size.of, capHeight(fontFamily)));
+                  setFontPtText({ legend: pt, axes: pt, angle: pt });
+                  setJournalChoice(size.id);
+                  setJournalPart(part);
+                };
                 return (
                   <>
                     <div className="row">
@@ -2132,17 +2147,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                         data-testid="canvas-journal"
                         value={current ? current.id : ""}
                         title="Set the width a journal asks for, and its text size"
-                        onChange={(e) => {
-                          const size = journalSize(e.target.value);
-                          if (!size) return;
-                          const height = ratio !== null ? size.width / ratio : (size.width * canvas.height) / canvas.width;
-                          setCanvasFixed(true);
-                          setCanvasUnit(size.unit);
-                          setCanvasSizeText([`${size.width}`, short(height)]);
-                          const pt = String(journalTextPt(size.of, capHeight(fontFamily)));
-                          setFontPtText({ legend: pt, axes: pt, angle: pt });
-                          setJournalChoice(size.id);
-                        }}
+                        onChange={(e) => apply(e.target.value, journalPart)}
                       >
                         <option value="">{current ? "" : "Journal template…"}</option>
                         {JOURNALS.map((j) => (
@@ -2155,6 +2160,27 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                           </optgroup>
                         ))}
                       </select>
+                    </div>
+                    <div className="row">
+                      <span className="lab">width</span>
+                      <select
+                        data-testid="canvas-journal-part"
+                        value={journalPart}
+                        disabled={!chosen}
+                        title="The whole width of the template, or half or a third of it (one panel in a row of two or three). The text size stays the journal's."
+                        onChange={(e) => (chosen ? apply(chosen.id, e.target.value as PartId) : setJournalPart(e.target.value as PartId))}
+                      >
+                        {PARTS.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                      {current && journalPart !== "1" && (
+                        <span className="sub">
+                          {journalPart} of {current.width} {current.unit} = {partWidth(current.width, journalPart)} {current.unit}
+                        </span>
+                      )}
                     </div>
                     {current && (
                       <p className="sub" data-testid="journal-note">

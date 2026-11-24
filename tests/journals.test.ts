@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Tsung-Han Yang
 
 import { describe, expect, it } from "vitest";
-import { JOURNALS, journalSize, journalTextPt } from "../src/ui/journals";
+import { JOURNALS, PARTS, partWidth, journalSize, journalTextPt } from "../src/ui/journals";
 
 const pt = (s: { width: number; unit: "cm" | "in" }) => (s.unit === "in" ? s.width * 72 : (s.width / 2.54) * 72);
 
@@ -22,7 +22,8 @@ describe("journal templates", () => {
     expect(pt(journalSize("acs-2")!)).toBeLessThanOrEqual(504);
     // Journals that often print crystal structures.
     expect(["ncomms-1", "ncomms-2"].map((id) => journalSize(id)!.width)).toEqual([8.8, 18]);
-    expect(["nmat-1", "nmat-2"].map((id) => journalSize(id)!.width)).toEqual([8.8, 18]);
+    // Nature Communications and Nature Materials share one template (same sizes, same text).
+    expect(journalSize("ncomms-1")!.journal).toBe("Nature Communications, Nature Materials");
     expect(["rsc-1", "rsc-2"].map((id) => journalSize(id)!.width)).toEqual([8.3, 17.1]);
     expect(["elsevier-1", "elsevier-1.5", "elsevier-2"].map((id) => journalSize(id)!.width)).toEqual([9, 14, 19]);
     expect(["jpcm-1", "jpcm-2"].map((id) => journalSize(id)!.width)).toEqual([8.5, 15]);
@@ -45,6 +46,20 @@ describe("journal templates", () => {
     const ids = JOURNALS.flatMap((j) => j.sizes.map((s) => s.id));
     expect(new Set(ids).size).toBe(ids.length);
     for (const id of ids) expect(journalSize(id)!.of.sizes.some((s) => s.id === id)).toBe(true);
+  });
+
+  it("no two templates have the same widths and text: such journals are one template", () => {
+    const key = (j: (typeof JOURNALS)[number]) => JSON.stringify([j.sizes.map((s) => [s.width, s.unit]), j.text]);
+    const keys = JOURNALS.map(key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("a figure can take the whole width, a half or a third", () => {
+    expect(PARTS.map((p) => p.id)).toEqual(["1", "1/2", "1/3"]);
+    expect(partWidth(8.9, "1")).toBe(8.9);
+    expect(partWidth(8.9, "1/2")).toBe(4.45);
+    expect(partWidth(18.3, "1/3")).toBe(6.1);
+    expect(partWidth(3.33, "1/3")).toBe(1.11);
   });
 
   it("text: a size in pt where the journal gives one; capitals 2 mm high in Physical Review, from the font's cap height", () => {
