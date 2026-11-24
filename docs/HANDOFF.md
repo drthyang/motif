@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 353 tests, about three seconds
+npx tsc -b && npx vitest run    # 359 tests, about three seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -57,9 +57,14 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   .res/.ins, PDB, Quantum ESPRESSO input (ibrav 0), CASTEP .cell, FHI-aims geometry.in, XSF; each checked against
   the CIF reading of the same crystal (`tests/formats.test.ts`). The format shows over the figure, top left; an
   RMC file opens as its supercell with a Supercell | Fold switch there.
-- Assistant (2026-11-24, docs/CONVENTIONS.md "Assistant"): look and layout only, Claude with the user's key or a
-  local model. Tried on the user's seven local models: the six of 25B and more pass 10 of 10; a 4B model 7 of 10.
-  gemma4:26b (Ollama) and gemma-4-26b-a4b-qat (LM Studio) are accurate and take seconds.
+- Assistant (2026-11-24, docs/CONVENTIONS.md "Assistant"): look and layout only; Claude, OpenAI or Gemini with
+  the user's key, or a local model. Tried on the user's seven local models: the six of 25B and more pass 10 of 10;
+  a 4B model 7 of 10. gemma4:26b (Ollama) and gemma-4-26b-a4b-qat (LM Studio) are accurate and take seconds.
+  Since f8b5708 it is talked to in a chatbox over the figure's lower right corner (folds to an "Assistant"
+  button) as well as in the Assistant tab, which keeps the setup; both show one conversation
+  (`src/ui/useAssistant.ts`). OpenAI and Gemini go through one Chat Completions translation
+  (`src/agent/openaiCompatible.ts`, Gemini at its OpenAI-compatible address); checked with unit tests and a
+  stand-in Gemini server in the page, not yet against the real services.
 - Also since 2026-11-23: rulers beside the figure (cm/in switch where they meet), journal templates chosen as
   publisher › journal › column › width (full, 1/2, 1/3, 1/4), phone and tablet gestures, default colours Se
   orange and Ga mauve.
@@ -109,7 +114,12 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   cell with a space group (RMCProfile Workbench has the method).
 - Assistant: not built, the MCP server (registry, stdio) for agents outside the page, and hub registration in
   `scattering-agent-tools` (another repo; only with the user's yes). The user has not yet tried it with Claude
-  (with their key); it was built and tried on local models only.
+  (with their key); it was built and tried on local models only. OpenAI and Gemini (f8b5708) likewise have not
+  been tried against the real services.
+- Assistant: the chatbox, the Assistant tab, or both? The user decides after looking at it (f8b5708 has both).
+- `CLAUDE.md` ("Decided by the user", in-app assistant, 2026-11-24) names Claude with the user's key and local
+  models only; the code since f8b5708 also offers OpenAI and Gemini with the user's key. The writing session does
+  not edit `CLAUDE.md`: the user should confirm OpenAI and Gemini there.
 - Filled triangles: should they get a contrasting colour by default (not the pale tint of their atoms)? The user
   chose a contrasting blue by hand for a cluster figure; asked, not answered.
 - Blank canvas while moving ("simplified while moving" with nothing drawn): found and fixed in 1cd3e18. Close

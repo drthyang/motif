@@ -497,14 +497,28 @@ Structure tab; the user's choices of 2026-11-23.
 
 ### Assistant (2026-11-24)
 
-The Assistant tab: the user says how the figure should look, and the assistant changes it through the page's own
-controls, then says where each control is, so the user learns where to find it.
+The user says how the figure should look, and the assistant changes it through the page's own controls, then says
+where each control is, so the user learns where to find it.
 
-- **Models** (the user's choice): Claude with the user's own API key, sent from the browser straight to Anthropic;
-  or a local model on Ollama or LM Studio, on which nothing leaves the computer. With Claude, what the tools read
-  about the figure (cell, elements, settings) goes to Anthropic with the user's words; the page says so. The key and
-  the choice stay in this browser. The local-server code is MATERIA's (`src/agent/localServer.ts`, `ollama.ts`,
-  `ollamaNative.ts`, `lmstudio.ts`), so a local model runs with a 32k context and the same SDK.
+- **Where it is** (commit f8b5708): a chatbox over the figure's lower right corner, and the Assistant tab. The
+  chatbox has Setup (opens the Assistant tab), New (a new conversation), a fold button and the conversation with
+  an input; folded, it is an "Assistant" button, and whether it is folded is kept in this browser. The Assistant tab
+  holds the connection setup (always shown) and the whole conversation, with its own input. Both show the one
+  conversation (`src/ui/useAssistant.ts`). Whether to keep the chatbox, the tab or both is open: the user decides
+  after trying it.
+- **Models** (the user's choice): Claude, OpenAI or Gemini with the user's own API key, sent from the browser
+  straight to that provider (Anthropic, OpenAI or Google); or a local model on Ollama or LM Studio, on which nothing
+  leaves the computer. With a key, what the tools read about the figure (cell, elements, settings) goes to that
+  provider with the user's words; the page says so. Each key, and the choice, stay in this browser. The local-server
+  code is MATERIA's (`src/agent/localServer.ts`, `ollama.ts`, `ollamaNative.ts`, `lmstudio.ts`), so a local model
+  runs with a 32k context and the same SDK.
+- **OpenAI and Gemini** (f8b5708): both through their Chat Completions API, Gemini at its OpenAI-compatible
+  address (`generativelanguage.googleapis.com/v1beta/openai`). One translation (`src/agent/openaiCompatible.ts`, no
+  new dependency) turns the exchange's messages into a chat completion and the answer back: instructions as the
+  system message, tools as functions with the same schema, each tool answer tied to its call. The provider's chat
+  models are listed with the key, or a model's name can be typed. Gemini's thinking models return a signature with
+  each tool call; it is sent back unchanged with that call. Not yet tried against the real OpenAI or Gemini
+  services (no paid calls).
 - **Scope** (the user's choice): look and layout only. Tools (`src/agent/tools.ts`): describe_figure, find_setting,
   change_settings (the page's saved-settings list, through its own checks), set_element, add_bonds, change_bonds,
   remove_bonds, set_view, set_cells, use_journal. No opening files, no saving figures.
@@ -515,7 +529,9 @@ controls, then says where each control is, so the user learns where to find it.
 - **Journal words** (`matchJournal` in `src/ui/journals.ts`): publishers by name or initials (APS, ACS), columns as
   "one column", "single", "double", "1.5 columns", widths as "full", "half", "third", "quarter".
 - **Checked:** tools against a stand-in page, the exchange with a scripted model (`tests/agentTools.test.ts`,
-  `tests/assistant.test.ts`); and a trial of ten requests on a local model, the page's state read after each
+  `tests/assistant.test.ts`); the OpenAI/Gemini translation both ways, with a stand-in server
+  (`tests/openaiCompatible.test.ts`), and in the browser with a stand-in Gemini server inside the page, through
+  which the chatbox turned the quartz O atoms red; and a trial of ten requests on a local model, the page's state read after each
   (`scripts/assistant_trial.cjs`, `?probe` in the address; a 2-minute limit per request, 30 minutes in all).
   No paid API calls in development. Results on the user's local models (2026-11-24, after the fixes below):
 
