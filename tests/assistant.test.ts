@@ -8,7 +8,7 @@ import type { Page } from "../src/agent/tools";
 
 const page = (calls: unknown[][]): Page => ({
   hasStructure: () => true,
-  describe: () => ({ file: "x.cif", format: "CIF", cell: "a = 10.4", elements: [], bonds: [], pairs: [{ between: "Nb–Nb", distances: [3.01, 3.07, 4.32] }], cells: "", view: "", canvas: "", journal: "", settings: {} }),
+  describe: () => ({ file: "x.cif", format: "CIF", cell: "a = 10.4", elements: [], bonds: [], pairs: [{ between: "Nb–Nb", distances: [3.01, 3.07, 4.32] }], cells: "", view: "", canvas: "", journal: "", moments: "none", settings: {} }),
   applySettings: () => [],
   setElement: () => null,
   addBonds: (a, b, d) => (calls.push(["add", a, b, d]), null),
@@ -17,6 +17,9 @@ const page = (calls: unknown[][]): Page => ({
   setView: () => null,
   setCells: () => null,
   useJournal: () => ({ applied: "" }),
+  setMoments: () => ({ applied: "" }),
+  clearMoments: () => null,
+  saveStructure: () => ({ applied: "" }),
 });
 
 /** A model that answers from a script, and records what it was sent. */

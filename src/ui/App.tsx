@@ -21,6 +21,8 @@ import { suggestBonds } from "../scene/autoBonds";
 import { DEFAULT_POLYHEDRON_OPACITY, pairDistances, type BondColouring, type BondLine, type BondRule, type PolyhedronLook } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readStructure } from "../structure/readStructure";
+import { withHandMoments, type MomentRule } from "../structure/handMoments";
+import { FORMATS, writeStructure, type StructureFormat } from "../structure/writeStructure";
 import { withDisplacements } from "../structure/distortion";
 import {
   apply as applySettings,
@@ -407,10 +409,17 @@ export function App() {
   const displacementThickness = Number(displacementThicknessText) >= 0.02 && Number(displacementThicknessText) <= 2 ? Number(displacementThicknessText) : DEFAULT_DISPLACEMENT_THICKNESS;
   useEffect(() => setModesOn(structure?.distortion?.modes.map(() => true) ?? []), [structure]);
   // The structure as drawn: with the displacements of the modes switched on.
-  const drawnStructure = useMemo(
-    () => (structure?.distortion && modesOn.length === structure.distortion.modes.length ? withDisplacements(structure, modesOn) : structure),
-    [structure, modesOn],
-  );
+  // Moments added by hand (the assistant's set_moments; handMoments.ts): on the unit cell's atoms, as stated.
+  const [momentRules, setMomentRules] = useState<readonly MomentRule[] | null>(null);
+  const drawnStructure = useMemo(() => {
+    const base = structure?.distortion && modesOn.length === structure.distortion.modes.length ? withDisplacements(structure, modesOn) : structure;
+    if (!base || !momentRules) return base;
+    try {
+      return withHandMoments(base, momentRules).structure;
+    } catch {
+      return base;
+    }
+  }, [structure, modesOn, momentRules]);
   const [showAxes, setShowAxes] = useState(true);
   const setLook = (key: string, change: { colour?: string; radiusText?: string; name?: string; hidden?: boolean; orderText?: string }) =>
     setLooks((all) => ({ ...all, [key]: { ...all[key], ...change } }));
@@ -459,6 +468,7 @@ export function App() {
       setLooks({ ...preferredLooks.current }); // element colours and radii from loaded settings, if any
       setAngleRules([]);
       setOrbitalRules([]);
+      setMomentRules(null);
       setAngleHover(null);
       setNewAngle("");
       if (!keepViewRef.current) setUpAxis(2);
@@ -1028,6 +1038,11 @@ export function App() {
         cells: `from ${rangeText.slice(0, 3).join(", ")} to ${rangeText.slice(3).join(", ")}`,
         view: viewLine,
         canvas: canvas.physical ? `${canvas.physical.width} × ${canvas.physical.height} ${canvas.physical.unit} on paper` : `fits the frame (${canvas.width} × ${canvas.height} px)`,
+        moments: momentRules
+          ? `added by hand: ${momentRules.map((r) => `${r.element}${r.where ? ` at ${r.where.axis} = ${r.where.at}` : ""} ${r.size} μB along [${r.along.join(" ")}]`).join("; ")}`
+          : structure!.sites.some((x) => x.moment)
+            ? "from the file (a magnetic CIF)"
+            : "none",
         journal: journalSize(journalChoice) ? `${journalSize(journalChoice)!.journal}, ${journalSize(journalChoice)!.label}, ${journalPart} width` : "none",
         settings: Object.fromEntries(Object.entries(settingFields).filter(([k]) => !["savedViews", "elementLooks"].includes(k)).map(([k, f]) => [k, f.value])),
       };
@@ -1117,6 +1132,40 @@ export function App() {
       setRangeText([...from, ...to].map(String));
       return null;
     },
+    setMoments: (rules) => {
+      if (!structure) return { error: "No structure is open." };
+      const base = structure.distortion && modesOn.length === structure.distortion.modes.length ? withDisplacements(structure, modesOn) : structure;
+      try {
+        const { counts } = withHandMoments(base, rules);
+        setMomentRules(rules);
+        setShowMoments(true);
+        return { applied: rules.map((r, k) => `${r.element}${r.where ? ` at ${r.where.axis} = ${r.where.at}` : ""}: ${r.size} μB along [${r.along.join(" ")}] on ${counts[k]} atom${counts[k] === 1 ? "" : "s"}`).join("; ") };
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : String(e) };
+      }
+    },
+    clearMoments: () => {
+      if (!momentRules) return "There are no moments added by hand.";
+      setMomentRules(null);
+      return null;
+    },
+    saveStructure: (format: StructureFormat, fileName?: string) => {
+      if (!drawnStructure) return { error: "No structure is open." };
+      try {
+        const base = (fileName || structure!.name || "structure").replace(/\.(cif|vasp|poscar|xyz|extxyz)$/i, "").replace(/[^A-Za-z0-9_.-]+/g, "_");
+        const written = writeStructure(drawnStructure, format, base);
+        const file = FORMATS.find((f) => f.id === format)!.file(base);
+        const url = URL.createObjectURL(new Blob([written.text], { type: "text/plain" }));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = file;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        return { applied: `${file}: ${written.atoms} atoms of one unit cell, no symmetry${written.notes.length ? `; ${written.notes.join("; ")}` : ""}` };
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : String(e) };
+      }
+    },
     useJournal: (req) => {
       const found = matchJournal(req, journalPart);
       if (typeof found === "string") return { error: found };
@@ -1141,6 +1190,9 @@ export function App() {
       setView: (v) => pageRef.current.setView(v),
       setCells: (f, t) => pageRef.current.setCells(f, t),
       useJournal: (r) => pageRef.current.useJournal(r),
+      setMoments: (r) => pageRef.current.setMoments(r),
+      clearMoments: () => pageRef.current.clearMoments(),
+      saveStructure: (f, n) => pageRef.current.saveStructure(f, n),
     }),
     [],
   );
@@ -1476,6 +1528,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                   <tr><td>α, β, γ (°)</td><td>{cell.alpha}, {cell.beta}, {cell.gamma}</td></tr>
                   <tr><td>Symmetry operations</td><td>{structure.operations.length}</td></tr>
                   <tr><td>Sites in the file</td><td>{structure.sites.length}</td></tr>
+                  {drawnStructure?.momentsByHand && <tr><td>Moments</td><td data-testid="moments-by-hand">added by hand, not from the file</td></tr>}
                   {largestMoment(structure) > 0 && (
                     <tr><td>Largest moment</td><td data-testid="largest-moment">{largestMoment(structure).toFixed(2)} μB</td></tr>
                   )}

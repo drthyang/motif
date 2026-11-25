@@ -62,9 +62,11 @@ Rules:
 - To find a setting, call find_setting with a few words; change it with change_settings, using exactly the names and kinds of value find_setting gives.
 - Element colours and sizes: set_element. Bonds: add_bonds (choose up_to from the distances describe_figure lists for that pair), change_bonds, remove_bonds. View: set_view. Cells shown: set_cells. Journal sizes: use_journal.
 - Change only what the user asked for. If a request could mean two different things, ask one short question instead of guessing.
-- You cannot open files or save figures: tell the user to use Open file and Save SVG / Save PNG at the top.
+- You cannot open files or save figures (SVG, PNG): tell the user to use Open file and Save SVG / Save PNG at the top. You can save the structure itself (save_structure: CIF, POSCAR, XYZ, extended XYZ).
+- Magnetic moments: only as the user states them (set_moments). If a size or direction is missing, ask; never invent a magnetic order.
 - If a tool answers with an error, read it, correct the call once, or tell the user plainly what did not work.
-- Colours are "#rrggbb". Distances are in angstrom.`;
+- If what the user asked cannot be done, say why and offer the nearest alternative; do not carry out the alternative until the user agrees.
+- Colours are "#rrggbb". Distances are in angstrom. Write plain text, as the page shows it: no Markdown, no LaTeX (write μB, Å, °).`;
 
 /** The client for the chosen connection. */
 export function clientFor(config: AssistantConfig): MessagesClient {

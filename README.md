@@ -75,6 +75,8 @@ size in Illustrator, Inkscape or Keynote; the PNG is drawn from the same SVG.
 - **An assistant that knows the knobs:** in the drawer under the side panel, say "make the O atoms red" or "size it
   for Physical Review, half a column", and it changes the controls and tells you where each one is. Claude, OpenAI
   or Gemini with your own API key, or a local model (Ollama, LM Studio) on which nothing leaves your computer.
+  It can also add magnetic moments you state (size and direction for an element, nothing assumed by symmetry) and
+  save the structure as CIF, VASP POSCAR, XYZ or extended XYZ (every atom of one cell).
 - **Works with a mouse, a trackpad or fingers:** drag to turn, pinch to zoom, two fingers to move and twist.
 - **Checked, not just drawn:** symmetry expansion against gemmi, moment directions against pymatgen,
   displacements against published coordinates, orbitals for orthogonality, and every file format against the

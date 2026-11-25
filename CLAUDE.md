@@ -54,6 +54,12 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
   element colours and sizes, bonds and their look, view, cells, journal template); it does not open files or save
   figures. Built and tested against a local model and stand-ins for the companies' servers only, no paid API
   calls. Its conversation is in a drawer at the bottom of the side panel and in the Assistant tab.
+- Assistant beyond look and layout (the user, 2026-11-24): it may add magnetic moments and save structures.
+  Moments only as stated, per atom: size in μB and a direction [u v w], for an element, optionally only the atoms
+  at one fractional coordinate; set on those atoms of one unit cell, nothing spread by symmetry (no magnetic
+  order assumed); shown in Info as "added by hand, not from the file". Saving writes every atom of one unit cell
+  (P1) in CIF, VASP POSCAR, XYZ or extended XYZ; symmetry is not kept; POSCAR and XYZ refuse partly occupied or
+  shared sites (no occupancies); moments are not written.
 - Page colour (2026-11-24): six accents for the page only, never the figure; Lemon by default. Chosen from a
   small dot at the right of the header, left of Open file. The tab icon is a slanted M and T sharing a stem.
 - Coordination polyhedra (2026-11-24): drawn from a bond rule, round its centre atoms inside the range; Glass

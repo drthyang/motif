@@ -11,7 +11,7 @@ function fakePage(over: Partial<Page> = {}) {
   const calls: unknown[][] = [];
   const page: Page = {
     hasStructure: () => true,
-    describe: () => ({ file: "x.cif", format: "CIF", cell: "", elements: [], bonds: [], pairs: [], cells: "", view: "", canvas: "", journal: "", settings: {} }),
+    describe: () => ({ file: "x.cif", format: "CIF", cell: "", elements: [], bonds: [], pairs: [], cells: "", view: "", canvas: "", journal: "", moments: "none", settings: {} }),
     applySettings: (v) => (calls.push(["settings", v]), Object.entries(v).filter(([, x]) => x === "bad").map(([n]) => n)),
     setElement: (e, c) => (calls.push(["element", e, c]), e === "Xx" ? "No element Xx in this structure." : null),
     addBonds: (a, b, d) => (calls.push(["add", a, b, d]), null),
@@ -20,6 +20,9 @@ function fakePage(over: Partial<Page> = {}) {
     setView: (v) => (calls.push(["view", v]), null),
     setCells: (f, t) => (calls.push(["cells", f, t]), null),
     useJournal: (r) => (calls.push(["journal", r]), { applied: "Physical Review, 1 column, 8.5 cm, 1/2 width = 4.25 cm" }),
+    setMoments: (r) => (calls.push(["moments", r]), { applied: "Mn: 5 μB along [0 0 1] on 2 atoms" }),
+    clearMoments: () => (calls.push(["clear"]), null),
+    saveStructure: (f, n) => (calls.push(["save", f, n]), { applied: `${n ?? "x"}.cif: 24 atoms` }),
     ...over,
   };
   return { page, calls };
@@ -120,6 +123,32 @@ describe("the assistant's tools", () => {
     expect(runTool(page, "add_bonds", { between: "Nb-Se", up_to: 50 }).isError).toBe(true);
     expect(runTool(page, "set_cells", { from: [0, 0], to: [1, 1, 1] }).isError).toBe(true);
     expect(runTool(page, "nope", {}).isError).toBe(true);
+  });
+
+  it("numbers outside the panel's limits are refused with what was probably meant; cells errors quote the values", () => {
+    const { page, calls } = fakePage({ setCells: () => 'Each "from" must be below its "to".' });
+    const r = runTool(page, "change_settings", { changes: { axesHead: "0", legendSize: 1.5 } });
+    expect(r.text).toMatch(/Out of range: axesHead = "0", but it takes 0.2 to 4 \(to hide the axis arrows use showAxes false\)/);
+    expect(calls).toEqual([["settings", { legendSize: 1.5 }]]);
+    expect(runTool(page, "set_cells", { from: [0, 0, 0], to: [3, 3, 0] }).text).toMatch(/Received from \(0, 0, 0\) to \(3, 3, 0\)/);
+    // Every range is the panel field's own (low below high, both finite).
+    for (const k of KNOBS) if (k.range) expect(k.range[0] < k.range[1], k.name).toBe(true);
+  });
+
+  it("moments and saving reach the page as stated; incomplete moments are refused, not guessed", () => {
+    const { page, calls } = fakePage();
+    expect(runTool(page, "set_moments", { moments: [{ element: "mn", size: 5, along: [0, 0, 1], where: { axis: "c", at: 0.5 } }] }).text).toMatch(/Done: moments set by hand/);
+    expect(runTool(page, "set_moments", { moments: [{ element: "Mn", along: [0, 0, 1] }] }).isError).toBe(true);
+    expect(runTool(page, "set_moments", { moments: [{ element: "Mn", size: 5, along: [0, 1] }] }).isError).toBe(true);
+    expect(runTool(page, "set_moments", { moments: [{ element: "Mn", size: 5, along: [0, 0, 1], where: { axis: "z", at: 0 } }] }).isError).toBe(true);
+    runTool(page, "clear_moments", {});
+    expect(runTool(page, "save_structure", { format: "VASP", file_name: "mine" }).text).toMatch(/saved mine.cif/);
+    expect(runTool(page, "save_structure", { format: "pdf" }).isError).toBe(true);
+    expect(calls).toEqual([
+      ["moments", [{ element: "Mn", size: 5, along: [0, 0, 1], where: { axis: "c", at: 0.5 } }]],
+      ["clear"],
+      ["save", "poscar", "mine"],
+    ]);
   });
 
   it("with no structure open, only the settings tools work", () => {

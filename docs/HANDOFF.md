@@ -134,6 +134,8 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   offered. The browser tab still says "MOTIF · Crystal Structure Visualizer".
 - Proposed, not started: click an atom or bond in the figure to edit it; undo/redo; symmetrize a folded RMC
   cell with a space group (RMCProfile Workbench has the method).
+- Assistant can add moments by hand and save structures (2026-11-24, the user's rules in CLAUDE.md); twenty more
+  rounds in `scripts/assistant_trial.cjs` (SET=round2), all four large local models 20/20 after fixes.
 - Assistant: not built, the MCP server (registry, stdio) for agents outside the page, and hub registration in
   `scattering-agent-tools` (another repo; only with the user's yes). The user has not yet tried it with Claude
   (with their key); it was built and tried on local models only. OpenAI and Gemini (f8b5708) likewise have not

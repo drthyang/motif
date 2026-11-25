@@ -90,6 +90,8 @@ export interface Structure {
    * orthogonal box with room around them (see lattice.ts), which the page does not draw as a unit cell.
    */
   readonly molecule?: boolean;
+  /** True when the moments were added by hand (handMoments.ts), not read from the file. */
+  readonly momentsByHand?: boolean;
   /** The file's format in a word or two ("CIF", "VASP", "SHELX", ...), shown over the figure. */
   readonly format?: string;
   /** Present for an RMCProfile configuration: its supercell, and whether it was folded into one cell. */

@@ -16,6 +16,10 @@ export interface Knob {
   readonly says: string;
   /** The values it takes, as the assistant must write them. */
   readonly values: string;
+  /** For a number (kept as text or not): the panel field's own limits. */
+  readonly range?: readonly [number, number];
+  /** Said when a value is refused: what the user may have meant instead. */
+  readonly instead?: string;
 }
 
 const MATERIALS = '"soft", "flat", "glossy", "metal" or "glass"';
@@ -26,28 +30,28 @@ export const KNOBS: readonly Knob[] = [
   { name: "atomMaterial", place: "Visual › Shading and outlines", says: "surface of the atoms", values: MATERIALS },
   { name: "bondMaterial", place: "Visual › Shading and outlines", says: "surface of the bonds", values: MATERIALS },
   { name: "arrowMaterial", place: "Visual › Shading and outlines", says: "surface of the moment, displacement and axis arrows", values: MATERIALS },
-  { name: "glassOpacity", place: "Visual › Shading and outlines", says: "how solid glass surfaces are", values: "a number from 0.05 (clear) to 1 (solid)" },
+  { name: "glassOpacity", place: "Visual › Shading and outlines", says: "how solid glass surfaces are", values: "a number from 0.05 (clear) to 1 (solid)", range: [0.05, 1] },
   { name: "bondOutline", place: "Visual › Shading and outlines", says: "thin darker outline on the bonds", values: BOOL },
   { name: "momentOutline", place: "Visual › Moment arrows", says: "thin darker outline on the moment arrows", values: BOOL },
   { name: "axesOutline", place: "Visual › Shading and outlines", says: "thin darker outline on the a, b, c axis arrows", values: BOOL },
   { name: "showVacancy", place: "Visual › Atoms", says: "show a vacant share of a site as an empty wedge", values: BOOL },
   { name: "momentColour", place: "Visual › Moment arrows", says: "colour of the magnetic moment arrows", values: COLOUR },
-  { name: "momentLength", place: "Visual › Moment arrows", says: "length of the largest moment arrow, in angstrom", values: 'a number as text, e.g. "3"' },
-  { name: "momentTail", place: "Visual › Moment arrows", says: "share of the arrow on the tail side of the atom, in percent (100 = centred)", values: 'a number as text, e.g. "80"' },
-  { name: "momentThickness", place: "Visual › Moment arrows", says: "thickness of the moment arrows' rods, in angstrom", values: 'a number as text, e.g. "0.16"' },
-  { name: "arrowHead", place: "Visual › Moment arrows", says: "size of the arrow heads, as a multiple of the usual", values: 'a number as text, e.g. "1.2"' },
-  { name: "displacementLength", place: "Visual › Displacement arrows", says: "length of the largest displacement arrow, in angstrom", values: 'a number as text, e.g. "1.5"' },
+  { name: "momentLength", place: "Visual › Moment arrows", says: "length of the largest moment arrow, in angstrom", values: 'a number as text, e.g. "3"', range: [0.25, 20] },
+  { name: "momentTail", place: "Visual › Moment arrows", says: "share of the arrow on the tail side of the atom, in percent (100 = centred)", values: 'a number as text, e.g. "80"', range: [20, 100] },
+  { name: "momentThickness", place: "Visual › Moment arrows", says: "thickness of the moment arrows' rods, in angstrom", values: 'a number as text, e.g. "0.16"', range: [0.02, 2] },
+  { name: "arrowHead", place: "Visual › Moment arrows", says: "size of the arrow heads, as a multiple of the usual", values: 'a number as text, e.g. "1.2"', range: [0.2, 4] },
+  { name: "displacementLength", place: "Visual › Displacement arrows", says: "length of the largest displacement arrow, in angstrom", values: 'a number as text, e.g. "1.5"', range: [0.25, 20] },
   { name: "displacementColour", place: "Visual › Displacement arrows", says: "colour of the displacement arrows", values: COLOUR },
-  { name: "displacementThickness", place: "Visual › Displacement arrows", says: "thickness of the displacement arrows, in angstrom", values: 'a number as text' },
+  { name: "displacementThickness", place: "Visual › Displacement arrows", says: "thickness of the displacement arrows, in angstrom", values: 'a number as text', range: [0.02, 2] },
   { name: "showCell", place: "Visual › Unit cell", says: "draw the unit cell outline", values: BOOL },
   { name: "cellStyle", place: "Visual › Unit cell", says: "how the cell edges are drawn", values: '"depth" (near solid, far dashed), "dashed" or "solid"' },
-  { name: "cellWidth", place: "Visual › Unit cell", says: "width of the cell lines, in px", values: 'a number as text, e.g. "3"' },
+  { name: "cellWidth", place: "Visual › Unit cell", says: "width of the cell lines, in px", values: 'a number as text, e.g. "3"', range: [0.5, 12], instead: "to hide the cell use showCell false" },
   { name: "showLegend", place: "Visual › Legend", says: "draw the legend (a sphere and name per element)", values: BOOL },
   { name: "legendFollows", place: "Visual › Legend", says: "legend spheres as large as the atoms drawn", values: BOOL },
-  { name: "legendSize", place: "Visual › Legend", says: "size of the whole legend drawing, as a multiple of the usual (not the text size in pt: that is textSizes)", values: 'a number as text, e.g. "0.8"' },
+  { name: "legendSize", place: "Visual › Legend", says: "size of the whole legend drawing, as a multiple of the usual (not the text size in pt: that is textSizes)", values: 'a number as text, e.g. "0.8"', range: [0.2, 4], instead: "to hide the legend use showLegend false; for its text size use textSizes" },
   { name: "showAxes", place: "Visual › Axes", says: "draw the a, b, c axis arrows", values: BOOL },
-  { name: "axesSize", place: "Visual › Axes", says: "size of the axis arrows drawing, as a multiple of the usual (not the text size in pt: that is textSizes)", values: 'a number as text' },
-  { name: "axesHead", place: "Visual › Axes", says: "size of the axis arrows' cones, as a multiple of the usual", values: 'a number as text' },
+  { name: "axesSize", place: "Visual › Axes", says: "size of the axis arrows drawing, as a multiple of the usual (not the text size in pt: that is textSizes)", values: 'a number as text', range: [0.2, 4], instead: "to hide the axes use showAxes false; for the letters' text size use textSizes" },
+  { name: "axesHead", place: "Visual › Axes", says: "size of the axis arrows' cones, as a multiple of the usual", values: 'a number as text', range: [0.2, 4], instead: "to hide the axis arrows use showAxes false" },
   { name: "axesReadable", place: "Visual › Axes", says: "draw an axis pointing into the page long enough to read", values: BOOL },
   { name: "axesColoured", place: "Visual › Axes", says: "a, b, c arrows each in its own colour (else all grey)", values: BOOL },
   { name: "axesColours", place: "Visual › Axes", says: "the colours of the a, b and c arrows", values: 'a list of three colours ["#rrggbb", "#rrggbb", "#rrggbb"]' },
@@ -60,12 +64,12 @@ export const KNOBS: readonly Knob[] = [
   { name: "canvasSize", place: "Layout › Canvas", says: "width and height on paper", values: '["8.9", "6.675"] (text, in canvasUnit)' },
   { name: "aspect", place: "Layout › Canvas", says: "shape of the figure, width : height", values: '"free", "1:1", "5:4", "4:3", "3:2", "A" (paper, √2:1), "16:10", "16:9" or "2:1"' },
   { name: "portrait", place: "Layout › Canvas", says: "turn the shape upright", values: BOOL },
-  { name: "dpi", place: "Top bar", says: "resolution of the saved PNG", values: 'a number as text, e.g. "300"' },
+  { name: "dpi", place: "Top bar", says: "resolution of the saved PNG", values: 'a number as text, e.g. "300"', range: [30, 2400] },
   { name: "transparent", place: "Top bar", says: "saved figure without a background", values: BOOL },
-  { name: "pngWidth", place: "Top bar", says: "width of the PNG in px, when the figure has no size on paper", values: "a number from 100 to 16000" },
+  { name: "pngWidth", place: "Top bar", says: "width of the PNG in px, when the figure has no size on paper", values: "a number from 100 to 16000", range: [100, 16000] },
   { name: "saveZoomed", place: "Layout › Scale", says: "the saved figure shows the zoom as on screen", values: BOOL },
   { name: "scaleMode", place: "Layout › Scale", says: "how the structure is scaled as it turns", values: '"outline" (fit each view), "steady" or "fixed"' },
-  { name: "fixedScale", place: "Layout › Scale", says: "px per angstrom with the fixed scale", values: 'a number as text, e.g. "60"' },
+  { name: "fixedScale", place: "Layout › Scale", says: "px per angstrom with the fixed scale", values: 'a number as text, e.g. "60"', range: [2, 1000] },
   { name: "dragMode", place: "Layout › Dragging", says: "how a drag turns the structure", values: '"turntable" or "free"' },
   { name: "snap", place: "Layout › Dragging", says: "snap to a nearby crystal direction on release", values: BOOL },
   { name: "animate", place: "Layout › Dragging", says: "animate turns to a chosen view", values: BOOL },

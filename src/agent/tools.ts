@@ -13,6 +13,8 @@
  */
 
 import { KNOBS, knob, NOT_FOR_ASSISTANT } from "./catalogue";
+import type { MomentRule } from "../structure/handMoments";
+import type { StructureFormat } from "../structure/writeStructure";
 
 /** A bond rule as the assistant sees it. */
 export interface BondView {
@@ -44,6 +46,8 @@ export interface FigureState {
   readonly view: string;
   readonly canvas: string;
   readonly journal: string;
+  /** The magnetic moments: none, from the file, or added by hand (with what was stated). */
+  readonly moments: string;
   readonly settings: Readonly<Record<string, unknown>>;
 }
 
@@ -61,6 +65,11 @@ export interface Page {
   readonly setCells: (from: readonly number[], to: readonly number[]) => string | null;
   /** Applies a journal template; returns an error sentence, or what was applied in words (so the model reports the truth). */
   readonly useJournal: (request: { publisher?: string; journal?: string; column?: string; width?: string }) => { error: string } | { applied: string };
+  /** Sets moments by hand (handMoments.ts); returns an error sentence, or what was set in words. */
+  readonly setMoments: (rules: readonly MomentRule[]) => { error: string } | { applied: string };
+  readonly clearMoments: () => string | null;
+  /** Saves the structure's unit cell in a format, downloaded by the browser; returns an error, or what was saved. */
+  readonly saveStructure: (format: StructureFormat, fileName?: string) => { error: string } | { applied: string };
 }
 
 export interface BondChange {
@@ -175,6 +184,40 @@ export const TOOLS: readonly ToolSpec[] = [
     description: "Size the figure for a journal: publisher, journal, column, and the share of the column width (\"full\", \"1/2\", \"1/3\" or \"1/4\"). Sets the width on paper and the journal's text size.",
     input_schema: { type: "object", properties: { publisher: { type: "string" }, journal: { type: "string" }, column: { type: "string" }, width: { type: "string" } } },
   },
+  {
+    name: "set_moments",
+    description:
+      "Add magnetic moments by hand, as the user states them: for each, an element, a size in Bohr magnetons (0 to 15) and a direction as a crystal direction [u v w]; optionally only the atoms at one fractional coordinate along a, b or c (e.g. where {axis: \"c\", at: 0.5}). Set on those atoms of one unit cell only, nothing spread by symmetry; later entries win. Ask the user for any size or direction they have not given; never make one up.",
+    input_schema: {
+      type: "object",
+      properties: {
+        moments: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              element: { type: "string" },
+              size: { type: "number", description: "μB" },
+              along: { type: "array", items: { type: "number" }, description: "[u, v, w]" },
+              where: { type: "object", properties: { axis: { type: "string", enum: ["a", "b", "c"] }, at: { type: "number" } } },
+            },
+            required: ["element", "size", "along"],
+          },
+        },
+      },
+      required: ["moments"],
+    },
+  },
+  {
+    name: "clear_moments",
+    description: "Remove the moments added by hand (moments read from the file stay).",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "save_structure",
+    description: "Save the structure as a file the browser downloads: every atom of one unit cell (no symmetry), in \"cif\", \"poscar\" (VASP), \"xyz\" or \"extxyz\" (extended XYZ, keeps the cell). Optionally a file name without its extension.",
+    input_schema: { type: "object", properties: { format: { type: "string", enum: ["cif", "poscar", "xyz", "extxyz"] }, file_name: { type: "string" } }, required: ["format"] },
+  },
 ];
 
 const BOND_PLACE = "Structure › Bonds (distance), Visual › Bonds (look)";
@@ -231,7 +274,15 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
       if (typeof changes !== "object" || changes === null || Array.isArray(changes)) return fail('Give "changes" as an object of setting name -> value.');
       const entries = Object.entries(changes as Record<string, unknown>);
       const unknown = entries.filter(([n]) => !knob(n) || NOT_FOR_ASSISTANT.includes(n)).map(([n]) => n);
-      const known: Record<string, unknown> = Object.fromEntries(entries.filter(([n]) => !unknown.includes(n)));
+      // Numbers outside the panel field's own limits are refused before the page sees them (the page keeps such fields
+      // as text and would take "0"), with what the user may have meant instead.
+      const outOfRange = entries.filter(([n, v]) => {
+        const k = knob(n);
+        if (!k?.range) return false;
+        const x = Number(v);
+        return v === "" || !Number.isFinite(x) || x < k.range[0] || x > k.range[1];
+      });
+      const known: Record<string, unknown> = Object.fromEntries(entries.filter(([n]) => !unknown.includes(n) && !outOfRange.some(([m]) => m === n)));
       let skipped = Object.keys(known).length ? page.applySettings(known) : [];
       // A value refused as written is tried once more in the form the page keeps: 8 as "8" where text is kept
       // (text sizes, lengths), "true" as true, "60" as 60. A model (or a person) writes such values naturally.
@@ -243,6 +294,7 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
       const lines: string[] = [];
       if (applied.length) lines.push(`Done: ${applied.map((n) => `${n} = ${JSON.stringify(known[n])} (${knob(n)!.place})`).join("; ")}.`);
       if (skipped.length) lines.push(`Not a usable value: ${skipped.map((n) => `${n} = ${JSON.stringify(known[n])}, but it takes ${knob(n)!.values}`).join("; ")}.`);
+      if (outOfRange.length) lines.push(`Out of range: ${outOfRange.map(([n, v]) => `${n} = ${JSON.stringify(v)}, but it takes ${knob(n)!.range![0]} to ${knob(n)!.range![1]}${knob(n)!.instead ? ` (${knob(n)!.instead})` : ""}`).join("; ")}.`);
       if (unknown.length) lines.push(`No such setting: ${unknown.join(", ")}. Use find_setting.`);
       return { text: lines.join("\n"), ...(applied.length ? {} : { isError: true }) };
     }
@@ -316,13 +368,43 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
       const ok = (v: unknown) => Array.isArray(v) && v.length === 3 && v.every((x) => typeof x === "number" && Number.isFinite(x));
       if (!ok(from) || !ok(to)) return fail("from and to must each be three numbers.");
       const error = page.setCells(from as number[], to as number[]);
-      return error ? fail(error) : { text: done(`cells from (${(from as number[]).join(", ")}) to (${(to as number[]).join(", ")})`, "Structure › Cells shown") };
+      return error ? fail(`${error} Received from (${(from as number[]).join(", ")}) to (${(to as number[]).join(", ")}). For n1 x n2 x n3 cells give from [0, 0, 0] to [n1, n2, n3].`) : { text: done(`cells from (${(from as number[]).join(", ")}) to (${(to as number[]).join(", ")})`, "Structure › Cells shown") };
     }
     case "use_journal": {
       const req = Object.fromEntries(["publisher", "journal", "column", "width"].filter((k) => typeof input[k] === "string").map((k) => [k, input[k] as string]));
       if (Object.keys(req).length === 0) return fail("Name at least a publisher or a journal.");
       const result = page.useJournal(req);
       return "error" in result ? fail(result.error) : { text: done(`journal template ${result.applied}`, "Layout › Canvas") };
+    }
+    case "set_moments": {
+      const raw = input["moments"];
+      if (!Array.isArray(raw) || raw.length === 0) return fail('Give "moments" as a list of {element, size, along, where?}.');
+      const rules: MomentRule[] = [];
+      for (const [k, m] of raw.entries()) {
+        const x = (m ?? {}) as Record<string, unknown>;
+        const along = x["along"];
+        const where = x["where"] as { axis?: string; at?: unknown } | undefined;
+        if (typeof x["element"] !== "string" || typeof x["size"] !== "number" || !Array.isArray(along) || along.length !== 3) return fail(`Moment ${k + 1} needs element, size (μB) and along [u, v, w].`);
+        if (where && (!["a", "b", "c"].includes(String(where.axis)) || typeof where.at !== "number")) return fail(`Moment ${k + 1}: where must be {axis: "a" | "b" | "c", at: a number}.`);
+        rules.push({
+          element: x["element"].charAt(0).toUpperCase() + x["element"].slice(1).toLowerCase(),
+          size: x["size"],
+          along: along.map(Number) as unknown as [number, number, number],
+          ...(where ? { where: { axis: where.axis as "a" | "b" | "c", at: where.at as number } } : {}),
+        });
+      }
+      const result = page.setMoments(rules);
+      return "error" in result ? fail(result.error) : { text: done(`moments set by hand: ${result.applied}`, "Visual › Moment arrows (their look)") };
+    }
+    case "clear_moments": {
+      const error = page.clearMoments();
+      return error ? fail(error) : { text: done("moments added by hand removed", "the figure") };
+    }
+    case "save_structure": {
+      const format = String(input["format"] ?? "").toLowerCase().replace(/^vasp$/, "poscar").replace(/^extended ?xyz$/, "extxyz");
+      if (!["cif", "poscar", "xyz", "extxyz"].includes(format)) return fail('format must be "cif", "poscar", "xyz" or "extxyz".');
+      const result = page.saveStructure(format as StructureFormat, typeof input["file_name"] === "string" ? (input["file_name"] as string) : undefined);
+      return "error" in result ? fail(result.error) : { text: `Done: saved ${result.applied}. The browser downloads it.` };
     }
     default:
       return fail(`There is no tool "${name}".`);

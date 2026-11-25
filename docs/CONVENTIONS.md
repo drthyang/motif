@@ -608,9 +608,10 @@ where each control is, so the user learns where to find it.
   models are listed with the key, or a model's name can be typed. Gemini's thinking models return a signature with
   each tool call; it is sent back unchanged with that call. Not yet tried against the real OpenAI or Gemini
   services (no paid calls).
-- **Scope** (the user's choice): look and layout only. Tools (`src/agent/tools.ts`): describe_figure, find_setting,
-  change_settings (the page's saved-settings list, through its own checks), set_element, add_bonds, change_bonds,
-  remove_bonds, set_view, set_cells, use_journal. No opening files, no saving figures.
+- **Scope** (the user's choices): look and layout, and since 2026-11-24 moments by hand and saving the structure.
+  Tools (`src/agent/tools.ts`): describe_figure, find_setting, change_settings (the page's saved-settings list,
+  through its own checks and the panel fields' limits), set_element, add_bonds, change_bonds, remove_bonds,
+  set_view, set_cells, use_journal, set_moments, clear_moments, save_structure. No opening files, no saving figures.
 - **Catalogue** (`src/agent/catalogue.ts`): every setting with its place ("Visual › Bonds"), what it does and the
   values it takes. A test holds it to the page's own list and every place to a section of the page.
 - **One exchange** (`src/agent/assistant.ts`): the user's words, then tool calls carried out on the page, until the
@@ -634,6 +635,19 @@ where each control is, so the user learns where to find it.
   | muse-glimmer (28B) | LM Studio | 10 of 10 | 30–105 s |
   | gemma-4-e4b (4B) | LM Studio | 7 of 10 | 2–8 s |
 
+  A second set of twenty rounds (`SET=round2`, 2026-11-24) adds the moments and saving tools and the edges: a
+  request too vague to act on (must ask, change nothing), a save the format cannot do (must refuse, not substitute),
+  a question (must change nothing). After its fixes: gemma4:26b 20/20 (3.1 min), qwen3.8-27b 20/20 (4.5 min),
+  muse-glimmer 20/20 (about 18 min), qwen-local 20/20 (its two failures rerun). Bugs it found and fixed: numbers
+  outside a panel field's limits were taken (axesHead "0" for "turn off the axes"; now refused, with what was
+  probably meant); a refusal worded "Save it as CIF" was obeyed as an instruction (now "ask the user", and the model
+  is told not to carry out an alternative until the user agrees); a cells error did not quote the values received;
+  replies used Markdown and LaTeX, which the page shows raw (now plain text, μB).
+- **Moments by hand** (`src/structure/handMoments.ts`, the user's rules in CLAUDE.md): a direction [u v w] is a lattice
+  vector, turned into components along the unit vectors of a, b, c (MOTIF's moment form); checked by hand in a cubic
+  and a hexagonal cell (`tests/writeStructure.test.ts`).
+- **Saving a structure** (`src/structure/writeStructure.ts`): every atom of one unit cell, read back by MOTIF's own
+  readers to the same cell and atoms (CIF, POSCAR, extended XYZ; plain XYZ keeps every distance).
   A 4B model is not reliable enough: it skipped part of a request, or asked before acting. Bugs the trials found and
   fixed: an LM Studio model loaded with too small a context (now loaded with 32k first, MATERIA's helper); a value
   refused for its form (8 for "8") is retried in its natural form, and the error shows what was sent; setting search
