@@ -154,6 +154,8 @@ a session it created, else its id session_018FAHe7jSmFWHBKsHtxQSBh) after each.
    the structure to the canvas from before the frame was measured (1440 × 1100, drawn on 1440 × 1080: 2.6 % too
    large). Fixed with the user's yes (2026-11-25, commit 1e2fb1d): saved figures changed, structures 2.6 % smaller in
    the default canvas.
+   Hub registration waits until MOTIF is public (the user, 2026-11-25); then a separate agent registers it from
+   docs/HUB-REGISTRATION.md.
 
 Limits for all three: correctness first; no paid API calls (no trial with the user's Claude, OpenAI or Gemini key;
 local models only); no Claude trailer in MOTIF commits; unpublished structures stay local; nothing automated past

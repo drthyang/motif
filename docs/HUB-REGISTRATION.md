@@ -3,6 +3,9 @@
 What the hub (`drthyang/scattering-agent-tools`) needs to start MOTIF's MCP server. MOTIF does not edit the hub;
 a separate agent registers it there. Written 2026-11-25 for the server in `src/mcp/` (docs/CONVENTIONS.md, "MCP server").
 
+**Not yet:** registration waits until MOTIF is public (the user, 2026-11-25): the hub repo is public and MOTIF is
+private. Then register it from this file.
+
 ## The entry
 
 In `plugin/suite.json`, under `servers`, shaped like the MATERIA entry (one bundle per launcher process, file folders
