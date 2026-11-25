@@ -69,6 +69,12 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
 - Camera defaults (2026-11-25, accepted as built): tilt stops at ±90°; the axis buttons put c up (b when
   looking along c); snapping on; the short turn on a click on; scale fitted to each view; keeping the view when
   a file is opened off.
+- MCP server for agents outside the page (2026-11-25, option "A"): in MOTIF only (`src/mcp/`), a headless `Figure`
+  that mirrors the page's figure state and defaults and draws with the same pure code; App.tsx keeps its own
+  mapping. Drift is caught by the parity check in `scripts/browser_check.cjs`: the SVG saved by the page and by the
+  server must be byte for byte the same for olivine and every feature example. A new page setting that changes the
+  saved figure goes into `src/mcp/figure.ts` too. The hub's entry is written in docs/HUB-REGISTRATION.md; MOTIF
+  does not edit scattering-agent-tools.
 
 ## Data rule (strict)
 

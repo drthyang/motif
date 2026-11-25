@@ -7,7 +7,9 @@
 // It checks that
 //   1. the saved SVG is byte for byte the same with the preview on, off, and while the preview is showing;
 //   2. the preview and the vector figure of one view cover the same pixels in nearly the same colours;
-//   3. without worker drawing (no OffscreenCanvas) the page still works, on SVG alone, and says so.
+//   3. without worker drawing (no OffscreenCanvas) the page still works, on SVG alone, and says so;
+//   5. the MCP server (dist-mcp/mcp-server.mjs, built here) saves the same SVG as the page, byte for byte, for
+//      olivine and every feature example (src/mcp/figure.ts mirrors the page's state: the user's choice, 2026-11-25).
 const { chromium } = require(process.env.PLAYWRIGHT || "playwright-core");
 const fs = require("fs");
 const os = require("os");
@@ -145,6 +147,47 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
       await page.waitForTimeout(400);
     }
     check(`feature examples (${names.length}) open, turn and zoom with no console error`, names.length >= 5 && errors.length === 0, [...new Set(errors)].join("; "));
+    await page.close();
+  }
+
+  // 5. Parity: the SVG the page saves = the SVG the MCP server saves, for olivine and each feature example.
+  {
+    const root = path.join(__dirname, "..");
+    require("child_process").execFileSync("node", [path.join(root, "scripts", "build-mcp.mjs")], { stdio: "inherit" });
+    const sdk = path.join(root, "node_modules", "@modelcontextprotocol", "sdk", "dist", "esm");
+    const { Client } = await import(path.join(sdk, "client", "index.js"));
+    const { StdioClientTransport } = await import(path.join(sdk, "client", "stdio.js"));
+    const out = fs.mkdtempSync(path.join(tmp, "mcp-"));
+    const transport = new StdioClientTransport({ command: "node", args: [path.join(root, "dist-mcp", "mcp-server.mjs")], env: { ...process.env, MOTIF_ROOTS: [path.join(root, "examples"), out].join(path.delimiter) }, stderr: "ignore" });
+    const client = new Client({ name: "browser-check", version: "0" });
+    await client.connect(transport);
+    const call = async (name, args) => {
+      const r = await client.callTool({ name, arguments: args }, undefined, { timeout: 60000 });
+      if (r.isError) throw new Error(`${name}: ${r.content[0].text}`);
+      return r.content[0].text;
+    };
+    const serverSvg = async (open, name) => {
+      await open();
+      await call("save_figure", { folder: out, file_name: name, overwrite: true });
+      return fs.readFileSync(path.join(out, `${name}.svg`), "utf8");
+    };
+    const page = await browser.newPage({ viewport: { width: 1500, height: 1000 }, acceptDownloads: true });
+    await page.goto(URL_BASE);
+    await page.setInputFiles("[data-testid=file]", path.join(root, "examples", "olivine-FeMg_COD-1541262.cif"));
+    await page.waitForTimeout(800);
+    const pageOlivine = await saveSvg(page, "page-olivine.svg");
+    const mcpOlivine = await serverSvg(() => call("open_file", { path: "olivine-FeMg_COD-1541262.cif" }), "olivine");
+    check("MCP server SVG = page SVG: olivine", pageOlivine === mcpOlivine, `${pageOlivine.length} and ${mcpOlivine.length} bytes`);
+    const features = JSON.parse(fs.readFileSync(path.join(root, "examples", "features.json"), "utf8")).examples;
+    for (const [i, f] of features.entries()) {
+      await page.goto(URL_BASE);
+      await page.click(`[data-testid="feature-${f.title}"]`);
+      await page.waitForTimeout(1500);
+      const fromPage = await saveSvg(page, `page-feature-${i + 1}.svg`);
+      const fromServer = await serverSvg(() => call("open_example", { number: i + 1 }), `feature-${i + 1}`);
+      check(`MCP server SVG = page SVG: example ${i + 1}, ${f.title}`, fromPage === fromServer, `${fromPage.length} and ${fromServer.length} bytes`);
+    }
+    await client.close();
     await page.close();
   }
 

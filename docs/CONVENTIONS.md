@@ -681,6 +681,27 @@ where each control is, so the user learns where to find it.
   states what was applied); a journal named as its publisher was not found; an exchange that changed nothing now
   says so ("Nothing on the figure was changed."), since a small model can claim a change it did not make.
 
+### MCP server (2026-11-25)
+
+- For agents outside the page (the user's queue item (a), 2026-11-25): `src/mcp/` — `figure.ts` (one figure: the
+  page's state and defaults, drawn with the same structure, scene and render code), `registry.ts` (the tools),
+  `host.ts` (the MCP server), `server.ts` (stdio), `files.ts` (folders), `examples.ts`. Shaped like MATERIA's server.
+  Bundled with rolldown (already brought by Vite) into one file, `dist-mcp/mcp-server.mjs`, with the five feature
+  examples inside it. How the hub starts it: docs/HUB-REGISTRATION.md.
+- Tools: the in-page assistant's, unchanged (same descriptions, checks and answers), plus `open_file` and
+  `open_example` (as the page opens a file or a numbered card), `save_figure` (the SVG exactly as the page's Save ›
+  SVG) and `save_structure` (one cell, as on the page, written to a folder).
+- Files only inside the folders in `MOTIF_ROOTS` (else the folder it is started in, never the filesystem root or the
+  home folder); links followed before the check; nothing replaced unless asked, never written through a link.
+- The headless figure mirrors the page (the user's choice "A": App.tsx keeps its own mapping). What the server
+  cannot have: the frame's shape (no size on paper and shape "free" gives 1440 × 1100), the zoom (none), and a
+  font's measured capital height (0.72 of the size, the page's fallback; it matters only for a journal that states
+  its capitals in mm).
+- Checked: `tests/mcp.test.ts` (folders, tool list, settings list against the assistant's catalogue, the tools through
+  an in-memory MCP client); `scripts/browser_check.cjs` part 5 builds the bundle, runs it over stdio, and requires its
+  SVG to equal the page's, byte for byte, for olivine and the five feature examples. Any setting added to the page
+  that changes the saved figure must be added to `src/mcp/figure.ts`, or that check fails.
+
 ## How each part is checked
 
 Each step is checked against an independent reference before the next one starts.
@@ -725,6 +746,8 @@ npm install
 npm run dev      # the page, at the local address it prints
 npm test         # the checks, a few seconds
 npm run build    # a static site in dist/
+npm run build:mcp  # the MCP server, one file in dist-mcp/ (docs/HUB-REGISTRATION.md)
+npm run -s mcp   # build it and serve it on stdio (-s keeps stdout for the server)
 ```
 
 Built with TypeScript, Vite and React; the page's font (IBM Plex Sans, OFL licence) is part of the
