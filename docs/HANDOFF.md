@@ -1,4 +1,4 @@
-# MOTIF handoff (2026-11-24)
+# MOTIF handoff (2026-11-25)
 
 For the next session, on any computer. Read `CLAUDE.md` first: it has the working rules and the decisions
 already taken by the user. This note is the state of play. docs/CONVENTIONS.md lists every convention.
@@ -9,7 +9,7 @@ already taken by the user. This note is the state of play. docs/CONVENTIONS.md l
 git clone git@github.com:drthyang/motif.git && cd motif   # or: git pull
 npm ci
 npm run dev -- --port 5183      # http://localhost:5183/
-npx tsc -b && npx vitest run    # 377 tests, about three seconds
+npx tsc -b && npx vitest run    # 400 tests, about three seconds
 ```
 
 Browser check (Playwright; needs a `playwright-core` from any local project, no browser download):
@@ -18,7 +18,7 @@ Browser check (Playwright; needs a `playwright-core` from any local project, no 
 PLAYWRIGHT=/path/to/node_modules/playwright-core node scripts/browser_check.cjs
 ```
 
-It must end with `all browser checks passed` (it did on 2026-11-24, at 3fcb45a). It relies on the
+It must end with `all browser checks passed` (it did on 2026-11-25, at 519d741). It relies on the
 `data-testid`s, `.figure-wrap`, `[data-testid=layer-structure]`, `[data-testid=layer-band]` and the tabs
 `tab-info|structure|visual|layout|assistant`. It opens olivine through the file input, and since 2026-11-24 also
 opens every feature example, turns and zooms it, and fails on any console error.
@@ -29,6 +29,7 @@ The assistant's trial on a local model (no paid API; Ollama or LM Studio must be
 PLAYWRIGHT=/path/to/playwright-core node scripts/assistant_trial.cjs gemma4:26b
 TRANSPORT=lmstudio PLAYWRIGHT=... node scripts/assistant_trial.cjs google/gemma-4-26b-a4b-qat   # LM Studio: lms server start --cors
 ONLY=5 CASE_S=300 ...   # one request, a longer limit
+SET=round2 | SET=answers | SET=angles ...   # the other case sets (see the script's header)
 ```
 
 Do not edit the page's code while a trial runs: the dev server reloads the page under test and spoils the request.
@@ -125,6 +126,30 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   start page, and the Examples menu); the other files in `examples/` stay because the tests use them. A Close
   button returns to the start page.
 
+## Next: the queue (the user's yes in the MOTIF chat, 2026-11-25: "Yes, all three")
+
+The Session monitor relayed the user's "go for all" (15:20 EST) and the user confirmed it in this chat. Item (c) is
+done; (b) and (a) are next, one checked commit each, a message to the Session monitor (send_message, "@parent" from
+a session it created, else its id session_018FAHe7jSmFWHBKsHtxQSBh) after each.
+
+1. **(c) Incommensurate-k warning: done** (519d741). docs/CONVENTIONS.md, "Magnetic CIF", "Propagation vector".
+2. **(b) Camera defaults: record them as the user's decision**, accepted as built: tilt stops at ±90°; the axis
+   buttons put c up (b when looking along c); snapping on; animation on; scale "fit each view"; keep view when a
+   file is opened off. Add them to `CLAUDE.md`, "Decided by the user" (the user said yes in the MOTIF chat, so the
+   building session records it there), and to docs/CONVENTIONS.md, "View and camera". No code change.
+3. **(a) MCP server**, for agents outside the page, in MOTIF only: a tool registry, a host and a stdio server shaped
+   like MATERIA's (`~/GitHub/web-refinement/src/mcp/`: registry.ts, host.ts with file roots from an environment
+   variable, server.ts; bundled with esbuild to one `dist/mcp-server.mjs`), reusing MOTIF's pure code (structure,
+   scene, render) and the same tool surface as the in-page assistant where it makes sense (open a file from an
+   allowed folder, describe, settings, bonds, view, cells, journal, moments, angles, save the structure, save the
+   figure as SVG). With tests. **Do not edit `scattering-agent-tools`** (another repo): write down exactly what
+   the hub needs (the entry, the command, the tool list) in a file in MOTIF, e.g. docs/HUB-REGISTRATION.md, and
+   tell the Session monitor; a separate agent registers it there.
+
+Limits for all three: correctness first; no paid API calls (no trial with the user's Claude, OpenAI or Gemini key;
+local models only); no Claude trailer in MOTIF commits; unpublished structures stay local; nothing automated past
+30 minutes (per-case limits in every trial).
+
 ## Open questions for the user (none blocking)
 
 - Version: the page footer shows "MOTIF 0.1" (`VERSION` in `src/ui/App.tsx`) while `package.json` says
@@ -136,8 +161,9 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   cell with a space group (RMCProfile Workbench has the method).
 - Assistant can add moments by hand and save structures (2026-11-24, the user's rules in CLAUDE.md); twenty more
   rounds in `scripts/assistant_trial.cjs` (SET=round2), all four large local models 20/20 after fixes.
-- Assistant: not built, the MCP server (registry, stdio) for agents outside the page, and hub registration in
-  `scattering-agent-tools` (another repo; only with the user's yes). The user has not yet tried it with Claude
+- Assistant (in the page) since 2026-11-24 also: answers from a map of the page (`src/agent/pageMap.ts`), replies as
+  paragraphs and lists (`src/agent/reply.ts`), a context meter in the drawer and the Assistant tab, mark_angles and
+  clear_angles; polyhedra through change_bonds. The user has not yet tried it with Claude
   (with their key); it was built and tried on local models only. OpenAI and Gemini (f8b5708) likewise have not
   been tried against the real services.
 - `CLAUDE.md` ("Decided by the user", in-app assistant, 2026-11-24) names Claude with the user's key and local
