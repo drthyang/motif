@@ -643,7 +643,7 @@ export function App() {
     // Fitted to the outline of each view (held still during a drag), or a scale that does not depend on the view.
     const base = scaleMode === "outline" ? (heldFit ?? fitView(scene, view, canvas, turnScale ?? undefined)) : steadyFit(scene, canvas, scaleMode === "fixed" ? fixedScale : undefined);
     return zoomedFit(base, zoom, structureCentre(scene, canvas));
-  }, [scene, view, heldFit, turnScale, zoom, scaleMode, fixedScale]);
+  }, [scene, view, heldFit, turnScale, zoom, scaleMode, fixedScale, canvas]);
   // Ask the worker for each frame of the movement; `firstFrame` is the first of this movement.
   const [firstFrame, setFirstFrame] = useState(0);
   const wasPreviewing = useRef(false);
