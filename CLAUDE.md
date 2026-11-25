@@ -66,6 +66,9 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
   by default (Solid and Line art can be chosen); each polyhedron drawn as one unit at its centre's depth; a
   shared site coloured by its elements' colours mixed by occupancy; corner atoms cut exactly where they meet the
   faces. The first feature example is LaMnO3's MnO6 octahedra, one layer seen down c.
+- Camera defaults (2026-11-25, accepted as built): tilt stops at ±90°; the axis buttons put c up (b when
+  looking along c); snapping on; the short turn on a click on; scale fitted to each view; keeping the view when
+  a file is opened off.
 
 ## Data rule (strict)
 

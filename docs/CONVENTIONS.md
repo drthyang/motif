@@ -454,6 +454,9 @@ Structure tab; the user's choices of 2026-11-23.
     along [1-10].
   - A change of view by a click is shown as a short turn on screen (can be switched off; skipped
     when the system asks for reduced motion). It is never part of the saved figure.
+- **Defaults** (2026-11-25, the user's decision, accepted as built): tilt stops at ±90°; the axis buttons put c
+  up (b when looking along c); snapping on; the short turn on a click on; scale fitted to each view; keeping the
+  view when a file is opened off.
 - **Fitting.** The structure is fitted to the canvas in each view. While dragging, the placement of the moment
   the drag began is kept.
 - **After a turn by dragging** (2026-11-23; the user disliked the size jumping when a drag ended), the figure
