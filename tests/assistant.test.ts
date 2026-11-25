@@ -8,7 +8,7 @@ import type { Page } from "../src/agent/tools";
 
 const page = (calls: unknown[][]): Page => ({
   hasStructure: () => true,
-  describe: () => ({ file: "x.cif", format: "CIF", cell: "a = 10.4", elements: [], bonds: [], pairs: [{ between: "Nb–Nb", distances: [3.01, 3.07, 4.32] }], cells: "", view: "", canvas: "", journal: "", moments: "none", settings: {} }),
+  describe: () => ({ file: "x.cif", format: "CIF", cell: "a = 10.4", elements: [], bonds: [], pairs: [{ between: "Nb–Nb", distances: [3.01, 3.07, 4.32] }], cells: "", view: "", canvas: "", journal: "", moments: "none", angles: "", settings: {} }),
   applySettings: () => [],
   setElement: () => null,
   addBonds: (a, b, d) => (calls.push(["add", a, b, d]), null),
@@ -19,6 +19,8 @@ const page = (calls: unknown[][]): Page => ({
   useJournal: () => ({ applied: "" }),
   setMoments: () => ({ applied: "" }),
   clearMoments: () => null,
+  markAngles: () => ({ applied: "" }),
+  clearAngles: () => null,
   saveStructure: () => ({ applied: "" }),
 });
 
@@ -75,6 +77,19 @@ describe("an exchange with the assistant", () => {
     const last = history[history.length - 1]!;
     expect(last.role).toBe("user");
     expect((last.content as { is_error: boolean }[])[0]!.is_error).toBe(true);
+  });
+
+  it("a reply with no words and no tool call (all in its thinking) is asked once for the answer in words", async () => {
+    const thinking = { type: "thinking", thinking: "the answer is...", signature: "" } as unknown as Anthropic.ContentBlock;
+    const { client, sent } = scripted([[thinking], [text("I can change colours (Visual › Atoms).")]]);
+    const events: AssistantEvent[] = [];
+    await exchange(client, "fake", [], "What can you do?", page([]), (e) => events.push(e));
+    expect(sent.length).toBe(2);
+    expect(events.filter((e) => e.kind === "text").map((e) => (e as { text: string }).text)).toEqual(["I can change colours (Visual › Atoms)."]);
+    // Asked once only: a second empty reply ends the exchange.
+    const again = scripted([[thinking]]);
+    await exchange(again.client, "fake", [], "x", page([]), () => undefined);
+    expect(again.sent.length).toBe(2);
   });
 
   it("says plainly when the model answered without changing anything", async () => {

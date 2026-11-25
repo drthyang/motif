@@ -327,3 +327,16 @@ button.plain-text:hover:not(:disabled) { background: none; text-decoration-color
 .theme-row { position: fixed; z-index: 40; display: flex; gap: 8px; padding: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 4px 14px rgba(27, 26, 24, 0.12); }
 .theme-row .theme-dot { width: 20px; height: 20px; }
 .theme-row .theme-dot.on { box-shadow: 0 0 0 2px var(--surface), 0 0 0 3.5px var(--ink); }
+/* A reply: paragraphs and compact lists. */
+.said.assistant p { margin: 0 0 6px; }
+.said.assistant p:last-child { margin-bottom: 0; }
+.said.assistant ul, .said.assistant ol { margin: 2px 0 6px; padding-left: 20px; }
+.said.assistant li { margin: 2px 0; }
+.said.assistant code { font-size: 0.92em; background: var(--muted); padding: 0 4px; border-radius: 3px; }
+/* The context meter beside the assistant's connection. */
+.context-meter { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; margin-left: 8px; white-space: nowrap; }
+.context-bar { display: inline-block; width: 38px; height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.context-bar > span { display: block; height: 100%; background: var(--secondary); }
+.context-meter.filling .context-bar > span { background: #d9a21b; }
+.context-meter.full { color: var(--warn-ink); }
+.context-meter.full .context-bar > span { background: var(--warn-ink); }

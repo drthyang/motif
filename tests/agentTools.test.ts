@@ -11,7 +11,7 @@ function fakePage(over: Partial<Page> = {}) {
   const calls: unknown[][] = [];
   const page: Page = {
     hasStructure: () => true,
-    describe: () => ({ file: "x.cif", format: "CIF", cell: "", elements: [], bonds: [], pairs: [], cells: "", view: "", canvas: "", journal: "", moments: "none", settings: {} }),
+    describe: () => ({ file: "x.cif", format: "CIF", cell: "", elements: [], bonds: [], pairs: [], cells: "", view: "", canvas: "", journal: "", moments: "none", angles: "", settings: {} }),
     applySettings: (v) => (calls.push(["settings", v]), Object.entries(v).filter(([, x]) => x === "bad").map(([n]) => n)),
     setElement: (e, c) => (calls.push(["element", e, c]), e === "Xx" ? "No element Xx in this structure." : null),
     addBonds: (a, b, d) => (calls.push(["add", a, b, d]), null),
@@ -22,6 +22,8 @@ function fakePage(over: Partial<Page> = {}) {
     useJournal: (r) => (calls.push(["journal", r]), { applied: "Physical Review, 1 column, 8.5 cm, 1/2 width = 4.25 cm" }),
     setMoments: (r) => (calls.push(["moments", r]), { applied: "Mn: 5 μB along [0 0 1] on 2 atoms" }),
     clearMoments: () => (calls.push(["clear"]), null),
+    markAngles: (r) => (calls.push(["angles", r]), { applied: "O–Mn–O from 79 to 101°" }),
+    clearAngles: (r) => (calls.push(["clear angles", r]), null),
     saveStructure: (f, n) => (calls.push(["save", f, n]), { applied: `${n ?? "x"}.cif: 24 atoms` }),
     ...over,
   };
@@ -133,6 +135,19 @@ describe("the assistant's tools", () => {
     expect(runTool(page, "set_cells", { from: [0, 0, 0], to: [3, 3, 0] }).text).toMatch(/Received from \(0, 0, 0\) to \(3, 3, 0\)/);
     // Every range is the panel field's own (low below high, both finite).
     for (const k of KNOBS) if (k.range) expect(k.range[0] < k.range[1], k.name).toBe(true);
+  });
+
+  it("angles: named end-apex-end, the middle is the corner; reach the page as asked", () => {
+    const { page, calls } = fakePage();
+    expect(runTool(page, "mark_angles", { angle: "o-mn-o", max: 100 }).text).toMatch(/Done: angles marked/);
+    expect(runTool(page, "mark_angles", { angle: "Mn-O" }).isError).toBe(true);
+    runTool(page, "clear_angles", { angle: "O–Mn–O" });
+    runTool(page, "clear_angles", {});
+    expect(calls).toEqual([
+      ["angles", { ends: ["O", "O"], apex: "Mn", max: 100 }],
+      ["clear angles", { ends: ["O", "O"], apex: "Mn" }],
+      ["clear angles", undefined],
+    ]);
   });
 
   it("moments and saving reach the page as stated; incomplete moments are refused, not guessed", () => {

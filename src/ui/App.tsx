@@ -1038,6 +1038,9 @@ export function App() {
         cells: `from ${rangeText.slice(0, 3).join(", ")} to ${rangeText.slice(3).join(", ")}`,
         view: viewLine,
         canvas: canvas.physical ? `${canvas.physical.width} × ${canvas.physical.height} ${canvas.physical.unit} on paper` : `fits the frame (${canvas.width} × ${canvas.height} px)`,
+        angles: scene
+          ? `can be marked: ${scene.angleKinds.map((k) => `${k.ends[0]}–${k.centre}–${k.ends[1]} (${k.count}; ${[...new Set(k.sizes.map((x) => x.toFixed(1)))].slice(0, 6).join(", ")}°)`).join("; ") || "none (angles exist between drawn bonds)"}. Marked: ${angleRules.map((r) => `${r.ends[0]}–${r.centre}–${r.ends[1]} ${r.min}–${r.max}°`).join("; ") || "none"}`
+          : "",
         moments: momentRules
           ? `added by hand: ${momentRules.map((r) => `${r.element}${r.where ? ` at ${r.where.axis} = ${r.where.at}` : ""} ${r.size} μB along [${r.along.join(" ")}]`).join("; ")}`
           : structure!.sites.some((x) => x.moment)
@@ -1144,6 +1147,50 @@ export function App() {
         return { error: e instanceof Error ? e.message : String(e) };
       }
     },
+    markAngles: (req) => {
+      if (!scene) return { error: "No structure is open." };
+      const same = (k: { centre: string; ends: readonly [string, string] }) =>
+        k.centre === req.apex && ((k.ends[0] === req.ends[0] && k.ends[1] === req.ends[1]) || (k.ends[0] === req.ends[1] && k.ends[1] === req.ends[0]));
+      const kind = scene.angleKinds.find(same);
+      if (!kind) {
+        const have = scene.angleKinds.map((k) => `${k.ends[0]}-${k.centre}-${k.ends[1]}`);
+        return { error: `There are no ${req.ends[0]}–${req.apex}–${req.ends[1]} angles: angles are between drawn bonds${have.length ? `; those that can be marked are ${have.join(", ")}` : `, and no two drawn bonds meet at a ${req.apex} atom (draw ${req.apex}–${req.ends[0]} bonds first, with add_bonds)`}.` };
+      }
+      if (req.colour !== undefined && !/^#[0-9a-fA-F]{6}$/.test(req.colour)) return { error: `"${req.colour}" is not a colour "#rrggbb".` };
+      const sizes = kind.sizes.filter((x) => x < 179.5);
+      const lo = req.min ?? Math.max(0, Math.floor((sizes[0] ?? 0) - 0.5));
+      const hi = req.max ?? Math.min(180, Math.ceil((sizes[sizes.length - 1] ?? 180) + 0.5));
+      if (!(lo >= 0 && hi <= 180 && lo <= hi)) return { error: "The range must run from min to max within 0 to 180 degrees." };
+      const inRange = kind.sizes.filter((x) => x >= lo - 1e-9 && x <= hi + 1e-9).length;
+      if (inRange === 0) return { error: `No ${kind.ends[0]}–${kind.centre}–${kind.ends[1]} angle lies from ${lo} to ${hi}°; their sizes are ${[...new Set(kind.sizes.map((x) => x.toFixed(1)))].join(", ")}°.` };
+      setAngleRules((all) => [
+        ...all.filter((r) => !same({ centre: r.centre, ends: r.ends })),
+        {
+          centre: kind.centre,
+          ends: kind.ends,
+          min: lo,
+          max: hi,
+          minText: String(lo),
+          maxText: String(hi),
+          radiusText: String(DEFAULT_ANGLE_LOOK.radius),
+          opacityText: String(DEFAULT_ANGLE_LOOK.opacity),
+          ...(req.colour ? { colour: req.colour.toLowerCase() } : {}),
+          ...(req.labels !== undefined ? { label: req.labels } : {}),
+        },
+      ]);
+      return { applied: `${kind.ends[0]}–${kind.centre}–${kind.ends[1]} from ${lo} to ${hi}° (${inRange} different size${inRange === 1 ? "" : "s"} in that range)` };
+    },
+    clearAngles: (req) => {
+      if (angleRules.length === 0) return "No angles are marked.";
+      if (!req) {
+        setAngleRules([]);
+        return null;
+      }
+      const keep = angleRules.filter((r) => !(r.centre === req.apex && ((r.ends[0] === req.ends[0] && r.ends[1] === req.ends[1]) || (r.ends[0] === req.ends[1] && r.ends[1] === req.ends[0]))));
+      if (keep.length === angleRules.length) return `No ${req.ends[0]}–${req.apex}–${req.ends[1]} angles are marked.`;
+      setAngleRules(keep);
+      return null;
+    },
     clearMoments: () => {
       if (!momentRules) return "There are no moments added by hand.";
       setMomentRules(null);
@@ -1192,6 +1239,8 @@ export function App() {
       useJournal: (r) => pageRef.current.useJournal(r),
       setMoments: (r) => pageRef.current.setMoments(r),
       clearMoments: () => pageRef.current.clearMoments(),
+      markAngles: (r) => pageRef.current.markAngles(r),
+      clearAngles: (r) => pageRef.current.clearAngles(r),
       saveStructure: (f, n) => pageRef.current.saveStructure(f, n),
     }),
     [],

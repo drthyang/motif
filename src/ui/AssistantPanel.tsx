@@ -9,6 +9,7 @@
  * conversation of useAssistant.ts.
  */
 
+import { replyBlocks, type Span } from "../agent/reply";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { CLAUDE_MODELS, KEYED, type AssistantEvent, type Transport } from "../agent/assistant";
 import { DEFAULT_LMSTUDIO_URL } from "../agent/lmstudio";
@@ -41,12 +42,12 @@ export function ChatLines({ lines, busy, empty }: { lines: readonly Line[]; busy
         ) : l.who === "error" ? (
           <p key={i} className="said error">{l.text}</p>
         ) : l.event.kind === "text" ? (
-          <p key={i} className="said assistant">{l.event.text}</p>
+          <Reply key={i} text={l.event.text} />
         ) : l.event.kind === "tool" ? (
           <p key={i} className={`said step${l.event.isError ? " failed" : ""}`}>{toolLine(l.event)}</p>
-        ) : (
+        ) : l.event.kind === "stopped" ? (
           <p key={i} className="said step">{l.event.reason}</p>
-        ),
+        ) : null,
       )}
       {busy && <p className="said step">…</p>}
       <div ref={end} />
@@ -101,7 +102,9 @@ export function AssistantPanel({ chat }: { chat: AssistantChat }) {
   return (
     <div className="assistant-panel" data-testid="assistant">
       <div className="assistant-head">
-        <span className="sub">{connectionName(chat)}</span>
+        <span className="sub">
+          {connectionName(chat)} <ContextMeter chat={chat} />
+        </span>
         <span className="row">
           {chat.lines.length > 0 && (
             <button className="plain-text" data-testid="assistant-clear" disabled={chat.busy} onClick={chat.clear}>
@@ -195,6 +198,7 @@ export function AssistantDrawer({ chat, onSetup }: { chat: AssistantChat; onSetu
         <button className="drawer-toggle" data-testid="drawer-toggle" aria-expanded={open} title={open ? "Shut the assistant's drawer" : "Open the assistant's drawer"} onClick={() => chat.setDrawerOpen(!open)}>
           <b>Assistant</b>
           <span className="sub drawer-model">{connectionName(chat)}</span>
+          <ContextMeter chat={chat} />
           {chat.busy && !open && <span className="sub">working…</span>}
           <span className="drawer-chevron" aria-hidden="true">{open ? "▾" : "▴"}</span>
         </button>
@@ -220,5 +224,52 @@ export function AssistantDrawer({ chat, onSetup }: { chat: AssistantChat; onSetu
         </>
       )}
     </div>
+  );
+}
+
+/** A reply as paragraphs, lists and bold (agent/reply.ts); never inserted as HTML. */
+function Reply({ text }: { text: string }) {
+  const line = (spans: readonly Span[]) => spans.map((s, k) => (s.bold ? <b key={k}>{s.text}</b> : s.code ? <code key={k}>{s.text}</code> : <span key={k}>{s.text}</span>));
+  return (
+    <div className="said assistant">
+      {replyBlocks(text).map((b, i) =>
+        b.kind === "p" ? (
+          <p key={i}>
+            {b.lines.map((l, k) => (
+              <span key={k}>
+                {k > 0 && <br />}
+                {line(l)}
+              </span>
+            ))}
+          </p>
+        ) : b.kind === "ul" ? (
+          <ul key={i}>{b.items.map((it, k) => <li key={k}>{line(it)}</li>)}</ul>
+        ) : (
+          <ol key={i}>{b.items.map((it, k) => <li key={k}>{line(it)}</li>)}</ol>
+        ),
+      )}
+    </div>
+  );
+}
+
+/** How much of the model's context the conversation uses: "context 7.4k of 32k". Amber from 70 %, red from 90 %. */
+export function ContextMeter({ chat }: { chat: AssistantChat }) {
+  const c = chat.context;
+  if (!c) return null;
+  const k = (n: number) => (n >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${+(n / 1000).toFixed(1)}k` : String(n));
+  const share = Math.min(1, c.used / c.size);
+  const level = share >= 0.9 ? " full" : share >= 0.7 ? " filling" : "";
+  const title =
+    `The conversation uses ${c.estimated ? "about " : ""}${c.used.toLocaleString()} of ${c.approximate ? "about " : ""}${c.size.toLocaleString()} tokens of the model's context` +
+    `${c.estimated ? " (estimated: this server gives no count)" : ""}. Near the end the model starts to lose the beginning; New chat starts again.`;
+  return (
+    <span className={`context-meter${level}`} data-testid="context-meter" title={title}>
+      <span className="context-bar" aria-hidden="true">
+        <span style={{ width: `${Math.max(2, share * 100)}%` }} />
+      </span>
+      {c.estimated ? "~" : ""}
+      {k(c.used)} / {c.approximate ? "~" : ""}
+      {k(c.size)}
+    </span>
   );
 }

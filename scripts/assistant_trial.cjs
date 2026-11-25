@@ -52,6 +52,24 @@ const ROUND2 = [
   { file: HALITE, ask: "Set the moments on Na to 3 μB along [1 1 0], then remove all the moments again.", ok: (s) => s.moments === "none" },
 ];
 
+// Answers only (2026-11-24): short, with real places, nothing changed. A reply that named places that do not exist
+// ("left panel → Elements") and ran a list into one paragraph started this set.
+const NO_SUCH_PLACE = /left panel|top → |top ->|"Elements"|Settings menu|Edit menu|View menu/i;
+const ANSWERS = [
+  { file: QUARTZ, ask: "What can you do?", ok: (s, s0, x) => changedNothing(s, s0) && /Visual › Atoms/.test(x.said) && !NO_SUCH_PLACE.test(x.said) && x.reply.length < 900 },
+  { file: QUARTZ, ask: "Where do I change the font?", ok: (s, s0, x) => /Visual › Lettering/.test(x.said) && !NO_SUCH_PLACE.test(x.said) && x.reply.length < 500 },
+  { file: QUARTZ, ask: "How do I save the figure as a PNG?", ok: (s, s0, x) => changedNothing(s, s0) && /Save PNG/.test(x.said) && !NO_SUCH_PLACE.test(x.said) && x.reply.length < 500 },
+  { file: QUARTZ, ask: "Where can I draw coordination polyhedra?", ok: (s, s0, x) => /Structure › Bonds/.test(x.said) && !NO_SUCH_PLACE.test(x.said) && x.reply.length < 600 },
+];
+
+// Bond angles (2026-11-24): the user's own request first, which had failed with no tool for angles.
+const ANGLES = [
+  { example: "Coordination polyhedra", ask: "highlight the O-Mn-O bond angles", ok: (s, s0, x) => /Marked: O–Mn–O/.test(s.angles) && x.meter !== "" },
+  { file: QUARTZ, ask: "Mark the Si-O-Si angles.", ok: (s) => /Marked: Si–O–Si/.test(s.angles) },
+  { file: QUARTZ, ask: "Draw the coordination polyhedra around Si.", ok: (s) => s.bonds.some((b) => b.polyhedra && b.polyhedra !== "off" && b.between.startsWith("Si")) },
+  { file: QUARTZ, ask: "Mark only the O-Si-O angles between 108 and 110 degrees.", ok: (s) => /Marked: O–Si–O 108–110°/.test(s.angles) },
+];
+
 const ONLY = process.env.ONLY ? Number(process.env.ONLY) : 0;
 const CASES_ALL = [
   { example: "Coordination polyhedra", ask: "Make the atoms glass and colour the oxygen atoms red.", ok: (s) => s.settings.atomMaterial === "glass" && reddish(el(s, "O").colour) },
@@ -66,7 +84,7 @@ const CASES_ALL = [
   { example: "Coordination polyhedra", ask: "Set all the text to 8 pt.", ok: (s) => ["legend", "axes", "angle"].every((k) => String(s.settings.textSizes[k]) === "8") },
 ];
 
-const SET = process.env.SET === "round2" ? ROUND2 : CASES_ALL;
+const SET = process.env.SET === "round2" ? ROUND2 : process.env.SET === "answers" ? ANSWERS : process.env.SET === "angles" ? ANGLES : CASES_ALL;
 const CASES = ONLY ? [SET[ONLY - 1]] : SET;
 (async () => {
   const started = Date.now();
@@ -105,9 +123,12 @@ const CASES = ONLY ? [SET[ONLY - 1]] : SET;
       await page.waitForTimeout(500);
       const after = await page.evaluate(() => window.__motifDescribe());
       const said = await page.locator("[data-testid=assistant-lines] .said").allTextContents();
-      const ok = (() => { try { return c.ok(after, before, { said: said.join("\n"), downloads }); } catch { return false; } })() && errors.length === 0;
+      // The model's own words (the last reply), apart from the tool lines.
+      const reply = (await page.locator("[data-testid=assistant-lines] .said.assistant").allTextContents()).join("\n");
+      const meter = (await page.locator("[data-testid=context-meter]").first().textContent().catch(() => "")) ?? "";
+      const ok = (() => { try { return c.ok(after, before, { said: said.join("\n"), downloads, reply, meter }); } catch { return false; } })() && errors.length === 0;
       if (ok) passed++;
-      line = `${ok ? "ok  " : "FAIL"} ${n + 1}. ${c.ask}  (${((Date.now() - t0) / 1000).toFixed(0)} s)\n       ${said.slice(1).join("\n       ")}${errors.length ? `\n       page errors: ${errors.join("; ")}` : ""}`;
+      line = `${ok ? "ok  " : "FAIL"} ${n + 1}. ${c.ask}  (${((Date.now() - t0) / 1000).toFixed(0)} s; context ${meter || "?"})\n       ${said.slice(1).join("\n       ")}${errors.length ? `\n       page errors: ${errors.join("; ")}` : ""}`;
     } catch (e) {
       // What the assistant had done when it ran out of time, to see why.
       const said = await page.locator("[data-testid=assistant-lines] .said").allTextContents().catch(() => []);

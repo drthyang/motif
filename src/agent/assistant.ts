@@ -21,6 +21,7 @@ import { ollamaBase } from "./ollama";
 import { ollamaNativeFetch } from "./ollamaNative";
 import { lmstudioBase } from "./lmstudio";
 import { chatCompletionsClient, PROVIDERS, ProviderError } from "./openaiCompatible";
+import { pageMapText } from "./pageMap";
 import { runTool, TOOLS, type Page } from "./tools";
 
 /** "api-key" is Claude with the user's key; "openai" and "gemini" likewise with theirs. */
@@ -48,6 +49,19 @@ export const CLAUDE_MODELS = [
 /** Tools that only look; the others change the page. */
 const LOOKING = ["describe_figure", "find_setting"];
 
+/**
+ * The context window, in tokens, for the meter: a local model as it is loaded (Ollama at LOCAL_CONTEXT; LM Studio as
+ * ensureLmStudioContext reports), Claude's 200k, and the usual sizes of OpenAI's and Gemini's current models (marked
+ * as approximate: the companies' models differ).
+ */
+export function contextWindow(transport: Transport, loaded?: number | null): { size: number; approximate: boolean } {
+  if (transport === "ollama") return { size: LOCAL_CONTEXT, approximate: false };
+  if (transport === "lmstudio") return { size: loaded ?? LOCAL_CONTEXT, approximate: loaded == null };
+  if (transport === "api-key") return { size: 200_000, approximate: false };
+  if (transport === "openai") return { size: 128_000, approximate: true };
+  return { size: 1_000_000, approximate: true };
+}
+
 /** Most tool calls in one exchange. */
 export const MAX_STEPS = 12;
 /** Context a local model is run with, and the longest answer, in tokens. */
@@ -56,6 +70,13 @@ const MAX_ANSWER = 2048;
 
 export const SYSTEM_PROMPT = `You are the assistant inside MOTIF, a browser app that draws crystal structures as figures for papers and slides.
 The user tells you how they want the figure to look; you make the change with your tools, then say in one or two short sentences what you changed and where that control is on the page (the tools' answers say where), so the user learns where to find it.
+
+${pageMapText()}
+
+How to answer:
+- Short: one to three sentences. Asked what you can do, give at most six short lines, one per kind of change, each with where it is, then one example request.
+- Name places exactly as written above (e.g. "Visual › Atoms"). Never name a place that is not listed above.
+- Plain text, as the page shows it: no Markdown headings or bold, no LaTeX (write μB, Å, °). A list is short lines starting with "- ".
 
 Rules:
 - Call describe_figure before your first change, to see the elements, bonds, pairs and settings as they are now.
@@ -66,7 +87,7 @@ Rules:
 - Magnetic moments: only as the user states them (set_moments). If a size or direction is missing, ask; never invent a magnetic order.
 - If a tool answers with an error, read it, correct the call once, or tell the user plainly what did not work.
 - If what the user asked cannot be done, say why and offer the nearest alternative; do not carry out the alternative until the user agrees.
-- Colours are "#rrggbb". Distances are in angstrom. Write plain text, as the page shows it: no Markdown, no LaTeX (write μB, Å, °).`;
+- Colours are "#rrggbb". Distances are in angstrom.`;
 
 /** The client for the chosen connection. */
 export function clientFor(config: AssistantConfig): MessagesClient {
@@ -89,7 +110,9 @@ export function clientFor(config: AssistantConfig): MessagesClient {
 export type AssistantEvent =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "tool"; readonly name: string; readonly input: unknown; readonly result: string; readonly isError: boolean }
-  | { readonly kind: "stopped"; readonly reason: string };
+  | { readonly kind: "stopped"; readonly reason: string }
+  /** How much of the model's context the conversation used in the last request, in tokens (estimated when the server gives no count). */
+  | { readonly kind: "usage"; readonly used: number; readonly estimated: boolean };
 
 /**
  * The part of the client an exchange uses (a test gives a scripted stand-in). Answers are streamed, as the local
@@ -118,6 +141,8 @@ export async function exchange(
   // Whether any tool changed the page in this exchange. A model can say it changed something without calling a tool
   // (a small one did); the page then says plainly that nothing was changed, rather than let the words stand alone.
   let changed = false;
+  // Asked once for an answer in words after a reply that had none.
+  let nudged = false;
   const finish = () => {
     if (!changed) onEvent({ kind: "stopped", reason: "Nothing on the figure was changed." });
     return messages;
@@ -131,8 +156,21 @@ export async function exchange(
       .stream({ model, max_tokens: MAX_ANSWER, system: SYSTEM_PROMPT, tools: TOOLS as unknown as Anthropic.Tool[], messages }, signal ? { signal } : undefined)
       .finalMessage();
     messages.push({ role: "assistant", content: reply.content });
+    // The context in use: the request's tokens and the reply's. A server that gives no count (an OpenAI-compatible
+    // one) gets an estimate from the text, about 3.5 characters a token.
+    const counted = (reply.usage?.input_tokens ?? 0) + (reply.usage?.output_tokens ?? 0);
+    const estimate = Math.round((SYSTEM_PROMPT.length + JSON.stringify(TOOLS).length + JSON.stringify(messages).length) / 3.5);
+    onEvent({ kind: "usage", used: reply.usage?.input_tokens ? counted : estimate, estimated: !reply.usage?.input_tokens });
     for (const block of reply.content) if (block.type === "text" && block.text.trim()) onEvent({ kind: "text", text: block.text.trim() });
     const calls = reply.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
+    const said = reply.content.some((b) => b.type === "text" && b.text.trim() !== "");
+    // A model that thinks first can put its whole answer in its thinking and return no words and no tool call
+    // (gemma4 and qwen did, now and then): ask once for the answer in words, rather than leave the user with nothing.
+    if (calls.length === 0 && !said && !nudged) {
+      nudged = true;
+      messages.push({ role: "user", content: "Please give your answer to me in words now (plain text, short)." });
+      continue;
+    }
     if (calls.length === 0) return finish();
     if (step >= MAX_STEPS) {
       onEvent({ kind: "stopped", reason: `Stopped after ${MAX_STEPS} steps; ask again to go on.` });

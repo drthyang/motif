@@ -611,7 +611,8 @@ where each control is, so the user learns where to find it.
 - **Scope** (the user's choices): look and layout, and since 2026-11-24 moments by hand and saving the structure.
   Tools (`src/agent/tools.ts`): describe_figure, find_setting, change_settings (the page's saved-settings list,
   through its own checks and the panel fields' limits), set_element, add_bonds, change_bonds, remove_bonds,
-  set_view, set_cells, use_journal, set_moments, clear_moments, save_structure. No opening files, no saving figures.
+  set_view, set_cells, use_journal, set_moments, clear_moments, save_structure, mark_angles, clear_angles. No opening
+  files, no saving figures.
 - **Catalogue** (`src/agent/catalogue.ts`): every setting with its place ("Visual › Bonds"), what it does and the
   values it takes. A test holds it to the page's own list and every place to a section of the page.
 - **One exchange** (`src/agent/assistant.ts`): the user's words, then tool calls carried out on the page, until the
@@ -643,6 +644,20 @@ where each control is, so the user learns where to find it.
   probably meant); a refusal worded "Save it as CIF" was obeyed as an instruction (now "ask the user", and the model
   is told not to carry out an alternative until the user agrees); a cells error did not quote the values received;
   replies used Markdown and LaTeX, which the page shows raw (now plain text, μB).
+- **Answers** (2026-11-24, after a reply that named places that do not exist and ran a list into one paragraph):
+  the instructions carry a map of the page (`src/agent/pageMap.ts`: the side panel's tabs, the top bar, and where
+  each thing is, with what the assistant can change and what the user does by hand; a test holds every place to
+  the page's sections); answers are asked to be short, with places named exactly as in the map. The panel shows
+  a reply's paragraphs, lists and bold (`src/agent/reply.ts`, plain data, never HTML), and LaTeX units as μB, Å, °.
+  A reply with no words and no tool call (a thinking model can put its whole answer in its thinking) is asked once
+  for the answer in words. Trial sets `SET=answers` and `SET=angles`: gemma4:26b and qwen-local pass all.
+- **Bond angles**: mark_angles ("O-Mn-O": the middle element is the corner; optionally from min to max degrees, a
+  colour, labels) and clear_angles, through the page's own angle rules; describe_figure lists the angles that can
+  be marked (between drawn bonds) with their sizes. Coordination polyhedra are switched on with change_bonds.
+- **Context meter**: beside the connection, in the drawer and the Assistant tab, the tokens the last request used of
+  the model's window ("4.6k / 32.8k"): Ollama's loaded 32k, LM Studio's as loaded, Claude's 200k; OpenAI's and
+  Gemini's marked approximate; a server that gives no count gets an estimate (about 3.5 characters a token), marked
+  "~". Amber from 70 %, red from 90 %; New chat starts again.
 - **Moments by hand** (`src/structure/handMoments.ts`, the user's rules in CLAUDE.md): a direction [u v w] is a lattice
   vector, turned into components along the unit vectors of a, b, c (MOTIF's moment form); checked by hand in a cubic
   and a hexagonal cell (`tests/writeStructure.test.ts`).

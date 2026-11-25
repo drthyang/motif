@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
-import { CLAUDE_MODELS, clientFor, describeError, exchange, KEYED, type AssistantConfig, type AssistantEvent, type Transport } from "../agent/assistant";
+import { CLAUDE_MODELS, clientFor, contextWindow, describeError, exchange, KEYED, type AssistantConfig, type AssistantEvent, type Transport } from "../agent/assistant";
 import { DEFAULT_LMSTUDIO_URL, ensureLmStudioContext, listLmStudioModels } from "../agent/lmstudio";
 import { DEFAULT_OLLAMA_URL, listOllamaModels } from "../agent/ollama";
 import { listChatModels, PROVIDERS } from "../agent/openaiCompatible";
@@ -68,6 +68,8 @@ export interface AssistantChat {
   readonly unset: boolean;
   readonly lines: readonly Line[];
   readonly busy: boolean;
+  /** How much of the model's context the conversation uses: tokens in the last request, of the window. */
+  readonly context: { readonly used: number; readonly size: number; readonly estimated: boolean; readonly approximate: boolean } | null;
   /** The drawer under the side tabs is open. */
   readonly drawerOpen: boolean;
   readonly setTransport: (t: Transport) => void;
@@ -90,6 +92,9 @@ export function useAssistant(page: Page): AssistantChat {
   const [lines, setLines] = useState<Line[]>([]);
   const [history, setHistory] = useState<MessageParam[]>([]);
   const [busy, setBusy] = useState(false);
+  const [context, setContext] = useState<AssistantChat["context"]>(null);
+  // LM Studio's loaded context, once known (the meter's window).
+  const lmContext = useRef<number | null>(null);
   const [drawerOpen, setDrawerOpenState] = useState(() => read(DRAWER_KEY) !== "shut");
   const stopper = useRef<AbortController | null>(null);
 
@@ -177,10 +182,24 @@ export function useAssistant(page: Page): AssistantChat {
       // LM Studio loads a model with its own default context when first asked, which can be far too small for the
       // tools and instructions (the prompt is then cut without a word): load it with room first (MATERIA's helper).
       if (stored.transport === "lmstudio") {
-        const { notice } = await ensureLmStudioContext(stored.serverUrl || DEFAULT_LMSTUDIO_URL, model, controller.signal);
+        const { notice, context: loaded } = await ensureLmStudioContext(stored.serverUrl || DEFAULT_LMSTUDIO_URL, model, controller.signal);
+        lmContext.current = loaded;
         if (notice) setLines((l) => [...l, { who: "assistant", event: { kind: "stopped", reason: notice } }]);
       }
-      const next = await exchange(clientFor(config), model, history, words, page, (event) => setLines((l) => [...l, { who: "assistant", event }]), controller.signal);
+      const next = await exchange(
+        clientFor(config),
+        model,
+        history,
+        words,
+        page,
+        (event) => {
+          if (event.kind === "usage") {
+            const window = contextWindow(stored.transport, lmContext.current);
+            setContext({ used: event.used, size: window.size, estimated: event.estimated, approximate: window.approximate });
+          } else setLines((l) => [...l, { who: "assistant", event }]);
+        },
+        controller.signal,
+      );
       setHistory(next);
     } catch (error) {
       if (!controller.signal.aborted) setLines((l) => [...l, { who: "error", text: describeError(error, config) }]);
@@ -201,6 +220,7 @@ export function useAssistant(page: Page): AssistantChat {
     unset,
     lines,
     busy,
+    context,
     drawerOpen,
     setTransport: (transport) => keep({ ...stored, transport, model: "" }),
     setServerUrl: (serverUrl) => keep({ ...stored, serverUrl }),
@@ -216,6 +236,7 @@ export function useAssistant(page: Page): AssistantChat {
     send,
     stop: () => stopper.current?.abort(),
     clear: () => {
+      setContext(null);
       setLines([]);
       setHistory([]);
     },

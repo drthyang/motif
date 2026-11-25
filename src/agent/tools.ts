@@ -48,6 +48,8 @@ export interface FigureState {
   readonly journal: string;
   /** The magnetic moments: none, from the file, or added by hand (with what was stated). */
   readonly moments: string;
+  /** Bond angles that can be marked (between drawn bonds, with their sizes) and those marked now. */
+  readonly angles: string;
   readonly settings: Readonly<Record<string, unknown>>;
 }
 
@@ -68,6 +70,10 @@ export interface Page {
   /** Sets moments by hand (handMoments.ts); returns an error sentence, or what was set in words. */
   readonly setMoments: (rules: readonly MomentRule[]) => { error: string } | { applied: string };
   readonly clearMoments: () => string | null;
+  /** Marks a kind of bond angle (end–apex–end); returns an error sentence, or what was marked in words. */
+  readonly markAngles: (request: { ends: [string, string]; apex: string; min?: number; max?: number; colour?: string; labels?: boolean }) => { error: string } | { applied: string };
+  /** Removes the marks of one kind of angle, or of all when none is named. */
+  readonly clearAngles: (request?: { ends: [string, string]; apex: string }) => string | null;
   /** Saves the structure's unit cell in a format, downloaded by the browser; returns an error, or what was saved. */
   readonly saveStructure: (format: StructureFormat, fileName?: string) => { error: string } | { applied: string };
 }
@@ -207,6 +213,21 @@ export const TOOLS: readonly ToolSpec[] = [
       },
       required: ["moments"],
     },
+  },
+  {
+    name: "mark_angles",
+    description:
+      "Mark and label bond angles, e.g. \"O-Mn-O\" (the middle element is the atom at the corner). Angles exist only between drawn bonds: describe_figure lists those that can be marked, with their sizes. Optionally only angles from min to max degrees, a colour, and labels (the value written beside each mark, on by default).",
+    input_schema: {
+      type: "object",
+      properties: { angle: { type: "string", description: 'end-apex-end, e.g. "O-Mn-O"' }, min: { type: "number" }, max: { type: "number" }, colour, labels: { type: "boolean" } },
+      required: ["angle"],
+    },
+  },
+  {
+    name: "clear_angles",
+    description: "Remove the marks of one kind of bond angle (e.g. \"O-Mn-O\"), or of all marked angles when none is named.",
+    input_schema: { type: "object", properties: { angle: { type: "string" } } },
   },
   {
     name: "clear_moments",
@@ -396,6 +417,26 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
       const result = page.setMoments(rules);
       return "error" in result ? fail(result.error) : { text: done(`moments set by hand: ${result.applied}`, "Visual › Moment arrows (their look)") };
     }
+    case "mark_angles": {
+      const parts = splitAngle(String(input["angle"] ?? ""));
+      if (!parts) return fail('Name the angle as three elements, end-apex-end, e.g. "O-Mn-O".');
+      const req = {
+        ends: [parts[0], parts[2]] as [string, string],
+        apex: parts[1],
+        ...(typeof input["min"] === "number" ? { min: input["min"] as number } : {}),
+        ...(typeof input["max"] === "number" ? { max: input["max"] as number } : {}),
+        ...(typeof input["colour"] === "string" ? { colour: input["colour"] as string } : {}),
+        ...(typeof input["labels"] === "boolean" ? { labels: input["labels"] as boolean } : {}),
+      };
+      const result = page.markAngles(req);
+      return "error" in result ? fail(result.error) : { text: done(`angles marked: ${result.applied}`, "Structure › Angles (which), Visual › Angles (look)") };
+    }
+    case "clear_angles": {
+      const named = typeof input["angle"] === "string" && input["angle"] !== "" ? splitAngle(input["angle"] as string) : null;
+      if (typeof input["angle"] === "string" && input["angle"] !== "" && !named) return fail('Name the angle as end-apex-end, e.g. "O-Mn-O", or give none to clear all.');
+      const error = page.clearAngles(named ? { ends: [named[0], named[2]], apex: named[1] } : undefined);
+      return error ? fail(error) : { text: done(named ? `${named.join("–")} angle marks removed` : "all angle marks removed", "Structure › Angles") };
+    }
     case "clear_moments": {
       const error = page.clearMoments();
       return error ? fail(error) : { text: done("moments added by hand removed", "the figure") };
@@ -426,6 +467,14 @@ export function naturalForm(v: unknown): unknown {
   if (Array.isArray(v)) return v.map((x) => (typeof x === "number" ? String(x) : x));
   if (v && typeof v === "object") return Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, typeof x === "number" ? String(x) : x]));
   return v;
+}
+
+/** "O-Mn-O", "O–Mn–O", "O Mn O" -> ["O", "Mn", "O"] (the middle is the apex). */
+export function splitAngle(text: string): [string, string, string] | null {
+  const parts = text.split(/\s*[-–—\/]\s*|\s+/).filter(Boolean);
+  if (parts.length !== 3) return null;
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+  return [cap(parts[0]!), cap(parts[1]!), cap(parts[2]!)];
 }
 
 /** "Nb-Nb", "Nb–Nb", "Nb Nb", "Ga to Se" -> ["Nb", "Nb"]. */
