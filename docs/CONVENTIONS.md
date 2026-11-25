@@ -47,6 +47,13 @@ see the [README](../README.md).
   its projection on each cell edge, on hexagonal test structures with time-reversed operations
   (`tests/fixtures`).
 
+- **Propagation vector** (2026-11-25, MATERIA's task, the user's yes): k is read from `_parent_propagation_vector.kxkykz`
+  (as MATERIA and the Bilbao server write it, "[0 0 0.2317]" or "[0 0 1/4]"; a CIF 2 list "[...]" is one value), the
+  drawn cell's axes from `_parent_space_group.child_transform_Pp_abc` (the parent cell without it). When k · t is not a
+  whole number for every axis t of the drawn cell (an incommensurate k written in the parent cell), the figure carries
+  a warning naming k: the moments are the file's amplitudes at one phase, not the modulated structure. No modulation
+  is drawn. Checked with a synthetic P1 Fe helix written by MATERIA's exporter at four k (`tests/propagation.test.ts`).
+
 ### Distortion modes (ISODISTORT CIFs)
 
 - Reading approved by the user (2026-11-23). An ISODISTORT CIF (iso.byu.edu) is read as the distorted

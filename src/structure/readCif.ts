@@ -6,6 +6,7 @@
  * Site reading adapted from MATERIA (src/parsers/cif.ts), by the same author.
  */
 
+import { parseChildAxes, parseK, represents } from "./propagation";
 import { cifText, findLoop, parseCifBlocks, parseCifNumber, BLOCK_NAME, type Loop } from "./cifSyntax";
 import { elementFromLetters, elementsForLabel, formulaElements, labelUsesCase, type LabelContext } from "./elements";
 import { readDistortion, withDisplacements } from "./distortion";
@@ -212,6 +213,32 @@ function withMoments(sites: Site[], loops: Loop[]): Site[] {
   });
 }
 
+/**
+ * The propagation vectors k a file names (`_parent_propagation_vector.kxkykz`, in a loop or alone; the DDL1 spelling
+ * with "_kxkykz" too), and those the drawn cell does not represent (propagation.ts). Absent when the file names none,
+ * or only k = 0.
+ */
+function readPropagation(items: Map<string, string>, loops: readonly { headers: string[]; rows: string[][] }[]): Structure["propagation"] | undefined {
+  const tags = ["_parent_propagation_vector.kxkykz", "_parent_propagation_vector_kxkykz"];
+  const texts: string[] = [];
+  for (const t of tags) if (items.has(t)) texts.push(items.get(t)!);
+  for (const l of loops) {
+    const column = l.headers.findIndex((h) => tags.includes(h.toLowerCase()));
+    if (column >= 0) for (const row of l.rows) if (row[column] !== undefined) texts.push(row[column]!);
+  }
+  if (texts.length === 0) return undefined;
+  const vectors = texts.map((text) => {
+    const k = parseK(text);
+    if (!k) throw new Error(`The propagation vector "${text}" is not three numbers.`);
+    return k;
+  });
+  if (vectors.every((k) => k.every((x) => x === 0))) return undefined;
+  const transform = items.get("_parent_space_group.child_transform_pp_abc") ?? items.get("_parent_space_group_child_transform_pp_abc");
+  const axes = transform ? parseChildAxes(transform) : ([[1, 0, 0], [0, 1, 0], [0, 0, 1]] as [Vec3, Vec3, Vec3]);
+  if (!axes) throw new Error(`The magnetic cell's transform "${transform}" could not be read.`);
+  return { vectors, unrepresented: vectors.filter((k) => !represents(k, axes)) };
+}
+
 /** Read the first data block that has atom positions. Throws a plain-language Error on anything it cannot read safely. */
 export function readCif(text: string): Structure {
   const { items, loops } = parseCifBlocks(text);
@@ -236,7 +263,8 @@ export function readCif(text: string): Structure {
     "structure";
   const groupName = magnetic ? magneticName : spaceGroupName;
   const distortion = readDistortion(items, loops, sites);
-  const structure: Structure = { name, cell, ...(groupName !== undefined ? { spaceGroupName: groupName } : {}), operations, sites, magnetic, ...(distortion ? { distortion } : {}) };
+  const propagation = readPropagation(items, loops);
+  const structure: Structure = { name, cell, ...(groupName !== undefined ? { spaceGroupName: groupName } : {}), operations, sites, magnetic, ...(distortion ? { distortion } : {}), ...(propagation ? { propagation } : {}) };
   // An ISODISTORT file: every displacive mode at the amplitude the file gives.
   return withDisplacements(structure);
 }

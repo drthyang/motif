@@ -53,6 +53,21 @@ function tokenizeLine(line: string, lineNo: number, out: CifToken[]): void {
         continue;
       }
     }
+    // A CIF 2 list, "[0 0 0.2317]" (the propagation vector k as MATERIA and the Bilbao server write it), is one
+    // value with its spaces; read word by word it would split into three and shift every value after it in a loop.
+    if (c === "[") {
+      let depth = 0;
+      let j = i;
+      for (; j < line.length; j++) {
+        if (line[j] === "[") depth++;
+        else if (line[j] === "]" && --depth === 0) break;
+      }
+      if (j < line.length) {
+        out.push({ text: line.slice(i, j + 1), quoted: true, line: lineNo });
+        i = j + 1;
+        continue;
+      }
+    }
     let j = i;
     while (j < line.length && !/\s/.test(line[j]!)) j++;
     out.push({ text: line.slice(i, j), quoted: false, line: lineNo });

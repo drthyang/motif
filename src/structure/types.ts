@@ -90,6 +90,11 @@ export interface Structure {
    * orthogonal box with room around them (see lattice.ts), which the page does not draw as a unit cell.
    */
   readonly molecule?: boolean;
+  /**
+   * A magnetic file's propagation vectors k (`_parent_propagation_vector`), and those the cell drawn does not represent
+   * (propagation.ts): for them the figure shows the file's amplitudes at one phase, not the modulated structure.
+   */
+  readonly propagation?: { readonly vectors: readonly Vec3[]; readonly unrepresented: readonly Vec3[] };
   /** True when the moments were added by hand (handMoments.ts), not read from the file. */
   readonly momentsByHand?: boolean;
   /** The file's format in a word or two ("CIF", "VASP", "SHELX", ...), shown over the figure. */

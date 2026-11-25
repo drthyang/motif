@@ -5,6 +5,7 @@
  * The scene: what is drawn and how it is styled, as plain data (JSON-safe).
  * Positions are cartesian, in angstrom. The scene knows nothing about the view.
  */
+import { writeK } from "../structure/propagation";
 import { fractionalToCartesian, mulVec, orthogonalizationMatrix } from "../structure/cell";
 import type { CellAtom, Component, Mat3, Structure, Vec3 } from "../structure/types";
 import { DEFAULT_ISO, orbitalById, orbitalFrame, orbitalFrameAbout } from "./orbitals";
@@ -628,7 +629,7 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
   const hiddenSpecies = new Set(Object.entries(spec.looks).filter(([, look]) => look.hidden).map(([species]) => species));
   const selected = atomsAndBonds(structure, spec.range, spec.bonds, hiddenSpecies);
   const { atoms, bonds } = prune(selected.atoms, selected.bonds, spec.bonds);
-  const warnings = selected.warnings;
+  const warnings = [...selected.warnings, ...propagationWarnings(structure)];
   const styles: Record<string, SphereStyle> = {};
   // Highlights: chains and triangles in the bonds of each rule.
   const stickStyles: StickStyle[] = spec.bonds.map((r) => ({
@@ -825,4 +826,17 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     if (ruleInfo[rule] && ruleInfo[rule]!.fillColour === undefined) ruleInfo[rule] = { ...ruleInfo[rule]!, fillColour: p.colour };
   });
   return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, ...(polyhedra.length ? { polyhedra } : {}), sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, ...(orbitals.length ? { orbitals } : {}), arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, axesColours: spec.axesColoured ? spec.axesColours : undefined, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, glassOpacity: spec.glassOpacity, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legendFontPt: spec.legendFontPt, axesFontPt: spec.axesFontPt, angleFontPt: spec.angleFontPt, legend, axes, warnings: [...warnings, ...arrowNote] };
+}
+
+/**
+ * The warning for a propagation vector the cell drawn does not represent (structure/propagation.ts): the figure then
+ * shows the file's moments at one phase, not the modulated (incommensurate) structure. k is named as the file gives it.
+ */
+export function propagationWarnings(structure: Structure): string[] {
+  const ks = structure.propagation?.unrepresented ?? [];
+  if (ks.length === 0) return [];
+  const named = ks.map(writeK).join(", ");
+  return [
+    `The propagation vector k = ${named} is not represented by the cell drawn: the moments shown are the amplitudes in the file at one phase, not the modulated structure${ks.length > 1 ? "s" : ""}.`,
+  ];
 }
