@@ -145,14 +145,15 @@ a session it created, else its id session_018FAHe7jSmFWHBKsHtxQSBh) after each.
    figure as SVG). With tests. **Do not edit `scattering-agent-tools`** (another repo): write down exactly what
    the hub needs (the entry, the command, the tool list) in a file in MOTIF, e.g. docs/HUB-REGISTRATION.md, and
    tell the Session monitor; a separate agent registers it there.
-   **Built** (2026-11-25, branch `mcp-server`): `src/mcp/`, docs/HUB-REGISTRATION.md, docs/CONVENTIONS.md "MCP
+   **Done** (2026-11-25, merged to main): `src/mcp/`, docs/HUB-REGISTRATION.md, docs/CONVENTIONS.md "MCP
    server"; bundled with rolldown (Vite's) to `dist-mcp/mcp-server.mjs`. The user chose option "A": a headless
    `Figure` (`src/mcp/figure.ts`) mirrors the page's state; App.tsx keeps its own mapping. **Any new page setting
    that changes the saved figure must be added to `src/mcp/figure.ts` too, or the parity check fails**
    (`scripts/browser_check.cjs` part 5: page SVG = server SVG, byte for byte, for olivine and the five examples).
    That check found a page bug: the `fit` memo in App.tsx left `canvas` out of its dependencies, so the page fitted
    the structure to the canvas from before the frame was measured (1440 × 1100, drawn on 1440 × 1080: 2.6 % too
-   large). Fixing it is a one-word change in App.tsx, put to the user.
+   large). Fixed with the user's yes (2026-11-25, commit 1e2fb1d): saved figures changed, structures 2.6 % smaller in
+   the default canvas.
 
 Limits for all three: correctness first; no paid API calls (no trial with the user's Claude, OpenAI or Gemini key;
 local models only); no Claude trailer in MOTIF commits; unpublished structures stay local; nothing automated past
