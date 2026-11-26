@@ -203,6 +203,26 @@ export function atomsAndBonds(structure: Structure, range: Range, rules: readonl
  * The distinct distances (to 0.01 A) between atoms of two elements in the crystal, shortest first,
  * up to `reach` angstrom. Shown to the user as a guide for choosing a bond's longest distance.
  */
+/**
+ * The direction of the shortest a–b distance, as a crystal direction in fractional steps ("[0.5 0 0]"), so the
+ * assistant can tell which way a chain or a bond runs; null when there is no such pair within `reach`.
+ */
+export function pairDirection(structure: Structure, a: string, b: string, reach = 6): string | null {
+  const once: Range = { from: [0, 0, 0], to: [1, 1, 1], boundary: "once" };
+  const cell = place(structure, atomsInRange(structure, once).atoms).filter((x) => x.species === a);
+  const around = place(structure, atomsInRange(structure, widened(structure, once, reach), Infinity).atoms);
+  const boxes = new Boxes(around, reach, (x) => x.species === b);
+  let best: { d: number; from: Vec3; to: Vec3 } | null = null;
+  for (const atom of cell) {
+    for (const { index, d } of boxes.near(atom.cart, reach)) {
+      if (d > 1e-6 && (!best || d < best.d - 1e-6)) best = { d, from: atom.frac, to: around[index]!.frac };
+    }
+  }
+  if (!best) return null;
+  const f = (x: number) => String(Math.round(x * 100) / 100 + 0);
+  return `[${[0, 1, 2].map((i) => f(best!.to[i]! - best!.from[i]!)).join(" ")}]`;
+}
+
 export function pairDistances(structure: Structure, a: string, b: string, reach = 6): number[] {
   const once: Range = { from: [0, 0, 0], to: [1, 1, 1], boundary: "once" };
   const cell = place(structure, atomsInRange(structure, once).atoms).filter((x) => x.species === a);

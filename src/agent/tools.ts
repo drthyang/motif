@@ -15,6 +15,7 @@
 import { KNOBS, knob, NOT_FOR_ASSISTANT } from "./catalogue";
 import type { MomentRule } from "../structure/handMoments";
 import type { StructureFormat } from "../structure/writeStructure";
+import { ORBITAL_IDS, type OrbitalRequest } from "./orbitalRequest";
 
 /** A bond rule as the assistant sees it. */
 export interface BondView {
@@ -41,7 +42,8 @@ export interface FigureState {
   readonly elements: readonly { readonly element: string; readonly count: number; readonly colour: string; readonly radius: number; readonly hidden: boolean }[];
   readonly bonds: readonly BondView[];
   /** Pairs that could be bonded, with their shortest distances (angstrom). */
-  readonly pairs: readonly { readonly between: string; readonly distances: readonly number[] }[];
+  /** Pairs that could be bonded: their shortest distances, and the crystal direction of the shortest one. */
+  readonly pairs: readonly { readonly between: string; readonly distances: readonly number[]; readonly shortestAlong?: string }[];
   readonly cells: string;
   readonly view: string;
   readonly canvas: string;
@@ -50,6 +52,10 @@ export interface FigureState {
   readonly moments: string;
   /** Bond angles that can be marked (between drawn bonds, with their sizes) and those marked now. */
   readonly angles: string;
+  /** Where each element's atoms are in the unit cell: their distinct fractional coordinates along a, b and c. */
+  readonly positions?: string;
+  /** The orbitals drawn, per species, with their size, isovalue, opacity and local z ("none" when there are none). */
+  readonly orbitals: string;
   readonly settings: Readonly<Record<string, unknown>>;
 }
 
@@ -76,6 +82,10 @@ export interface Page {
   readonly clearAngles: (request?: { ends: [string, string]; apex: string }) => string | null;
   /** Saves the structure's unit cell in a format, downloaded by the browser; returns an error, or what was saved. */
   readonly saveStructure: (format: StructureFormat, fileName?: string) => { error: string } | { applied: string };
+  /** Draws orbitals on the atoms of one species (adds or replaces that species' orbitals); an error, or what was set. */
+  readonly setOrbitals: (request: OrbitalRequest) => { error: string } | { applied: string };
+  /** Removes the orbitals of one species, or all when none is named. */
+  readonly removeOrbitals: (species?: string) => string | null;
 }
 
 export interface BondChange {
@@ -187,7 +197,7 @@ export const TOOLS: readonly ToolSpec[] = [
   },
   {
     name: "use_journal",
-    description: "Size the figure for a journal: publisher, journal, column, and the share of the column width (\"full\", \"1/2\", \"1/3\" or \"1/4\"). Sets the width on paper and the journal's text size.",
+    description: "Size the figure for a journal: publisher, journal, column, and the share of the column width (\"full\", \"1/2\", \"1/3\" or \"1/4\"). Sets the width on paper and the journal's text size. Use a single column at full width unless the user asks for another column or a share of it.",
     input_schema: { type: "object", properties: { publisher: { type: "string" }, journal: { type: "string" }, column: { type: "string" }, width: { type: "string" } } },
   },
   {
@@ -233,6 +243,30 @@ export const TOOLS: readonly ToolSpec[] = [
     name: "clear_moments",
     description: "Remove the moments added by hand (moments read from the file stay).",
     input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "set_orbitals",
+    description:
+      "Draw orbitals on the atoms of one species, as schematic isosurfaces coloured by the sign of the lobe (adds them, or replaces that species' orbitals). Which orbitals and which local z axis are scientific choices: use what the user said; if they did not say, ask them first (offer the likely choices, e.g. dz² along the longest bond) rather than guess. The local z: z_along a crystal direction [u v w], or z_from each atom's own bonds to a neighbour element (\"longest\": along its longest such bond, as for a Jahn–Teller distortion; \"bridge\": along the line through its two nearest, as for an O between two metals). size is the reach in angstrom (about 1 to 2 for d and f); iso from 0.05 (full lobes) to 0.9 (slim).",
+    input_schema: {
+      type: "object",
+      properties: {
+        species: { type: "string" },
+        orbitals: { type: "array", items: { type: "string", enum: [...ORBITAL_IDS] } },
+        size: { type: "number", description: "angstrom" },
+        iso: { type: "number" },
+        opacity: { type: "number" },
+        colours: { type: "array", items: { type: "string" }, description: 'two "#rrggbb": positive and negative lobes' },
+        z_along: { type: "array", items: { type: "number" }, description: "[u, v, w]" },
+        z_from: { type: "object", properties: { neighbour: { type: "string" }, mode: { type: "string", enum: ["longest", "bridge"] } } },
+      },
+      required: ["species", "orbitals"],
+    },
+  },
+  {
+    name: "remove_orbitals",
+    description: "Stop drawing the orbitals of one species, or of all species when none is named.",
+    input_schema: { type: "object", properties: { species: { type: "string" } } },
   },
   {
     name: "save_structure",
@@ -447,6 +481,28 @@ export function runTool(page: Page, name: string, input: Record<string, unknown>
     case "clear_moments": {
       const error = page.clearMoments();
       return error ? fail(error) : { text: done("moments added by hand removed", "the figure") };
+    }
+    case "set_orbitals": {
+      const orbitals = input["orbitals"];
+      if (typeof input["species"] !== "string" || !Array.isArray(orbitals)) return fail('Give species and orbitals, e.g. {"species": "Mn", "orbitals": ["dz2"]}.');
+      const zFrom = input["z_from"] as { neighbour?: unknown; mode?: unknown } | undefined;
+      const req: OrbitalRequest = {
+        species: input["species"],
+        orbitals: orbitals.map(String),
+        ...(typeof input["size"] === "number" ? { size: input["size"] } : {}),
+        ...(typeof input["iso"] === "number" ? { iso: input["iso"] } : {}),
+        ...(typeof input["opacity"] === "number" ? { opacity: input["opacity"] } : {}),
+        ...(Array.isArray(input["colours"]) ? { colours: (input["colours"] as unknown[]).map(String) } : {}),
+        ...(Array.isArray(input["z_along"]) ? { zAlong: (input["z_along"] as unknown[]).map(Number) } : {}),
+        ...(zFrom && typeof zFrom === "object" ? { zFrom: { neighbour: String(zFrom.neighbour ?? ""), mode: String(zFrom.mode ?? "") as "longest" | "bridge" } } : {}),
+      };
+      const result = page.setOrbitals(req);
+      return "error" in result ? fail(result.error) : { text: done(`orbitals ${result.applied}`, "Structure › Orbitals (which, and their axes), Visual › Orbitals (size, colours, isovalue)") };
+    }
+    case "remove_orbitals": {
+      const species = typeof input["species"] === "string" && input["species"] !== "" ? (input["species"] as string) : undefined;
+      const error = page.removeOrbitals(species);
+      return error ? fail(error) : { text: done(species ? `${species} orbitals removed` : "all orbitals removed", "Structure › Orbitals") };
     }
     case "save_structure": {
       const format = String(input["format"] ?? "").toLowerCase().replace(/^vasp$/, "poscar").replace(/^extended ?xyz$/, "extxyz");

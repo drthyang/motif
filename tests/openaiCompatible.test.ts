@@ -8,7 +8,7 @@ import type { Page } from "../src/agent/tools";
 
 const page = (calls: unknown[][]): Page => ({
   hasStructure: () => true,
-  describe: () => ({ file: "x.cif", format: "CIF", cell: "a = 10.4", elements: [], bonds: [], pairs: [{ between: "Nb–Nb", distances: [3.01, 3.07] }], cells: "", view: "", canvas: "", journal: "", moments: "none", angles: "", settings: {} }),
+  describe: () => ({ file: "x.cif", format: "CIF", cell: "a = 10.4", elements: [], bonds: [], pairs: [{ between: "Nb–Nb", distances: [3.01, 3.07] }], cells: "", view: "", canvas: "", journal: "", moments: "none", angles: "", orbitals: "none", settings: {} }),
   applySettings: () => [],
   setElement: () => null,
   addBonds: (a, b, d) => (calls.push(["add", a, b, d]), null),
@@ -22,6 +22,8 @@ const page = (calls: unknown[][]): Page => ({
   markAngles: () => ({ applied: "" }),
   clearAngles: () => null,
   saveStructure: () => ({ applied: "" }),
+  setOrbitals: () => ({ applied: "" }),
+  removeOrbitals: () => null,
 });
 
 /** A provider that answers chat completions from a script, and records each request. */

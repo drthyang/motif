@@ -22,7 +22,7 @@ export const PAGE_MAP: readonly PagePlace[] = [
   { what: "coordination polyhedra (from a bond rule)", where: "Structure › Bonds", assistant: true },
   { what: "marking bond angles", where: "Structure › Angles", assistant: true },
   { what: "how angle marks look", where: "Visual › Angles", assistant: true },
-  { what: "orbitals", where: "Structure › Orbitals", assistant: false },
+  { what: "orbitals", where: "Structure › Orbitals", assistant: true },
   { what: "cells shown", where: "Structure › Cells shown", assistant: true },
   { what: "surfaces (soft, glossy, metal, glass) and outlines", where: "Visual › Shading and outlines", assistant: true },
   { what: "unit cell lines", where: "Visual › Unit cell", assistant: true },

@@ -732,6 +732,17 @@ where each control is, so the user learns where to find it.
   shows each change in plain words with Allow and Deny, and a declined change is not made (the model is told). While
   it works the drawer says what it is doing ("Thinking…", "Changing: …"). Before a model is set up it says what the
   assistant does and what it needs, with a link to the setup.
+- **Tools added and fixed from trials** (2026-11-26, the user's request: a figure for a journal showing a chain and
+  its orbital ordering, tested on a local model with the user's structure, kept local). set_orbitals and
+  remove_orbitals (which orbitals on a species, size, isovalue, opacity, colours, local z along [u v w] or from each
+  atom's bonds; the check shared by the page and the MCP server, `src/agent/orbitalRequest.ts`); describe_figure
+  also gives the orbitals drawn, where each element's atoms lie (distinct fractional a, b, c) and each pair's
+  shortestAlong direction. Fixed: a second tool call in one reply read the page before the first was applied (the
+  loop now lets the page update between calls); journals found from abbreviations and word starts ("Nat. Phys."),
+  and Nature's other publisher names; a failed step in the drawer says what was asked. The instructions now ask
+  for a short plan, one question for a scientific choice the user has not made (which orbitals, which axis), the
+  journal's size whenever one is named, a slab round the feature, a view across a chain (never along it), and
+  small atoms under orbitals.
 - **Nothing contacted on load** (2026-11-26, the user's choice): a local model server (Ollama, LM Studio) is reached
   only once the person turns to the assistant: shows the Assistant tab, opens the drawer with its toggle, clicks into
   its box, or sends words. Before that the page makes no request to the visitor's own computer, which Firefox

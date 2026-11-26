@@ -223,7 +223,11 @@ export function matchJournal(req: { publisher?: string; journal?: string; column
     if (!want) return true;
     const w = want.toLowerCase().trim();
     const letters = w.replace(/[^a-z]/g, "");
-    return have.toLowerCase().includes(w) || (letters.length >= 2 && initials(have) === letters) || w.split(/[\s,]+/).every((x) => have.toLowerCase().includes(x));
+    // Every word given starts a word of the name, punctuation aside: "Nat. Phys." and "nature phys" find Nature Physics.
+    const haveWords = have.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+    const wantWords = w.split(/[^a-z0-9]+/).filter(Boolean);
+    const prefixes = wantWords.length > 0 && wantWords.every((x) => haveWords.some((h) => h.startsWith(x)));
+    return have.toLowerCase().includes(w) || (letters.length >= 2 && initials(have) === letters) || prefixes;
   };
   const words: Record<string, number> = { single: 1, one: 1, double: 2, two: 2, three: 3, "one and a half": 1.5 };
   // A number of columns; never the parts of a fraction ("1/2" is a share of the width, not 1 column).
@@ -239,6 +243,8 @@ export function matchJournal(req: { publisher?: string; journal?: string; column
     req = { ...req, width: req.column };
     delete (req as { column?: string }).column;
   }
+  // Other names of a publisher: Nature's journals are Springer Nature's.
+  if (req.publisher && /^(nature( publishing group| portfolio| research)?|npg)$/i.test(req.publisher.trim())) req = { ...req, publisher: "Springer Nature" };
   const part = req.width ? shareOf(req.width) : currentPart;
   if (!part) return 'width must be "full", "1/2", "1/3" or "1/4".';
   // A journal's name and its publisher are searched together: "Physical Review" given as the publisher still finds it.

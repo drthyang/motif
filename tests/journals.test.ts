@@ -101,4 +101,17 @@ describe("journal templates", () => {
     expect(describeJournal("aps-1", "1/2")).toBe("Physical Review, 1 column, 8.5 cm, 1/2 width = 4.25 cm");
     expect(describeJournal("nature-2", "1")).toBe("Nature, double column, 183 mm, full width");
   });
+
+  it("finds a journal from abbreviations and words that start its name (Nat. Phys., nature phys)", () => {
+    for (const journal of ["Nature Physics", "Nat. Phys.", "nature phys", "Nature Phys."]) {
+      const found = matchJournal({ journal }, "1");
+      expect(typeof found === "string" ? found : describeJournal(found.id, found.part), journal).toMatch(/^Nature Communications, Nature Materials, Nature Physics/);
+    }
+    for (const publisher of ["Nature Publishing Group", "NPG", "Nature Portfolio"]) {
+      const found = matchJournal({ publisher, journal: "Nature Physics" }, "1");
+      expect(typeof found === "string" ? found : describeJournal(found.id, found.part), publisher).toMatch(/Nature Physics/);
+    }
+    const nature = matchJournal({ publisher: "Springer Nature", journal: "Nature" }, "1");
+    expect(typeof nature === "string" ? nature : describeJournal(nature.id, nature.part)).toMatch(/^Nature,/);
+  });
 });

@@ -25,7 +25,7 @@ import { buildScene, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_LENGTH, D
 import { DEFAULT_ISO } from "../scene/orbitals";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
-import { pairDistances, type BondRule } from "../scene/bonds";
+import { pairDirection, pairDistances, type BondRule } from "../scene/bonds";
 import type { Range } from "../scene/select";
 import { expandToUnitCell } from "../structure/expand";
 import { withDisplacements } from "../structure/distortion";
@@ -34,6 +34,8 @@ import { readStructure } from "../structure/readStructure";
 import { FORMATS, writeStructure, type StructureFormat } from "../structure/writeStructure";
 import type { Structure } from "../structure/types";
 import { splitPair, type BondChange, type FigureState, type Page, type ViewRequest } from "../agent/tools";
+import { positionsInWords } from "../structure/positions";
+import { orbitalRuleFor, orbitalsInWords, type OrbitalRequest, type OrbitalRuleState } from "../agent/orbitalRequest";
 import { describeJournal, journalSize, journalTextPt, matchJournal, partWidth, type PartId } from "../ui/journals";
 import type { FeatureExample } from "../ui/examples";
 import { coloursOf, isBool, isColour, isNumber, isText, oneOf, textRecord, textsOf } from "../ui/settings";
@@ -182,14 +184,6 @@ interface LookState {
   radiusText?: string;
   hidden?: boolean;
 }
-interface OrbitalState {
-  species: string;
-  orbitals: string[];
-  sizeText: string;
-  colours: [string, string];
-  zMode?: "longest" | "bridge";
-  zNeighbour?: string;
-}
 
 /** The figure's state, and the page's operations on it. */
 export class Figure implements Page {
@@ -202,7 +196,7 @@ export class Figure implements Page {
   private rules: Rule[] = [];
   private looks: Record<string, LookState> = {};
   private angleRules: AngleState[] = [];
-  private orbitalRules: OrbitalState[] = [];
+  private orbitalRules: OrbitalRuleState[] = [];
   private momentRules: readonly MomentRule[] | null = null;
   private showMoments = true;
   private modesOn: boolean[] = [];
@@ -261,6 +255,11 @@ export class Figure implements Page {
         orbitals: [...o.orbitals],
         sizeText: String(o.size ?? DEFAULT_ORBITAL_SIZE),
         colours: [...(o.colours ?? DEFAULT_ORBITAL_COLOURS)] as [string, string],
+        opacityText: String(DEFAULT_ORBITAL_OPACITY),
+        iso: DEFAULT_ISO,
+        texture: "soft" as const,
+        zText: "",
+        xText: "",
         ...(o.zFrom ? { zMode: o.zFrom.mode, zNeighbour: o.zFrom.neighbour } : {}),
       }));
     }
@@ -340,17 +339,22 @@ export class Figure implements Page {
         label: r.label ?? DEFAULT_ANGLE_LOOK.label,
       };
     });
+    // As the page maps its rules (App.tsx, sceneOrbitals).
+    const indices = (text: string): [number, number, number] | null => {
+      const parts = text.trim().split(/[\s,]+/).map(Number);
+      return parts.length === 3 && parts.every(Number.isFinite) && parts.some((x) => x !== 0) ? (parts as [number, number, number]) : null;
+    };
     const orbitals = this.orbitalRules.map((r): OrbitalRule => ({
       species: r.species,
       orbitals: r.orbitals,
       size: Number(r.sizeText) > 0 && Number(r.sizeText) <= 20 ? Number(r.sizeText) : DEFAULT_ORBITAL_SIZE,
       colours: r.colours,
-      opacity: DEFAULT_ORBITAL_OPACITY,
-      iso: DEFAULT_ISO,
-      texture: "soft",
-      z: null,
-      x: null,
-      ...(r.zMode && r.zNeighbour ? { zFrom: { neighbour: r.zNeighbour, mode: r.zMode } } : {}),
+      opacity: Number(r.opacityText) >= 0.05 && Number(r.opacityText) <= 1 ? Number(r.opacityText) : DEFAULT_ORBITAL_OPACITY,
+      iso: r.iso,
+      texture: r.texture,
+      z: indices(r.zText),
+      x: indices(r.xText),
+      ...(r.zMode && r.zMode !== "uvw" && r.zNeighbour ? { zFrom: { neighbour: r.zNeighbour, mode: r.zMode } } : {}),
     }));
     const arrowStyle: ArrowStyle | null = largestMoment(structure) > 0 ? "moment" : largestDisplacement(structure) > 0 ? "displacement" : null;
     const scene = buildScene(this.drawnStructure() ?? structure, {
@@ -533,7 +537,7 @@ export class Figure implements Page {
         polyhedra: r.polyhedra ? (r.polyhedronLook === "line" ? "line art" : (r.polyhedronLook ?? "glass")) : "off",
         ...(r.polyhedra ? { polyhedronColour: r.polyhedronColour ?? scene?.polyhedra?.find((p) => p.rule === this.sceneRule(i))?.colour ?? "" } : {}),
       })),
-      pairs: this.pairs().map((p) => ({ between: `${p.centre}–${p.neighbour}`, distances: p.distances.slice(0, 4).map((d) => Number(d.toFixed(3))) })),
+      pairs: this.pairs().map((p) => ({ between: `${p.centre}–${p.neighbour}`, distances: p.distances.slice(0, 4).map((d) => Number(d.toFixed(3))), ...(pairDirection(structure, p.centre, p.neighbour) ? { shortestAlong: pairDirection(structure, p.centre, p.neighbour)! } : {}) })),
       cells: `from ${rangeText.slice(0, 3).join(", ")} to ${rangeText.slice(3).join(", ")}`,
       view: viewLine,
       canvas: canvas.physical ? `${canvas.physical.width} × ${canvas.physical.height} ${canvas.physical.unit} on paper` : `${canvas.width} × ${canvas.height} px, no size on paper`,
@@ -545,6 +549,8 @@ export class Figure implements Page {
         : structure.sites.some((x) => x.moment)
           ? "from the file (a magnetic CIF)"
           : "none",
+      positions: positionsInWords(structure),
+      orbitals: orbitalsInWords(this.orbitalRules),
       journal: journal ? `${journal.journal}, ${journal.label}, ${this.journalPart} width` : "none",
       settings: { ...this.settings },
     };
@@ -759,6 +765,30 @@ export class Figure implements Page {
     const keep = this.angleRules.filter((r) => !(r.centre === req.apex && ((r.ends[0] === req.ends[0] && r.ends[1] === req.ends[1]) || (r.ends[0] === req.ends[1] && r.ends[1] === req.ends[0]))));
     if (keep.length === this.angleRules.length) return `No ${req.ends[0]}–${req.apex}–${req.ends[1]} angles are marked.`;
     this.angleRules = keep;
+    this.changed();
+    return null;
+  }
+
+  setOrbitals(req: OrbitalRequest): { error: string } | { applied: string } {
+    if (!this.structure) return { error: "No structure is open." };
+    const previous = this.orbitalRules.find((r) => r.species.toLowerCase() === req.species.trim().toLowerCase());
+    const rule = orbitalRuleFor(req, this.species(), previous);
+    if ("error" in rule) return rule;
+    this.orbitalRules = this.orbitalRules.some((r) => r.species === rule.species) ? this.orbitalRules.map((r) => (r.species === rule.species ? rule : r)) : [...this.orbitalRules, rule];
+    this.changed();
+    return { applied: orbitalsInWords([rule]) };
+  }
+
+  removeOrbitals(species?: string): string | null {
+    if (this.orbitalRules.length === 0) return "No orbitals are drawn.";
+    if (!species) {
+      this.orbitalRules = [];
+      this.changed();
+      return null;
+    }
+    const keep = this.orbitalRules.filter((r) => r.species.toLowerCase() !== species.trim().toLowerCase());
+    if (keep.length === this.orbitalRules.length) return `No orbitals are drawn on ${species}. Drawn on: ${this.orbitalRules.map((r) => r.species).join(", ")}.`;
+    this.orbitalRules = keep;
     this.changed();
     return null;
   }

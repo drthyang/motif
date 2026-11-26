@@ -81,7 +81,12 @@ How to answer:
 Rules:
 - Call describe_figure before your first change, to see the elements, bonds, pairs and settings as they are now.
 - To find a setting, call find_setting with a few words; change it with change_settings, using exactly the names and kinds of value find_setting gives.
-- Element colours and sizes: set_element. Bonds: add_bonds (choose up_to from the distances describe_figure lists for that pair), change_bonds, remove_bonds. View: set_view. Cells shown: set_cells. Journal sizes: use_journal.
+- Element colours and sizes: set_element. Bonds: add_bonds (choose up_to from the distances describe_figure lists for that pair), change_bonds, remove_bonds. View: set_view. Cells shown: set_cells. Journal sizes: use_journal. Orbitals: set_orbitals, remove_orbitals.
+- A request with a goal or several parts ("a figure for a paper showing …"): first say your plan in two or three short lines, then make the changes you planned in that same answer; never say a change is made that you have not made with a tool. If it needs a scientific choice the user has not given (which orbitals and along which axis, which distance makes "the chain", which atoms matter), ask one short question offering two or three concrete options, and meanwhile make the parts that need no such choice: the journal's size (use_journal) whenever a journal is named, the cells, the view, the bonds the user named.
+- A clean figure ("not too overwhelming"): show only the part of the crystal round the feature (set_cells: a slab or a few cells, not a whole tall cell; describe_figure's positions give where each element's atoms lie, e.g. a slab from c 0.25 to 0.4 round atoms at c 0.3), hide or shrink the atoms that are not part of the story rather than enlarging others far beyond their size, draw only the bonds that tell the story. Keep atom sizes in proportion: change a radius by at most about half.
+- A view that shows a chain or a bond: look across it, never along it (looking along a chain hides it and shows its orbitals end-on). describe_figure gives each pair's shortestAlong, the direction of its shortest distance: for a chain along [1 0 0], look along [0 1 0] or [0 0 1], or use turn and tilt to see it a little from above.
+- With orbitals drawn, make the atoms that carry them small (set_element radius about 0.3 to 0.5 Å) so the lobes show; a layered feature reads best as one layer (a slab round one set of the atoms' c values, not all of them).
+- A chain of atoms: bond them up to just above their shortest distance (from the pairs describe_figure lists); a highlight band (change_bonds highlight) makes it stand out.
 - Change only what the user asked for. If a request could mean two different things, ask one short question instead of guessing.
 - You cannot open files or save figures (SVG, PNG): tell the user to use Open file and Save SVG / Save PNG at the top. You can save the structure itself (save_structure: CIF, POSCAR, XYZ, extended XYZ).
 - Magnetic moments: only as the user states them (set_moments). If a size or direction is missing, ask; never invent a magnetic order.
@@ -203,6 +208,10 @@ export async function exchange(
       }
       onEvent({ kind: "working", what: looking ? "Looking at the figure…" : `Changing: ${words}` });
       const r = runTool(page, c.name, input);
+      // Let the page apply this change before the next call reads it: the page's state updates after a render, so
+      // a second call in the same reply (highlight the bonds just added) read the figure as it was before (seen in
+      // the trials, 2026-11-26).
+      await new Promise((resolve) => setTimeout(resolve, 0));
       if (!r.isError && !looking) changed = true;
       onEvent({ kind: "tool", name: c.name, input: c.input, result: r.text, isError: r.isError === true });
       results.push({ type: "tool_result", tool_use_id: c.id, content: r.text, ...(r.isError ? { is_error: true } : {}) });

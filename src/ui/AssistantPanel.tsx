@@ -15,13 +15,14 @@ import { CLAUDE_MODELS, KEYED, type AssistantEvent, type Transport } from "../ag
 import { DEFAULT_LMSTUDIO_URL } from "../agent/lmstudio";
 import { DEFAULT_OLLAMA_URL } from "../agent/ollama";
 import { PROVIDERS } from "../agent/openaiCompatible";
+import { describeCall } from "../agent/tools";
 import { TRANSPORT_NAMES, type AssistantChat, type Line } from "./useAssistant";
 
 /** A short line for a tool call, in plain words. */
 function toolLine(e: Extract<AssistantEvent, { kind: "tool" }>): string {
   if (e.name === "describe_figure") return "Looked at the figure.";
   if (e.name === "find_setting") return `Looked for a setting: ${(e.input as { words?: string }).words ?? ""}.`;
-  return e.isError ? `Could not: ${e.result}` : e.result.replace(/^Done: /, "");
+  return e.isError ? `Could not (${describeCall(e.name, (e.input ?? {}) as Record<string, unknown>)}): ${e.result}` : e.result.replace(/^Done: /, "");
 }
 
 

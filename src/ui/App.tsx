@@ -19,7 +19,7 @@ import { DEFAULT_ISO, ORBITALS } from "../scene/orbitals";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
-import { DEFAULT_POLYHEDRON_OPACITY, pairDistances, type BondColouring, type BondLine, type BondRule, type PolyhedronLook } from "../scene/bonds";
+import { DEFAULT_POLYHEDRON_OPACITY, pairDirection, pairDistances, type BondColouring, type BondLine, type BondRule, type PolyhedronLook } from "../scene/bonds";
 import type { BoundaryRule, Range } from "../scene/select";
 import { readStructure } from "../structure/readStructure";
 import { withHandMoments, type MomentRule } from "../structure/handMoments";
@@ -50,6 +50,8 @@ import { AssistantDrawer, AssistantPanel } from "./AssistantPanel";
 import { ThemeCue } from "./ThemeCue";
 import { useAssistant } from "./useAssistant";
 import { splitPair, type FigureState, type Page } from "../agent/tools";
+import { positionsInWords } from "../structure/positions";
+import { orbitalRuleFor, orbitalsInWords, type OrbitalRuleState } from "../agent/orbitalRequest";
 import { sizeLabel } from "./ruler";
 import { isDoubleTap, rollFor, twoFingerStep, type Touch } from "./touch";
 import { PARTS, PUBLISHERS, describeJournal, journalsOf, matchJournal, partWidth, journalSize, journalTextPt, type PartId } from "./journals";
@@ -348,7 +350,7 @@ export function App() {
   const [angleHover, setAngleHover] = useState<{ rule: number; range: [number, number] } | null>(null);
   const changeAngle = (index: number, change: Partial<(typeof angleRules)[number]>) => setAngleRules((all) => all.map((x, i) => (i === index ? { ...x, ...change } : x)));
   // Orbitals on the atoms of chosen species (see scene/orbitals.ts); reset for each new file.
-  const [orbitalRules, setOrbitalRules] = useState<{ species: string; orbitals: string[]; sizeText: string; colours: [string, string]; opacityText: string; iso: number; texture: OrbitalTexture; zText: string; xText: string; zMode?: "uvw" | "longest" | "bridge"; zNeighbour?: string }[]>([]);
+  const [orbitalRules, setOrbitalRules] = useState<OrbitalRuleState[]>([]);
   const [newOrbitalSpecies, setNewOrbitalSpecies] = useState("");
   // An outline round each orbital lobe (the user's choice "A", 2026-11-26): off by default; width in units of the
   // 1440-wide drawing; colour "" for a darker tone of each lobe's own colour.
@@ -1080,7 +1082,7 @@ export function App() {
           polyhedra: r.polyhedra ? (r.polyhedronLook === "line" ? "line art" : (r.polyhedronLook ?? "glass")) : "off",
           ...(r.polyhedra ? { polyhedronColour: r.polyhedronColour ?? scene?.polyhedra?.find((p) => p.rule === sceneRule(i))?.colour ?? "" } : {}),
         })),
-        pairs: pairs.map((p) => ({ between: `${p.centre}–${p.neighbour}`, distances: p.distances.slice(0, 4).map((d) => Number(d.toFixed(3))) })),
+        pairs: pairs.map((p) => ({ between: `${p.centre}–${p.neighbour}`, distances: p.distances.slice(0, 4).map((d) => Number(d.toFixed(3))), ...(pairDirection(structure!, p.centre, p.neighbour) ? { shortestAlong: pairDirection(structure!, p.centre, p.neighbour)! } : {}) })),
         cells: `from ${rangeText.slice(0, 3).join(", ")} to ${rangeText.slice(3).join(", ")}`,
         view: viewLine,
         canvas: canvas.physical ? `${canvas.physical.width} × ${canvas.physical.height} ${canvas.physical.unit} on paper` : `fits the frame (${canvas.width} × ${canvas.height} px)`,
@@ -1092,6 +1094,8 @@ export function App() {
           : structure!.sites.some((x) => x.moment)
             ? "from the file (a magnetic CIF)"
             : "none",
+        positions: positionsInWords(structure!),
+        orbitals: orbitalsInWords(orbitalRules),
         journal: journalSize(journalChoice) ? `${journalSize(journalChoice)!.journal}, ${journalSize(journalChoice)!.label}, ${journalPart} width` : "none",
         settings: Object.fromEntries(Object.entries(settingFields).filter(([k]) => !["savedViews", "elementLooks"].includes(k)).map(([k, f]) => [k, f.value])),
       };
@@ -1259,6 +1263,25 @@ export function App() {
         return { error: e instanceof Error ? e.message : String(e) };
       }
     },
+    setOrbitals: (req) => {
+      if (!structure) return { error: "No structure is open." };
+      const previous = orbitalRules.find((r) => r.species.toLowerCase() === req.species.trim().toLowerCase());
+      const rule = orbitalRuleFor(req, contents.species.map((x) => x.key), previous);
+      if ("error" in rule) return rule;
+      setOrbitalRules((all) => (all.some((r) => r.species === rule.species) ? all.map((r) => (r.species === rule.species ? rule : r)) : [...all, rule]));
+      return { applied: orbitalsInWords([rule]) };
+    },
+    removeOrbitals: (species) => {
+      if (orbitalRules.length === 0) return "No orbitals are drawn.";
+      if (!species) {
+        setOrbitalRules([]);
+        return null;
+      }
+      const keep = orbitalRules.filter((r) => r.species.toLowerCase() !== species.trim().toLowerCase());
+      if (keep.length === orbitalRules.length) return `No orbitals are drawn on ${species}. Drawn on: ${orbitalRules.map((r) => r.species).join(", ")}.`;
+      setOrbitalRules(keep);
+      return null;
+    },
     useJournal: (req) => {
       const found = matchJournal(req, journalPart);
       if (typeof found === "string") return { error: found };
@@ -1288,6 +1311,8 @@ export function App() {
       markAngles: (r) => pageRef.current.markAngles(r),
       clearAngles: (r) => pageRef.current.clearAngles(r),
       saveStructure: (f, n) => pageRef.current.saveStructure(f, n),
+      setOrbitals: (r) => pageRef.current.setOrbitals(r),
+      removeOrbitals: (sp) => pageRef.current.removeOrbitals(sp),
     }),
     [],
   );

@@ -11,7 +11,7 @@ function fakePage(over: Partial<Page> = {}) {
   const calls: unknown[][] = [];
   const page: Page = {
     hasStructure: () => true,
-    describe: () => ({ file: "x.cif", format: "CIF", cell: "", elements: [], bonds: [], pairs: [], cells: "", view: "", canvas: "", journal: "", moments: "none", angles: "", settings: {} }),
+    describe: () => ({ file: "x.cif", format: "CIF", cell: "", elements: [], bonds: [], pairs: [], cells: "", view: "", canvas: "", journal: "", moments: "none", angles: "", orbitals: "none", settings: {} }),
     applySettings: (v) => (calls.push(["settings", v]), Object.entries(v).filter(([, x]) => x === "bad").map(([n]) => n)),
     setElement: (e, c) => (calls.push(["element", e, c]), e === "Xx" ? "No element Xx in this structure." : null),
     addBonds: (a, b, d) => (calls.push(["add", a, b, d]), null),
@@ -25,6 +25,8 @@ function fakePage(over: Partial<Page> = {}) {
     markAngles: (r) => (calls.push(["angles", r]), { applied: "O–Mn–O from 79 to 101°" }),
     clearAngles: (r) => (calls.push(["clear angles", r]), null),
     saveStructure: (f, n) => (calls.push(["save", f, n]), { applied: `${n ?? "x"}.cif: 24 atoms` }),
+    setOrbitals: (r) => (calls.push(["orbitals", r]), { applied: `${r.species}: ${r.orbitals.join(", ")}` }),
+    removeOrbitals: (sp) => (calls.push(["remove orbitals", sp]), null),
     ...over,
   };
   return { page, calls };

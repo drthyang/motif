@@ -284,4 +284,13 @@ describe("drawing bonds and the cell", () => {
     const endOn = layoutAll(scene, viewFromAngles(-60, 0), DEFAULT_CANVAS);
     expect(endOn.map((d) => (d.kind === "sphere" ? d.label : d.kind))).toEqual(["p", "bond", "q"]);
   });
+
+  it("the direction of a pair's shortest distance: in silicon a quarter of a body diagonal", async () => {
+    const { pairDirection } = await import("../src/scene/bonds");
+    const { readCif } = await import("../src/structure/readCif");
+    const { readFileSync } = await import("node:fs");
+    const si = readCif(readFileSync("examples/silicon_COD-9008565.cif", "utf8"));
+    const dir = pairDirection(si, "Si", "Si")!;
+    expect(dir).toMatch(/^\[-?0\.25 -?0\.25 -?0\.25\]$/);
+  });
 });
