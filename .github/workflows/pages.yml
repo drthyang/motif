@@ -1,0 +1,72 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Tsung-Han Yang
+#
+# Checks every push and publishes the page on GitHub Pages.
+#   check:   types, unit tests, the page build and the MCP bundle.
+#   firefox: the browser check (scripts/browser_check.cjs) in Firefox, which cannot be run on the author's Mac.
+#   deploy:  the built page to GitHub Pages, from main only, and only once the repository is public.
+name: Check and publish
+
+on:
+  push:
+    branches: [main, go-public]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx tsc -b
+      - run: npx vitest run
+      - run: npm run build
+      - run: npm run build:mcp
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  firefox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm install --no-save playwright-core@1.61.1
+      - run: npx playwright-core install --with-deps firefox
+      - name: Browser check in Firefox
+        run: |
+          npx vite --port 5183 --strictPort &
+          for i in $(seq 1 30); do curl -sf http://localhost:5183/ > /dev/null && break; sleep 1; done
+          BROWSER=firefox PLAYWRIGHT=$PWD/node_modules/playwright-core timeout 900 node scripts/browser_check.cjs
+
+  deploy:
+    needs: [check, firefox]
+    if: github.ref == 'refs/heads/main' && github.event.repository.visibility == 'public'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
