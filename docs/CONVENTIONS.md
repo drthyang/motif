@@ -717,6 +717,11 @@ where each control is, so the user learns where to find it.
   an in-memory MCP client); `scripts/browser_check.cjs` part 5 builds the bundle, runs it over stdio, and requires its
   SVG to equal the page's, byte for byte, for olivine and the five feature examples. Any setting added to the page
   that changes the saved figure must be added to `src/mcp/figure.ts`, or that check fails.
+- **Nothing contacted on load** (2026-11-26, the user's choice): a local model server (Ollama, LM Studio) is reached
+  only once the person turns to the assistant: shows the Assistant tab, opens the drawer with its toggle, clicks into
+  its box, or sends words. Before that the page makes no request to the visitor's own computer, which Firefox
+  reports as an error and Chrome may answer with a permission prompt. Checked in `scripts/browser_check.cjs` (no
+  request to localhost:11434 or :1234 while the examples are opened; one once the box is clicked).
 
 ## How each part is checked
 

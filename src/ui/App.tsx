@@ -1576,7 +1576,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             <div className="tab-body">
             {/* Kept mounted, so the conversation stays when another tab is open. */}
             <div hidden={tab !== "assistant"} className="assistant-tab">
-              <AssistantPanel chat={chat} />
+              <AssistantPanel chat={chat} shown={tab === "assistant"} />
             </div>
             <Section tab="info" title="File" hint="What the file says. Nothing here changes the figure.">
               <table data-testid="info">

@@ -6,7 +6,7 @@
  * tab (setup and the whole conversation) both show this one. The connection choice and the keys stay in this browser.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { MessageParam } from "@anthropic-ai/sdk/resources/messages";
 import { CLAUDE_MODELS, clientFor, contextWindow, describeError, exchange, KEYED, type AssistantConfig, type AssistantEvent, type Transport } from "../agent/assistant";
 import { DEFAULT_LMSTUDIO_URL, ensureLmStudioContext, listLmStudioModels } from "../agent/lmstudio";
@@ -77,6 +77,12 @@ export interface AssistantChat {
   readonly setModel: (model: string) => void;
   readonly setApiKey: (key: string) => void;
   readonly setDrawerOpen: (open: boolean) => void;
+  /**
+   * The person has turned to the assistant (opened its tab or drawer, clicked into its box, chose a connection or
+   * sent words). Only then is a local model server contacted: a page that reached for the visitor's own computer as
+   * soon as it opened would raise errors (Firefox) or a permission prompt (Chrome). The user's choice, 2026-11-26.
+   */
+  readonly engage: () => void;
   /** Send the user's words; false if nothing was sent (no words, busy, or no model chosen). */
   readonly send: (words: string) => Promise<boolean>;
   readonly stop: () => void;
@@ -96,6 +102,8 @@ export function useAssistant(page: Page): AssistantChat {
   // LM Studio's loaded context, once known (the meter's window).
   const lmContext = useRef<number | null>(null);
   const [drawerOpen, setDrawerOpenState] = useState(() => read(DRAWER_KEY) !== "shut");
+  const [engaged, setEngaged] = useState(false);
+  const engage = useCallback(() => setEngaged(true), []);
   const stopper = useRef<AbortController | null>(null);
 
   const keep = (s: Stored) => {
@@ -141,6 +149,11 @@ export function useAssistant(page: Page): AssistantChat {
         controller.abort();
       };
     }
+    // A local server is contacted only once the person has turned to the assistant (see `engage`).
+    if (!engaged) {
+      setModels([]);
+      return;
+    }
     const url = stored.serverUrl || (stored.transport === "ollama" ? DEFAULT_OLLAMA_URL : DEFAULT_LMSTUDIO_URL);
     const list =
       stored.transport === "ollama"
@@ -161,7 +174,7 @@ export function useAssistant(page: Page): AssistantChat {
       alive = false;
       controller.abort();
     };
-  }, [stored.transport, stored.serverUrl, apiKey]);
+  }, [stored.transport, stored.serverUrl, apiKey, engaged]);
 
   // With OpenAI or Gemini any model's name may be typed; otherwise the choice must be one offered.
   const model = keyed && stored.transport !== "api-key" ? stored.model || (models[0] ?? "") : models.includes(stored.model) ? stored.model : (models[0] ?? "");
@@ -169,6 +182,7 @@ export function useAssistant(page: Page): AssistantChat {
   const send = async (text: string): Promise<boolean> => {
     const words = text.trim();
     if (!words || busy) return false;
+    setEngaged(true);
     const config: AssistantConfig = { transport: stored.transport, model, ...(stored.serverUrl ? { serverUrl: stored.serverUrl } : {}), ...(apiKey ? { apiKey } : {}) };
     if (!model || (keyed && !apiKey)) {
       setLines((l) => [...l, { who: "error", text: keyed && !apiKey ? `Add your ${TRANSPORT_NAMES[stored.transport]} key first (Assistant tab, Setup).` : "Choose a model first (Assistant tab, Setup)." }]);
@@ -229,7 +243,9 @@ export function useAssistant(page: Page): AssistantChat {
       setKeys((k) => ({ ...k, [stored.transport]: key }));
       write(KEY_STORE[stored.transport]!, key);
     },
+    engage,
     setDrawerOpen: (open) => {
+      if (open) setEngaged(true);
       setDrawerOpenState(open);
       write(DRAWER_KEY, open ? "open" : "shut");
     },

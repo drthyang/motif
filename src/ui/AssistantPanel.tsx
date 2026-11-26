@@ -76,6 +76,7 @@ function ChatInput({ chat, onSetup, prefix, rows, className }: { chat: Assistant
         placeholder="How should the figure look?"
         value={text}
         onChange={(e) => setText(e.target.value)}
+        onFocus={chat.engage}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) void send(e);
         }}
@@ -96,7 +97,13 @@ function ChatInput({ chat, onSetup, prefix, rows, className }: { chat: Assistant
 const connectionName = (chat: AssistantChat) => `${TRANSPORT_NAMES[chat.transport]}${chat.model ? ` · ${chat.model}` : ""}`;
 
 /** The Assistant tab: the connection, and the whole conversation, which can be carried on here too. */
-export function AssistantPanel({ chat }: { chat: AssistantChat }) {
+export function AssistantPanel({ chat, shown }: { chat: AssistantChat; shown: boolean }) {
+  // The Assistant tab shown (it stays mounted when hidden): the person has turned to the assistant, so its local
+  // server may be contacted.
+  const { engage } = chat;
+  useEffect(() => {
+    if (shown) engage();
+  }, [shown, engage]);
   const keyed = KEYED.includes(chat.transport);
   const provider = chat.transport === "openai" || chat.transport === "gemini" ? PROVIDERS[chat.transport] : null;
   return (

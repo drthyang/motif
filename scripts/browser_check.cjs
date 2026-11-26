@@ -139,7 +139,10 @@ let gpu = true;
     const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
     const errors = [];
     page.on("pageerror", (e) => errors.push(String(e)));
-    page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 80)); });
+    page.on("console", (m) => { if (m.type() === "error") errors.push(m.text().slice(0, 200)); });
+    // Nothing on the visitor's own computer is contacted until they turn to the assistant (the user's choice, 2026-11-26).
+    const local = [];
+    page.on("request", (r) => { if (/^https?:\/\/(localhost|127\.0\.0\.1):(11434|1234)\//.test(r.url())) local.push(r.url()); });
     await page.goto(URL_BASE);
     const names = await page.evaluate(() => [...document.querySelectorAll("[data-testid^=feature-]")].map((e) => e.dataset.testid));
     for (const id of names) {
@@ -155,6 +158,10 @@ let gpu = true;
       await page.waitForTimeout(400);
     }
     check(`feature examples (${names.length}) open, turn and zoom with no console error`, names.length >= 5 && errors.length === 0, [...new Set(errors)].join("; "));
+    check("no local model server contacted while the examples were opened", local.length === 0, local.slice(0, 2).join(", "));
+    await page.click("[data-testid=drawer-text]");
+    await page.waitForTimeout(1500);
+    check("clicking into the assistant's box contacts the local server (Ollama by default)", local.length > 0, `${local.length} request(s)`);
     await page.close();
   }
 
