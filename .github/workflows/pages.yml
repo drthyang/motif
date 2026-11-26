@@ -9,7 +9,7 @@ name: Check and publish
 
 on:
   push:
-    branches: [main, go-public]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
