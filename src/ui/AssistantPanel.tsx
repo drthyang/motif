@@ -3,14 +3,14 @@
 
 /**
  * The assistant on the page: say how the figure should look, and it changes the figure with the page's own
- * controls, saying where each one is. The drawer at the foot of the side panel (under every tab, so the figure
- * stays in full view) is where one talks to it; the Assistant tab holds the connection (Claude, OpenAI or Gemini
- * with your key, or Ollama / LM Studio on this computer) and the whole conversation. Both show the one
- * conversation of useAssistant.ts.
+ * controls, saying where each one is. The conversation lives in the drawer at the foot of the side panel, under
+ * every tab, so the figure stays in full view; the Assistant tab holds only the connection (Claude, OpenAI or
+ * Gemini with your key, or Ollama / LM Studio on this computer). The user's layout, 2026-11-26: the drawer on its
+ * own, the context meter and the Auto / Ask switch at its foot, as in Claude.
  */
 
 import { replyBlocks, type Span } from "../agent/reply";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { CLAUDE_MODELS, KEYED, type AssistantEvent, type Transport } from "../agent/assistant";
 import { DEFAULT_LMSTUDIO_URL } from "../agent/lmstudio";
 import { DEFAULT_OLLAMA_URL } from "../agent/ollama";
@@ -24,10 +24,9 @@ function toolLine(e: Extract<AssistantEvent, { kind: "tool" }>): string {
   return e.isError ? `Could not: ${e.result}` : e.result.replace(/^Done: /, "");
 }
 
-const EXAMPLES = "“make the Se atoms smaller”, “show the Nb–Nb bonds and fill the triangles in blue”, “look along [110]”, “size it for Physical Review, half a column”";
 
 /** The conversation, kept scrolled to its end. */
-export function ChatLines({ lines, busy, empty }: { lines: readonly Line[]; busy: boolean; empty: string }) {
+export function ChatLines({ lines, busy, activity, empty }: { lines: readonly Line[]; busy: boolean; activity: string; empty: ReactNode }) {
   const end = useRef<HTMLDivElement>(null);
   // In braces: newer browsers return a promise from scrollIntoView, and an effect may return only a clean-up.
   useEffect(() => {
@@ -35,7 +34,7 @@ export function ChatLines({ lines, busy, empty }: { lines: readonly Line[]; busy
   }, [lines, busy]);
   return (
     <>
-      {lines.length === 0 && <p className="sub">{empty}</p>}
+      {lines.length === 0 && <div className="sub chat-empty">{empty}</div>}
       {lines.map((l, i) =>
         l.who === "you" ? (
           <p key={i} className="said you">{l.text}</p>
@@ -49,7 +48,11 @@ export function ChatLines({ lines, busy, empty }: { lines: readonly Line[]; busy
           <p key={i} className="said step">{l.event.reason}</p>
         ) : null,
       )}
-      {busy && <p className="said step">…</p>}
+      {busy && (
+        <p className="said working" data-testid="assistant-working">
+          {activity || "Working…"}
+        </p>
+      )}
       <div ref={end} />
     </>
   );
@@ -73,7 +76,7 @@ function ChatInput({ chat, onSetup, prefix, rows, className }: { chat: Assistant
       <textarea
         data-testid={`${prefix}-text`}
         rows={rows}
-        placeholder="How should the figure look?"
+        placeholder={chat.ready ? "Ask for a change, e.g. “size it for Nature, one column”" : "Set up a model first"}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onFocus={chat.engage}
@@ -96,7 +99,7 @@ function ChatInput({ chat, onSetup, prefix, rows, className }: { chat: Assistant
 
 const connectionName = (chat: AssistantChat) => `${TRANSPORT_NAMES[chat.transport]}${chat.model ? ` · ${chat.model}` : ""}`;
 
-/** The Assistant tab: the connection, and the whole conversation, which can be carried on here too. */
+/** The Assistant tab: the connection only (the conversation is in the drawer). */
 export function AssistantPanel({ chat, shown }: { chat: AssistantChat; shown: boolean }) {
   // The Assistant tab shown (it stays mounted when hidden): the person has turned to the assistant, so its local
   // server may be contacted.
@@ -109,9 +112,7 @@ export function AssistantPanel({ chat, shown }: { chat: AssistantChat; shown: bo
   return (
     <div className="assistant-panel" data-testid="assistant">
       <div className="assistant-head">
-        <span className="sub">
-          {connectionName(chat)} <ContextMeter chat={chat} />
-        </span>
+        <span className="sub">{connectionName(chat)}</span>
         <span className="row">
           {chat.lines.length > 0 && (
             <button className="plain-text" data-testid="assistant-clear" disabled={chat.busy} onClick={chat.clear}>
@@ -188,15 +189,40 @@ export function AssistantPanel({ chat, shown }: { chat: AssistantChat; shown: bo
         </p>
       </div>
 
-      <div className="assistant-lines" data-testid="assistant-lines">
-        <ChatLines lines={chat.lines} busy={chat.busy} empty={`Say how the figure should look, here or in the drawer at the foot of the other tabs, for example: ${EXAMPLES}. The assistant changes the controls and says where each one is.`} />
-      </div>
-      <ChatInput chat={chat} onSetup={() => undefined} prefix="assistant" rows={2} className="assistant-input" />
+      <p className="sub">Talk to the assistant in the drawer at the foot of the side panel. It changes the figure with the page's own controls and says where each one is.</p>
     </div>
   );
 }
 
-/** The drawer at the foot of the side panel: a bar when shut; open, the conversation and the input. */
+/** What the drawer says before a conversation: how to start, or what is missing. */
+function DrawerStart({ chat, onSetup }: { chat: AssistantChat; onSetup: () => void }) {
+  if (!chat.ready)
+    return (
+      <>
+        <p>The assistant changes this figure for you: colours, bonds, orbitals, the view, the cells shown, a journal's size.</p>
+        <p>
+          It needs a model: Claude, OpenAI or Gemini with your own key, or one on this computer (Ollama, LM Studio).{" "}
+          <button className="plain-text" data-testid="drawer-start-setup" onClick={onSetup}>
+            Set up a model
+          </button>
+        </p>
+        {chat.modelNote && <p>{chat.modelNote}</p>}
+      </>
+    );
+  return (
+    <>
+      <p>Say what the figure should show, for example:</p>
+      <ul>
+        <li>“Size it for Physical Review, one column”</li>
+        <li>“Draw the Mn–O bonds and the octahedra round Mn”</li>
+        <li>“Look along [110] and make the O atoms smaller”</li>
+      </ul>
+    </>
+  );
+}
+
+/** The drawer at the foot of the side panel: a bar when shut; open, the conversation, the input, and at its foot the
+ * Auto / Ask switch and the context meter. */
 export function AssistantDrawer({ chat, onSetup }: { chat: AssistantChat; onSetup: () => void }) {
   const open = chat.drawerOpen;
   return (
@@ -204,9 +230,8 @@ export function AssistantDrawer({ chat, onSetup }: { chat: AssistantChat; onSetu
       <div className="drawer-head">
         <button className="drawer-toggle" data-testid="drawer-toggle" aria-expanded={open} title={open ? "Shut the assistant's drawer" : "Open the assistant's drawer"} onClick={() => chat.setDrawerOpen(!open)}>
           <b>Assistant</b>
-          <span className="sub drawer-model">{connectionName(chat)}</span>
-          <ContextMeter chat={chat} />
-          {chat.busy && !open && <span className="sub">working…</span>}
+          <span className="sub drawer-model">{chat.ready ? connectionName(chat) : "not set up"}</span>
+          {chat.busy && !open && <span className="sub">{chat.pending ? "waiting for you…" : "working…"}</span>}
           <span className="drawer-chevron" aria-hidden="true">{open ? "▾" : "▴"}</span>
         </button>
         {open && (
@@ -225,9 +250,34 @@ export function AssistantDrawer({ chat, onSetup }: { chat: AssistantChat; onSetu
       {open && (
         <>
           <div className="drawer-lines" data-testid="drawer-lines">
-            <ChatLines lines={chat.lines} busy={chat.busy} empty={chat.unset ? "Choose a model in Setup, then say how the figure should look." : "Say how the figure should look, for example: “look along [110]” or “make the O atoms smaller”."} />
+            <ChatLines lines={chat.lines} busy={chat.busy && !chat.pending} activity={chat.activity} empty={<DrawerStart chat={chat} onSetup={onSetup} />} />
+            {chat.pending && (
+              <div className="approve" data-testid="approve">
+                <p>
+                  <b>Allow this change?</b> {chat.pending}
+                </p>
+                <span className="row">
+                  <button className="button primary" data-testid="approve-allow" onClick={() => chat.answer(true)}>
+                    Allow
+                  </button>
+                  <button data-testid="approve-deny" onClick={() => chat.answer(false)}>
+                    Deny
+                  </button>
+                </span>
+              </div>
+            )}
           </div>
           <ChatInput chat={chat} onSetup={onSetup} prefix="drawer" rows={1} className="drawer-input" />
+          <div className="drawer-foot">
+            <span className="mode-switch" role="radiogroup" aria-label="How changes are made" title="Auto: the assistant makes each change at once. Ask: it shows each change and waits for you to allow it.">
+              {(["auto", "ask"] as const).map((m) => (
+                <button key={m} role="radio" aria-checked={chat.mode === m} className={chat.mode === m ? "on" : ""} data-testid={`mode-${m}`} onClick={() => chat.setMode(m)}>
+                  {m === "auto" ? "Auto" : "Ask"}
+                </button>
+              ))}
+            </span>
+            <ContextMeter chat={chat} />
+          </div>
         </>
       )}
     </div>

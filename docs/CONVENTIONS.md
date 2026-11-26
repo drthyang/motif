@@ -726,6 +726,12 @@ where each control is, so the user learns where to find it.
   an in-memory MCP client); `scripts/browser_check.cjs` part 5 builds the bundle, runs it over stdio, and requires its
   SVG to equal the page's, byte for byte, for olivine and the five feature examples. Any setting added to the page
   that changes the saved figure must be added to `src/mcp/figure.ts`, or that check fails.
+- **The drawer on its own** (2026-11-26, the user's layout): the conversation is only in the drawer at the foot of the
+  side panel, under every tab including Assistant; the Assistant tab holds only the connection. At the drawer's foot,
+  as in Claude: the switch **Auto | Ask** and the context meter. Auto (the default) makes each change at once; Ask
+  shows each change in plain words with Allow and Deny, and a declined change is not made (the model is told). While
+  it works the drawer says what it is doing ("Thinking…", "Changing: …"). Before a model is set up it says what the
+  assistant does and what it needs, with a link to the setup.
 - **Nothing contacted on load** (2026-11-26, the user's choice): a local model server (Ollama, LM Studio) is reached
   only once the person turns to the assistant: shows the Assistant tab, opens the drawer with its toggle, clicks into
   its box, or sends words. Before that the page makes no request to the visitor's own computer, which Firefox

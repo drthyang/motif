@@ -116,22 +116,22 @@ const CASES = ONLY ? [SET[ONLY - 1]] : SET;
       }
       await page.waitForFunction(() => document.querySelectorAll("[data-testid=assistant-model] option").length > 0, null, { timeout: 15000 });
       if (MODEL) await page.selectOption("[data-testid=assistant-model]", MODEL);
-      await page.fill("[data-testid=assistant-text]", c.ask);
+      await page.fill("[data-testid=drawer-text]", c.ask);
       const t0 = Date.now();
-      await page.click("[data-testid=assistant-send]");
-      await page.waitForSelector("[data-testid=assistant-send]", { timeout: CASE_MS });
+      await page.click("[data-testid=drawer-send]");
+      await page.waitForSelector("[data-testid=drawer-send]", { timeout: CASE_MS });
       await page.waitForTimeout(500);
       const after = await page.evaluate(() => window.__motifDescribe());
-      const said = await page.locator("[data-testid=assistant-lines] .said").allTextContents();
+      const said = await page.locator("[data-testid=drawer-lines] .said").allTextContents();
       // The model's own words (the last reply), apart from the tool lines.
-      const reply = (await page.locator("[data-testid=assistant-lines] .said.assistant").allTextContents()).join("\n");
+      const reply = (await page.locator("[data-testid=drawer-lines] .said.assistant").allTextContents()).join("\n");
       const meter = (await page.locator("[data-testid=context-meter]").first().textContent().catch(() => "")) ?? "";
       const ok = (() => { try { return c.ok(after, before, { said: said.join("\n"), downloads, reply, meter }); } catch { return false; } })() && errors.length === 0;
       if (ok) passed++;
       line = `${ok ? "ok  " : "FAIL"} ${n + 1}. ${c.ask}  (${((Date.now() - t0) / 1000).toFixed(0)} s; context ${meter || "?"})\n       ${said.slice(1).join("\n       ")}${errors.length ? `\n       page errors: ${errors.join("; ")}` : ""}`;
     } catch (e) {
       // What the assistant had done when it ran out of time, to see why.
-      const said = await page.locator("[data-testid=assistant-lines] .said").allTextContents().catch(() => []);
+      const said = await page.locator("[data-testid=drawer-lines] .said").allTextContents().catch(() => []);
       line = `FAIL ${n + 1}. ${c.ask}  (${String(e).split("\n")[0]})\n       ${said.slice(1).join("\n       ")}`;
     }
     console.log(line);

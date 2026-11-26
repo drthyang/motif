@@ -108,4 +108,25 @@ describe("an exchange with the assistant", () => {
     expect(sent.length).toBe(0);
     expect(events).toEqual([{ kind: "stopped", reason: "Stopped." }]);
   });
+
+  it("Ask mode: each change waits for the user; a declined change is not made and the model is told; looking is never asked", async () => {
+    const calls: unknown[][] = [];
+    const { client, sent } = scripted([
+      [tool("t1", "describe_figure", {})],
+      [tool("t2", "add_bonds", { between: "Nb-Nb", up_to: 3.2 }), tool("t3", "change_bonds", { between: "Nb-Nb", colour: "#2f6fd6" })],
+      [text("I added the Nb–Nb bonds; the blue colour was declined.")],
+    ]);
+    const asked: string[] = [];
+    const events: AssistantEvent[] = [];
+    await exchange(client, "fake", [], "Nb–Nb bonds in blue", page(calls), (e) => events.push(e), undefined, async (c) => {
+      asked.push(c.words);
+      return c.name === "add_bonds";
+    });
+    expect(asked).toEqual(["add bonds: between Nb-Nb, up to 3.2", "change bonds: between Nb-Nb, colour #2f6fd6"]);
+    expect(calls).toEqual([["add", "Nb", "Nb", 3.2]]);
+    const results = (sent[2]!.messages.at(-1)!.content as { content: string }[]).map((r) => r.content);
+    expect(results[1]).toMatch(/declined/);
+    expect(events.some((e) => e.kind === "working" && e.what === "Thinking…")).toBe(true);
+    expect(events.some((e) => e.kind === "tool" && e.result.startsWith("Declined: change bonds"))).toBe(true);
+  });
 });

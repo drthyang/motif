@@ -18,6 +18,7 @@ const CONFIG_KEY = "motif.assistant";
 /** Where each key is kept in this browser (Claude's under the name it has had from the start). */
 const KEY_STORE: Record<string, string> = { "api-key": "motif.assistant.key", openai: "motif.assistant.key.openai", gemini: "motif.assistant.key.gemini" };
 const DRAWER_KEY = "motif.assistant.drawer";
+const MODE_KEY = "motif.assistant.mode";
 
 export const TRANSPORT_NAMES: Record<Transport, string> = { "api-key": "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama", lmstudio: "LM Studio" };
 
@@ -83,6 +84,16 @@ export interface AssistantChat {
    * soon as it opened would raise errors (Firefox) or a permission prompt (Chrome). The user's choice, 2026-11-26.
    */
   readonly engage: () => void;
+  /** Auto: changes are made at once (the default). Ask: each change waits for the user's Allow or Deny. */
+  readonly mode: "auto" | "ask";
+  readonly setMode: (mode: "auto" | "ask") => void;
+  /** In Ask mode, the change waiting for the user's answer, in plain words. */
+  readonly pending: string | null;
+  readonly answer: (allow: boolean) => void;
+  /** What the assistant is doing now ("Thinking…", "Changing: …"), while busy. */
+  readonly activity: string;
+  /** A model is chosen and, for a keyed connection, a key given. */
+  readonly ready: boolean;
   /** Send the user's words; false if nothing was sent (no words, busy, or no model chosen). */
   readonly send: (words: string) => Promise<boolean>;
   readonly stop: () => void;
@@ -103,6 +114,10 @@ export function useAssistant(page: Page): AssistantChat {
   const lmContext = useRef<number | null>(null);
   const [drawerOpen, setDrawerOpenState] = useState(() => read(DRAWER_KEY) !== "shut");
   const [engaged, setEngaged] = useState(false);
+  const [mode, setModeState] = useState<"auto" | "ask">(() => (read(MODE_KEY) === "ask" ? "ask" : "auto"));
+  const [pending, setPending] = useState<string | null>(null);
+  const resolver = useRef<((allow: boolean) => void) | null>(null);
+  const [activity, setActivity] = useState("");
   const engage = useCallback(() => setEngaged(true), []);
   const stopper = useRef<AbortController | null>(null);
 
@@ -207,12 +222,20 @@ export function useAssistant(page: Page): AssistantChat {
         words,
         page,
         (event) => {
-          if (event.kind === "usage") {
+          if (event.kind === "working") setActivity(event.what);
+          else if (event.kind === "usage") {
             const window = contextWindow(stored.transport, lmContext.current);
             setContext({ used: event.used, size: window.size, estimated: event.estimated, approximate: window.approximate });
           } else setLines((l) => [...l, { who: "assistant", event }]);
         },
         controller.signal,
+        mode === "ask"
+          ? (call) =>
+              new Promise<boolean>((resolve) => {
+                resolver.current = resolve;
+                setPending(call.words);
+              })
+          : undefined,
       );
       setHistory(next);
     } catch (error) {
@@ -220,6 +243,9 @@ export function useAssistant(page: Page): AssistantChat {
       else setLines((l) => [...l, { who: "assistant", event: { kind: "stopped", reason: "Stopped." } }]);
     } finally {
       setBusy(false);
+      setActivity("");
+      setPending(null);
+      resolver.current = null;
     }
     return true;
   };
@@ -249,8 +275,29 @@ export function useAssistant(page: Page): AssistantChat {
       setDrawerOpenState(open);
       write(DRAWER_KEY, open ? "open" : "shut");
     },
+    mode,
+    setMode: (m) => {
+      setModeState(m);
+      write(MODE_KEY, m);
+    },
+    pending,
+    answer: (allow) => {
+      const r = resolver.current;
+      resolver.current = null;
+      setPending(null);
+      r?.(allow);
+    },
+    activity,
+    ready: model !== "" && (!keyed || apiKey !== ""),
     send,
-    stop: () => stopper.current?.abort(),
+    stop: () => {
+      // A change waiting for an answer is declined, so the exchange can end.
+      const r = resolver.current;
+      resolver.current = null;
+      setPending(null);
+      r?.(false);
+      stopper.current?.abort();
+    },
     clear: () => {
       setContext(null);
       setLines([]);

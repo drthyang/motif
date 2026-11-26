@@ -269,6 +269,13 @@ function inWords(change: Record<string, unknown>): string {
   };
   return Object.entries(change).map(([k, v]) => (say[k] ? say[k](v) : `${k} ${JSON.stringify(v)}`)).join(", ");
 }
+/** A tool call in plain words, for asking the user (Ask mode) and for the working line: "set_element: Mn colour #33aa33". */
+export function describeCall(name: string, input: Record<string, unknown>): string {
+  const value = (v: unknown): string => (Array.isArray(v) ? `[${v.map(value).join(" ")}]` : v && typeof v === "object" ? `{${Object.entries(v).map(([k, x]) => `${k} ${value(x)}`).join(", ")}}` : String(v));
+  const parts = Object.entries(input).map(([k, v]) => `${k.replace(/_/g, " ")} ${value(v)}`);
+  return `${name.replace(/_/g, " ")}${parts.length ? `: ${parts.join(", ")}` : ""}`;
+}
+
 const done = (what: string, place: string) => `Done: ${what}. On the page: ${place}.`;
 
 /** Words of a setting, for find_setting. */

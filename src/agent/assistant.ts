@@ -22,7 +22,7 @@ import { ollamaNativeFetch } from "./ollamaNative";
 import { lmstudioBase } from "./lmstudio";
 import { chatCompletionsClient, PROVIDERS, ProviderError } from "./openaiCompatible";
 import { pageMapText } from "./pageMap";
-import { runTool, TOOLS, type Page } from "./tools";
+import { describeCall, runTool, TOOLS, type Page } from "./tools";
 
 /** "api-key" is Claude with the user's key; "openai" and "gemini" likewise with theirs. */
 export type Transport = "api-key" | "openai" | "gemini" | "ollama" | "lmstudio";
@@ -111,6 +111,8 @@ export type AssistantEvent =
   | { readonly kind: "text"; readonly text: string }
   | { readonly kind: "tool"; readonly name: string; readonly input: unknown; readonly result: string; readonly isError: boolean }
   | { readonly kind: "stopped"; readonly reason: string }
+  /** What it is doing now ("Thinking…", "Changing: …"): shown while it works, not kept in the conversation. */
+  | { readonly kind: "working"; readonly what: string }
   /** How much of the model's context the conversation used in the last request, in tokens (estimated when the server gives no count). */
   | { readonly kind: "usage"; readonly used: number; readonly estimated: boolean };
 
@@ -136,6 +138,12 @@ export async function exchange(
   page: Page,
   onEvent: (e: AssistantEvent) => void,
   signal?: AbortSignal,
+  /**
+   * Ask mode (the user's choice, 2026-11-26; Auto, the default, has none): asked before each change to the figure,
+   * with the call in plain words; a change declined is not made, and the model is told so. Looking (describe_figure,
+   * find_setting) is never asked.
+   */
+  approve?: (call: { readonly name: string; readonly input: Record<string, unknown>; readonly words: string }) => Promise<boolean>,
 ): Promise<MessageParam[]> {
   const messages: MessageParam[] = [...history, { role: "user", content: userText }];
   // Whether any tool changed the page in this exchange. A model can say it changed something without calling a tool
@@ -152,6 +160,7 @@ export async function exchange(
       onEvent({ kind: "stopped", reason: "Stopped." });
       return messages;
     }
+    onEvent({ kind: "working", what: "Thinking…" });
     const reply = await client.messages
       .stream({ model, max_tokens: MAX_ANSWER, system: SYSTEM_PROMPT, tools: TOOLS as unknown as Anthropic.Tool[], messages }, signal ? { signal } : undefined)
       .finalMessage();
@@ -178,12 +187,26 @@ export async function exchange(
       messages.push({ role: "user", content: calls.map((c) => ({ type: "tool_result", tool_use_id: c.id, content: "Not carried out: the step limit was reached.", is_error: true })) });
       return messages;
     }
-    const results: ToolResultBlockParam[] = calls.map((c) => {
-      const r = runTool(page, c.name, (c.input ?? {}) as Record<string, unknown>);
-      if (!r.isError && !LOOKING.includes(c.name)) changed = true;
+    const results: ToolResultBlockParam[] = [];
+    for (const c of calls) {
+      const input = (c.input ?? {}) as Record<string, unknown>;
+      const words = describeCall(c.name, input);
+      const looking = LOOKING.includes(c.name);
+      if (approve && !looking) {
+        onEvent({ kind: "working", what: "Waiting for your answer…" });
+        if (!(await approve({ name: c.name, input, words }))) {
+          const text = "The user declined this change, so it was not made. Do not make it again; ask what they would like instead, or go on with the rest.";
+          onEvent({ kind: "tool", name: c.name, input: c.input, result: `Declined: ${words}`, isError: false });
+          results.push({ type: "tool_result", tool_use_id: c.id, content: text });
+          continue;
+        }
+      }
+      onEvent({ kind: "working", what: looking ? "Looking at the figure…" : `Changing: ${words}` });
+      const r = runTool(page, c.name, input);
+      if (!r.isError && !looking) changed = true;
       onEvent({ kind: "tool", name: c.name, input: c.input, result: r.text, isError: r.isError === true });
-      return { type: "tool_result", tool_use_id: c.id, content: r.text, ...(r.isError ? { is_error: true } : {}) };
-    });
+      results.push({ type: "tool_result", tool_use_id: c.id, content: r.text, ...(r.isError ? { is_error: true } : {}) });
+    }
     messages.push({ role: "user", content: results });
   }
 }

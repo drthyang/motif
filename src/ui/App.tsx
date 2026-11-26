@@ -2949,7 +2949,7 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
             </div>
             </TabContext.Provider>
             {/* Under every other tab; the Assistant tab shows the same conversation itself. */}
-            {tab !== "assistant" && <AssistantDrawer chat={chat} onSetup={() => setTab("assistant")} />}
+            <AssistantDrawer chat={chat} onSetup={() => setTab("assistant")} />
           </aside>
         )}
       </main>
