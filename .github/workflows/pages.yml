@@ -29,7 +29,8 @@ jobs:
           fetch-depth: 0
       - name: The user is the only author (no co-author or "Generated with" line in any commit)
         run: |
-          if git log --format='%h %B' | grep -i -n -E 'co-authored-by:|generated with'; then
+          # Attribution lines only (a line that starts so), not the words quoted in a sentence.
+          if git log --format=%B | grep -i -E '^[[:space:]]*(co-authored-by:|(🤖[[:space:]]*)?generated with)'; then
             echo "A commit message carries a co-author or 'Generated with' line; MOTIF's commits are the user's alone."
             exit 1
           fi
