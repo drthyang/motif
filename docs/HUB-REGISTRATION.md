@@ -52,7 +52,7 @@ npm run -s mcp                                    # build, then serve (-s: npm p
 - Node: tried on 24. The bundle holds the MCP SDK, zod and the five feature examples, so it runs from any folder.
 - Nothing leaves the computer: no network, no model; the client's agent calls the tools.
 
-## The tools (18)
+## The tools (20)
 
 | Tool | Title |
 |---|---|
@@ -74,8 +74,10 @@ npm run -s mcp                                    # build, then serve (-s: npm p
 | `mark_angles` | Mark bond angles |
 | `clear_angles` | Clear angle marks |
 | `clear_moments` | Clear moments by hand |
+| `set_orbitals` | Orbitals on a species |
+| `remove_orbitals` | Remove orbitals |
 
-The server holds one figure. The last fourteen are the in-page assistant's tools with the same descriptions,
+The server holds one figure. The last sixteen are the in-page assistant's tools with the same descriptions,
 schemas, checks and answers (`src/agent/tools.ts`); the first four are the server's own (`src/mcp/registry.ts`).
 
 ## For docs/CAPABILITIES.md in the hub

@@ -84,6 +84,8 @@ const TITLES: Readonly<Record<string, string>> = {
   mark_angles: "Mark bond angles",
   clear_angles: "Clear angle marks",
   clear_moments: "Clear moments by hand",
+  set_orbitals: "Orbitals on a species",
+  remove_orbitals: "Remove orbitals",
 };
 
 /** The in-page assistant's tools, as they are (save_structure is the server's own, below). */
