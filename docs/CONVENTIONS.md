@@ -276,10 +276,12 @@ Structure tab; the user's choices of 2026-11-23.
   the viewer and outside the atom's radius. A lobe (or a whole ring) is drawn once behind every atom within
   its reach that it overlaps on screen, and again after each such atom, clipped to the atom's disc and to the
   region where the lobe lies in front of the sphere. That region comes from the orbital as a solid, not from
-  its mesh: along the line of sight through each point of a grid over the disc (one point per 4 units of the
-  drawing, 8 to 24 each way) the largest |ψ| / level − 1 in front of the sphere is found (12 samples, then a
-  golden-section refinement), and its zero contour is traced by marching squares and drawn as a smooth curve,
-  so where a lobe meets an atom the edge is smooth. Atoms beyond an orbital's reach are ordered by depth as
+  its mesh: along the line of sight through each point of a grid over the disc (one point per 2 units of the
+  drawing, 8 to 48 each way; 4 and 24 until 2026-11-26) the largest |ψ| / level − 1 in front of the sphere is
+  found for each lobe on its own (12 samples, then a golden-section refinement), and each lobe's zero contour is
+  traced by marching squares and drawn as a smooth curve, so where a lobe meets an atom the edge is smooth. Until
+  2026-11-26 only the line's single largest value was kept, so where two lobes (a lobe and the dz² ring, say) both
+  lay in front of an atom the border between their regions followed the grid in steps (the user's report). Atoms beyond an orbital's reach are ordered by depth as
   usual.
 - **No orbitals while the view moves** (2026-11-24, commit 1cd3e18). While the view moves the page draws the
   structure without its orbitals: atoms, bonds and cell stay in their places (the same scene, the orbitals

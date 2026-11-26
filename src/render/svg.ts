@@ -538,10 +538,10 @@ function cachedSilhouettes(sight: OrbitalSight & { readonly key: string }, atom:
 
 /**
  * Grid points across an atom's disc, each way, for finding where an orbital lies in front of it: one every
- * FRONT_PX units of the drawing (about 2 px on screen), within these bounds.
+ * FRONT_PX units of the drawing (about 1 px on screen), within these bounds.
  */
-const FRONT_PX = 4;
-const FRONT_GRID: readonly [number, number] = [8, 24];
+const FRONT_PX = 2;
+const FRONT_GRID: readonly [number, number] = [8, 48];
 /** Samples along each line of sight through the orbital, before the best one is refined, and refining steps. */
 const FRONT_SAMPLES = 12;
 const FRONT_REFINE = 8;
@@ -616,27 +616,38 @@ function placeOrbital(
         if (z1 <= z0) continue;
         // Cartesian point about the orbital's atom on this line of sight at depth z (the view is a rotation).
         const px = x * vx[0] + y * vy[0] - rel[0], py = x * vx[1] + y * vy[1] - rel[1], pz = x * vx[2] + y * vy[2] - rel[2];
-        const at = (z: number): number => field.value(px + z * vz[0], py + z * vz[1], pz + z * vz[2]);
-        // The largest value on the line, sampled and then refined (golden section) round the best sample.
-        let [best, bestK] = [-Infinity, 0];
+        // Each piece's own largest value on the line (its own lobes only), sampled and then refined (golden section)
+        // round its best sample. Each piece is found on its own, not the line's single largest value: two pieces can
+        // both lie in front of the atom on one line, and a single winner per line made the border between their
+        // regions a staircase of grid cells (seen 2026-11-26); now each region is a smooth contour of its own field.
+        const pieceAt = (z: number): [number, number | undefined] => {
+          const [qx, qy, qz] = [px + z * vz[0], py + z * vz[1], pz + z * vz[2]];
+          const f = field.value(qx, qy, qz);
+          return [f, f > FRONT_FLOOR ? lobeOf.get(field.lobe(qx, qy, qz)) : undefined];
+        };
+        const bests = new Map<number, { value: number; k: number }>();
         for (let k = 0; k <= samples; k++) {
-          const f = at(z0 + ((z1 - z0) * k) / samples);
-          if (f > best) [best, bestK] = [f, k];
+          const [f, piece] = pieceAt(z0 + ((z1 - z0) * k) / samples);
+          if (piece === undefined) continue;
+          const b = bests.get(piece);
+          if (!b || f > b.value) bests.set(piece, { value: f, k });
         }
-        if (best <= FRONT_FLOOR) continue;
-        let [lo, hi] = [z0 + ((z1 - z0) * Math.max(0, bestK - 1)) / samples, z0 + ((z1 - z0) * Math.min(samples, bestK + 1)) / samples];
-        for (let k = 0; k < refine; k++) {
-          const [m1, m2] = [hi - 0.618 * (hi - lo), lo + 0.618 * (hi - lo)];
-          if (at(m1) > at(m2)) hi = m2;
-          else lo = m1;
+        for (const [piece, b] of bests) {
+          const own = (z: number): number => {
+            const [f, p] = pieceAt(z);
+            return p === piece ? f : FRONT_FLOOR;
+          };
+          let [lo, hi] = [z0 + ((z1 - z0) * Math.max(0, b.k - 1)) / samples, z0 + ((z1 - z0) * Math.min(samples, b.k + 1)) / samples];
+          for (let k = 0; k < refine; k++) {
+            const [m1, m2] = [hi - 0.618 * (hi - lo), lo + 0.618 * (hi - lo)];
+            if (own(m1) > own(m2)) hi = m2;
+            else lo = m1;
+          }
+          const best = Math.max(b.value, own((lo + hi) / 2));
+          const g = grids[piece]!;
+          if (best > g[i * n + j]!) g[i * n + j] = best;
+          if (best > 0) reached.add(piece);
         }
-        const zBest = (lo + hi) / 2;
-        best = Math.max(best, at(zBest));
-        const piece = lobeOf.get(field.lobe(px + zBest * vz[0], py + zBest * vz[1], pz + zBest * vz[2]));
-        if (piece === undefined) continue;
-        const g = grids[piece]!;
-        if (best > g[i * n + j]!) g[i * n + j] = best;
-        if (best > 0) reached.add(piece);
       }
     }
     for (const piece of reached) {
