@@ -103,7 +103,7 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
 
 ## Documentation
 
-- `README.md` is short (commit f50385c): what MOTIF does, a link to the app, figures in `docs/media/` (a screenshot of the whole app on top, a gallery of six in two columns (orbital order, magnetic, distortion, RMC, quartz in metal and in glass), a screenshot of the journal panel;
+- `README.md` is short (commit f50385c): what MOTIF does, a link to the app, figures in `docs/media/` (a screenshot of the whole app on top (the coordination-polyhedra example, since 2026-11-26), a gallery of six in two columns (orbital order, magnetic, distortion, RMC, quartz in metal and in glass), a screenshot of the journal panel (MnF₂, since 2026-11-26; the orbital example is shown once, in the gallery, the user's wish);
   MOTIF's own output), status and licence. No installation section, by the user's wish.
 - `docs/CONVENTIONS.md` holds what the long README used to: every convention with its date, grouped by topic,
   how each part is checked, the table of steps, and how to build and test. Record a new convention there.

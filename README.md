@@ -11,11 +11,12 @@ submitting to. Nothing to install.
 *The app is not online yet; this link will work once it is published.*
 
 <p align="center">
-  <img src="docs/media/app.jpg" alt="The MOTIF page: the orbital order of LaMnO3 on a canvas with rulers, the toolbar above it, and the Structure tab with the orbitals chosen for Mn and O" width="100%" />
+  <img src="docs/media/app.jpg" alt="The MOTIF page: one layer of LaMnO3 seen down c, its MnO6 octahedra drawn as glass polyhedra on a canvas with rulers, and the Structure tab with the bond rules and the polyhedra round Mn" width="100%" />
 </p>
 
-*MOTIF with the orbital-order example open: the figure on its canvas, sized on paper (rulers in cm), and the
-orbitals chosen for Mn and O in the side panel. Every figure on this page is MOTIF's own output.*
+*MOTIF with the coordination-polyhedra example open: the tilted MnO₆ octahedra of one LaMnO₃ layer, the figure
+sized on paper (rulers in cm), and the bond rule that draws the polyhedra in the side panel. Every figure on this
+page is MOTIF's own output.*
 
 In crystallography the *motif* is the group of atoms repeated at every lattice point.
 
@@ -45,7 +46,7 @@ keeping its shape, and the text to the journal's size in pt. A figure can also t
 column, for one panel in a row. Rulers beside the figure show its size in cm or in.
 
 <p align="center">
-  <img src="docs/media/app-journal.jpg" alt="The MOTIF page: the orbital example on a 8.8 cm canvas with rulers, and the Canvas panel set to Springer Nature, Nature Communications, single column" width="92%" />
+  <img src="docs/media/app-journal.jpg" alt="The MOTIF page: the MnF2 magnetic structure on an 8.8 cm canvas with rulers, and the Canvas panel set to Springer Nature, Nature Communications, single column" width="92%" />
 </p>
 
 **Text stays the size you set.** Legend names, axis letters and angle labels are given in pt (7 pt by default)
@@ -76,7 +77,9 @@ size in Illustrator, Inkscape or Keynote; the PNG is drawn from the same SVG.
   for Physical Review, half a column", and it changes the controls and tells you where each one is. Claude, OpenAI
   or Gemini with your own API key, or a local model (Ollama, LM Studio) on which nothing leaves your computer.
   It can also add magnetic moments you state (size and direction for an element, nothing assumed by symmetry) and
-  save the structure as CIF, VASP POSCAR, XYZ or extended XYZ (every atom of one cell).
+  save the structure as CIF, VASP POSCAR, XYZ or extended XYZ (every atom of one cell). An API key is kept only
+  in your browser; with a key, the structure is sent to that company, and with a local model nothing leaves your
+  computer.
 - **Works with a mouse, a trackpad or fingers:** drag to turn, pinch to zoom, two fingers to move and twist.
 - **Checked, not just drawn:** symmetry expansion against gemmi, moment directions against pymatgen,
   displacements against published coordinates, orbitals for orthogonality, and every file format against the
