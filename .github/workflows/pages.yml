@@ -2,7 +2,7 @@
 # Copyright (C) 2026 Tsung-Han Yang
 #
 # Checks every push and publishes the page on GitHub Pages.
-#   check:   types, unit tests, the page build and the MCP bundle.
+#   check:   no co-author line in any commit, types, unit tests, the page build and the MCP bundle.
 #   firefox: the browser check (scripts/browser_check.cjs) in Firefox, which cannot be run on the author's Mac.
 #   deploy:  the built page to GitHub Pages, from main only, and only once the repository is public.
 name: Check and publish
@@ -25,6 +25,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: The user is the only author (no co-author or "Generated with" line in any commit)
+        run: |
+          if git log --format='%h %B' | grep -i -n -E 'co-authored-by:|generated with'; then
+            echo "A commit message carries a co-author or 'Generated with' line; MOTIF's commits are the user's alone."
+            exit 1
+          fi
       - uses: actions/setup-node@v5
         with:
           node-version: 24

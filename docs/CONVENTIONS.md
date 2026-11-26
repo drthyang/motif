@@ -776,3 +776,5 @@ build, so the page makes no request to any other site. The page loads it under a
 it does not count as installed when it is chosen for the figure. The CIF reader and symmetry code are MOTIF's
 own (adapted from the author's MATERIA) and are checked against gemmi: `scripts/gemmi_reference.py`
 writes the reference atom lists in `tests/reference/`.
+
+CI (`.github/workflows/pages.yml`) fails if any commit message carries a `Co-Authored-By:` or "Generated with" line: the user is the only author of MOTIF's commits (2026-11-26).
