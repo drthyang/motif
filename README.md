@@ -4,8 +4,16 @@
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-3c8c3c)](LICENSE)
 
 **Publication-quality crystal structure figures, in the browser.** MOTIF turns a structure file into a clean
-figure for a paper or a slide: vector (SVG) or raster (PNG at the dpi you choose), sized for the journal you are
-submitting to. Nothing to install.
+figure for a paper or a slide, ready to place in your figure layout. Nothing to install.
+
+- **Vector, ready to edit.** Save an SVG and open it in Adobe Illustrator, Inkscape or Keynote: every atom, bond
+  and arrow is its own shape and every label is live text, so you can recolour, move and combine panels into the
+  full figure of a paper yourself. A PNG at any dpi is drawn from the same SVG.
+- **Text at the journal's size.** Legend names, axis letters and angle labels are set in pt (7 pt by default) and
+  stay exactly that size whatever you zoom and however large the structure.
+- **Sized for the journal.** Pick the publisher, journal and column, and the figure takes the width that journal
+  prints and its text size. The SVG states its size on paper, so it opens at that size, and every panel you make
+  has the same lettering, with no rescaling by hand.
 
 **▶ [Open MOTIF](https://drthyang.github.io/motif/)**: your file is read on your own machine and never uploaded.
 *The app is not online yet; this link will work once it is published.*
@@ -48,11 +56,6 @@ column, for one panel in a row. Rulers beside the figure show its size in cm or 
 <p align="center">
   <img src="docs/media/app-journal.jpg" alt="The MOTIF page: the MnF2 magnetic structure on an 8.8 cm canvas with rulers, and the Canvas panel set to Springer Nature, Nature Communications, single column" width="92%" />
 </p>
-
-**Text stays the size you set.** Legend names, axis letters and angle labels are given in pt (7 pt by default)
-and are exactly that size in the saved figure, whatever you zoom, however large the structure, and whichever
-width you choose. Placed at its size on paper, every panel of a paper's figures has the same lettering, matching
-the journal's rules, with no rescaling by hand in a drawing program.
 
 Templates, each from the publisher's own author pages: Nature; Nature Communications, Nature Materials and
 Nature Physics; Science; Physical Review; ACS journals; RSC journals; Elsevier journals; J. Phys.: Condens.
