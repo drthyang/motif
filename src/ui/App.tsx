@@ -2923,6 +2923,9 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
           <a href={REPO_URL} target="_blank" rel="noopener noreferrer" data-testid="link-repo">
             Source code
           </a>
+          <a href="./third-party-licenses.txt" target="_blank" rel="noopener noreferrer" data-testid="link-licences" title="The licences of the third-party code and the font this page contains">
+            Licences
+          </a>
         </span>
       </footer>
     </div>

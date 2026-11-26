@@ -777,4 +777,8 @@ it does not count as installed when it is chosen for the figure. The CIF reader 
 own (adapted from the author's MATERIA) and are checked against gemmi: `scripts/gemmi_reference.py`
 writes the reference atom lists in `tests/reference/`.
 
+The page ships third-party code (React, the Anthropic SDK and their dependencies) and the IBM Plex Sans font; their
+licences are in `public/third-party-licenses.txt`, linked as **Licences** in the footer. After changing
+dependencies, run `node scripts/third-party-notices.mjs`; `tests/notices.test.ts` fails while the file is out of date.
+
 CI (`.github/workflows/pages.yml`) fails if any commit message has a line that starts with `Co-Authored-By:` or "Generated with": the user is the only author of MOTIF's commits (2026-11-26).

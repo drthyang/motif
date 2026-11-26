@@ -114,4 +114,17 @@ version 3 or later ([LICENSE](LICENSE)). The licence covers the program, not the
 Parts of the CIF reader, the symmetry code and the element data are adapted from [MATERIA](https://github.com/drthyang/materia-platform),
 and the RMCProfile reader from [RMCProfile Workbench](https://github.com/drthyang/rmc-toolkits), both by the same
 author; those files say so in their header. The page's font, IBM Plex Sans, is under the SIL Open Font License
-1.1. Example structures marked COD are from the Crystallography Open Database (public domain).
+1.1; it and the third-party code the page contains (React, the Anthropic SDK and their dependencies, all MIT or
+similar) are listed with their licences in [public/third-party-licenses.txt](public/third-party-licenses.txt),
+linked as **Licences** at the foot of the page.
+
+Data and methods used, with thanks:
+- Example structures marked COD are from the Crystallography Open Database (public domain; S. Gražulis et al.,
+  *J. Appl. Cryst.* **42**, 726 (2009)); each file keeps its original reference.
+- The distortion-mode examples were decomposed with ISODISTORT (H. T. Stokes, D. M. Hatch and B. J. Campbell,
+  ISOTROPY Software Suite, iso.byu.edu; B. J. Campbell, H. T. Stokes, D. E. Tanner and D. M. Hatch, *J. Appl.
+  Cryst.* **39**, 607 (2006)); its output is kept with its header.
+- The default atom sizes follow the covalent radii of B. Cordero et al., *Dalton Trans.* 2832 (2008).
+
+Journal, publisher and software names (Nature, Science, Physical Review, Adobe Illustrator, Keynote and others)
+are used only to say what MOTIF works with; MOTIF is not affiliated with or endorsed by any of them.
