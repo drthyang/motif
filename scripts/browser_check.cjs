@@ -11,7 +11,9 @@
 //   5. the MCP server (dist-mcp/mcp-server.mjs, built here) saves the same SVG as the page, byte for byte, for
 //      olivine and every feature example, and the orbital example with its outline on (src/mcp/figure.ts mirrors the
 //      page's state: the user's choice, 2026-11-25).
-const { chromium } = require(process.env.PLAYWRIGHT || "playwright-core");
+const playwright = require(process.env.PLAYWRIGHT || "playwright-core");
+// BROWSER=firefox or webkit runs the same checks there (default chromium); WebKit stands in for Safari.
+const BROWSER = process.env.BROWSER || "chromium";
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
@@ -40,7 +42,8 @@ async function saveSvg(page, name) {
 const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
 
 (async () => {
-  const browser = await chromium.launch({ args: ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist"] });
+  const browser = await playwright[BROWSER].launch(BROWSER === "chromium" ? { args: ["--use-angle=metal", "--enable-gpu", "--ignore-gpu-blocklist"] } : {});
+  console.log(`browser: ${BROWSER} ${browser.version()}`);
 
   // 1. Saved figure: preview off, preview on (settled), and while the preview is showing.
   {
@@ -167,6 +170,17 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
       if (r.isError) throw new Error(`${name}: ${r.content[0].text}`);
       return r.content[0].text;
     };
+    // Byte for byte in Chromium, whose JavaScript engine is the server's (V8). Another engine may round a maths function
+    // differently in the last bit, which can swap two items of nearly equal depth: there the same items are required,
+    // and a different order is only reported.
+    const same = (a, b) => {
+      if (a === b) return true;
+      if (BROWSER === "chromium") return false;
+      const items = (x) => x.split(/(?=<)/).sort().join("");
+      const ok = items(a) === items(b);
+      if (ok) console.log(`     (${BROWSER}: same items, some in a different order)`);
+      return ok;
+    };
     const serverSvg = async (open, name) => {
       await open();
       await call("save_figure", { folder: out, file_name: name, overwrite: true });
@@ -178,7 +192,7 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
     await page.waitForTimeout(800);
     const pageOlivine = await saveSvg(page, "page-olivine.svg");
     const mcpOlivine = await serverSvg(() => call("open_file", { path: "olivine-FeMg_COD-1541262.cif" }), "olivine");
-    check("MCP server SVG = page SVG: olivine", pageOlivine === mcpOlivine, `${pageOlivine.length} and ${mcpOlivine.length} bytes`);
+    check("MCP server SVG = page SVG: olivine", same(pageOlivine, mcpOlivine), `${pageOlivine.length} and ${mcpOlivine.length} bytes`);
     const features = JSON.parse(fs.readFileSync(path.join(root, "examples", "features.json"), "utf8")).examples;
     for (const [i, f] of features.entries()) {
       await page.goto(URL_BASE);
@@ -186,7 +200,7 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
       await page.waitForTimeout(1500);
       const fromPage = await saveSvg(page, `page-feature-${i + 1}.svg`);
       const fromServer = await serverSvg(() => call("open_example", { number: i + 1 }), `feature-${i + 1}`);
-      check(`MCP server SVG = page SVG: example ${i + 1}, ${f.title}`, fromPage === fromServer, `${fromPage.length} and ${fromServer.length} bytes`);
+      check(`MCP server SVG = page SVG: example ${i + 1}, ${f.title}`, same(fromPage, fromServer), `${fromPage.length} and ${fromServer.length} bytes`);
     }
     // And one with the orbital outline on (Visual › Orbitals), on the orbital-order example.
     const orbital = features.findIndex((f) => f.orbitals);
@@ -201,7 +215,7 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
       await call("open_example", { number: orbital + 1 });
       await call("change_settings", { changes: { orbitalOutline: true } });
     }, "outlined");
-    check(`MCP server SVG = page SVG: example ${orbital + 1} with the orbital outline on`, outlinedPage === outlinedServer && outlinedPage.includes('class="orbital-outline"'), `${outlinedPage.length} and ${outlinedServer.length} bytes`);
+    check(`MCP server SVG = page SVG: example ${orbital + 1} with the orbital outline on`, same(outlinedPage, outlinedServer) && outlinedPage.includes('class="orbital-outline"'), `${outlinedPage.length} and ${outlinedServer.length} bytes`);
     await client.close();
     await page.close();
   }
