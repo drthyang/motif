@@ -78,6 +78,10 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
   server must be byte for byte the same for olivine and every feature example. A new page setting that changes the
   saved figure goes into `src/mcp/figure.ts` too. The hub's entry is written in docs/HUB-REGISTRATION.md; MOTIF
   does not edit scattering-agent-tools.
+- Orbital outline (2026-11-26, "A"): each lobe's own silhouette, one smooth closed path; dz²'s ring as one band (outer
+  edge, inner edge where the hole shows); opposite-sign lobes each outlined; cut with the lobe at atoms. Defaults
+  accepted with it: off; "Outline orbitals" in Visual › Orbitals; 2 px of the 1440-wide figure, 0.5 to 8; a darker
+  tone of each lobe's colour, or one colour; in the PNG and the MCP server.
 
 ## Data rule (strict)
 

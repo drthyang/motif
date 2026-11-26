@@ -21,7 +21,7 @@
 import { directAxes, lowIndexDirections, nearestDirection, numbersFromView, openingNumbers, presetView, VIEW_PRESETS, directionVector, viewAlong, viewFromNumbers, writeDirection, writeView, type Axis, type Direction, type ViewPreset } from "../render/camera";
 import { DEFAULT_CANVAS, fitView, renderSvg, steadyFit, type Canvas, type PhysicalSize } from "../render/svg";
 import type { View } from "../render/view";
-import { buildScene, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_THICKNESS, DEFAULT_MOMENT_TAIL, DEFAULT_ORBITAL_COLOURS, DEFAULT_ORBITAL_OPACITY, DEFAULT_ORBITAL_SIZE, DEFAULT_SPEC, DEFAULT_STICK, largestDisplacement, largestMoment, MATERIALS, type ArrowStyle, type Look, type OrbitalRule, type Scene } from "../scene/scene";
+import { buildScene, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_THICKNESS, DEFAULT_MOMENT_TAIL, DEFAULT_ORBITAL_COLOURS, DEFAULT_ORBITAL_OPACITY, DEFAULT_ORBITAL_OUTLINE_WIDTH, DEFAULT_ORBITAL_SIZE, DEFAULT_SPEC, ORBITAL_OUTLINE_WIDTH_RANGE, DEFAULT_STICK, largestDisplacement, largestMoment, MATERIALS, type ArrowStyle, type Look, type OrbitalRule, type Scene } from "../scene/scene";
 import { DEFAULT_ISO } from "../scene/orbitals";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
 import { suggestBonds } from "../scene/autoBonds";
@@ -62,6 +62,9 @@ export function defaultSettings(): Record<string, unknown> {
     momentOutline: DEFAULT_SPEC.momentOutline,
     axesOutline: DEFAULT_SPEC.axesOutline,
     showVacancy: true,
+    orbitalOutline: false,
+    orbitalOutlineWidth: String(DEFAULT_ORBITAL_OUTLINE_WIDTH),
+    orbitalOutlineColour: "",
     momentColour: DEFAULT_SPEC.momentColour,
     momentLength: String(DEFAULT_SPEC.momentLength),
     momentTail: String(Math.round(DEFAULT_MOMENT_TAIL * 100)),
@@ -122,6 +125,9 @@ const VALID: Readonly<Record<string, (v: unknown) => boolean>> = {
   momentOutline: isBool,
   axesOutline: isBool,
   showVacancy: isBool,
+  orbitalOutline: isBool,
+  orbitalOutlineWidth: isText,
+  orbitalOutlineColour: (v) => v === "" || isColour(v),
   momentColour: isColour,
   momentLength: isText,
   momentTail: isText,
@@ -355,6 +361,9 @@ export class Figure implements Page {
       showVacancy: s["showVacancy"] as boolean,
       angles,
       ...(orbitals.length ? { orbitals } : {}),
+      ...(s["orbitalOutline"] === true
+        ? { orbitalOutline: { width: text("orbitalOutlineWidth") >= ORBITAL_OUTLINE_WIDTH_RANGE[0] && text("orbitalOutlineWidth") <= ORBITAL_OUTLINE_WIDTH_RANGE[1] ? text("orbitalOutlineWidth") : DEFAULT_ORBITAL_OUTLINE_WIDTH, ...(s["orbitalOutlineColour"] ? { colour: s["orbitalOutlineColour"] as string } : {}) } }
+        : {}),
       showMoments: this.showMoments,
       showDisplacements: true,
       displacementLength: text("displacementLength") > 0 && text("displacementLength") <= 20 ? text("displacementLength") : DEFAULT_DISPLACEMENT_LENGTH,

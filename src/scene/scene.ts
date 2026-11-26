@@ -209,6 +209,8 @@ export interface Scene {
   readonly extent: number;
   /** Orbitals on atoms (absent or empty: none). */
   readonly orbitals?: readonly DrawnOrbital[];
+  /** An outline round each orbital lobe (absent: none, only the lobe's faint edge). */
+  readonly orbitalOutline?: OrbitalOutline;
   /** Moment arrows. Empty when the structure has no moments or they are switched off. */
   readonly arrows: readonly Arrow[];
   readonly arrowColour: string;
@@ -286,6 +288,19 @@ export function cellAxes(structure: Structure): Axis[] {
  * the atom's centre), the colours of the positive and negative lobes, and an optional local frame (z along a crystal
  * direction [u v w], x along a second one).
  */
+/**
+ * The outline of orbital lobes (the user's choice "A", 2026-11-26): each lobe's own silhouette, one smooth closed
+ * path; a ring as one band, its outer edge and its inner edge where the hole shows. `width` in units of the
+ * 1440-wide drawing; `colour` one colour for all, or absent for a darker tone of each lobe's own colour.
+ */
+export interface OrbitalOutline {
+  readonly width: number;
+  readonly colour?: string;
+}
+/** The outline's default width, as the atoms' outline (2 of the 1440-wide drawing), and its limits. */
+export const DEFAULT_ORBITAL_OUTLINE_WIDTH = 2;
+export const ORBITAL_OUTLINE_WIDTH_RANGE: readonly [number, number] = [0.5, 8];
+
 export interface OrbitalRule {
   readonly species: string;
   readonly orbitals: readonly string[];
@@ -375,6 +390,8 @@ export interface SceneSpec {
   readonly momentTail?: number;
   /** Orbitals to draw (absent: none). */
   readonly orbitals?: readonly OrbitalRule[];
+  /** Outline each orbital lobe (absent: no outline; the user's choice "A", 2026-11-26). */
+  readonly orbitalOutline?: OrbitalOutline;
   /** Draw the displacements of a distortion (an ISODISTORT file) as arrows from the atoms' centres. */
   readonly showDisplacements?: boolean;
   /** Length in angstrom of the arrow of the largest displacement; the others are in proportion. */
@@ -825,7 +842,7 @@ export function buildScene(structure: Structure, spec: SceneSpec = DEFAULT_SPEC)
     const rule = polygonSpecs[k]!.rule;
     if (ruleInfo[rule] && ruleInfo[rule]!.fillColour === undefined) ruleInfo[rule] = { ...ruleInfo[rule]!, fillColour: p.colour };
   });
-  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, ...(polyhedra.length ? { polyhedra } : {}), sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, ...(orbitals.length ? { orbitals } : {}), arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, axesColours: spec.axesColoured ? spec.axesColours : undefined, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, glassOpacity: spec.glassOpacity, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legendFontPt: spec.legendFontPt, axesFontPt: spec.axesFontPt, angleFontPt: spec.angleFontPt, legend, axes, warnings: [...warnings, ...arrowNote] };
+  return { spheres, sticks, cellEdges, stickStyles, ruleInfo, bands, polygons, ...(polyhedra.length ? { polyhedra } : {}), sectors, angleKinds: angleKinds(atoms, allAngles), styles, centre, extent, ...(orbitals.length ? { orbitals } : {}), ...(spec.orbitalOutline && orbitals.length ? { orbitalOutline: spec.orbitalOutline } : {}), arrows, arrowColour: spec.momentColour, arrowThickness: spec.momentThickness, arrowHeadSize: spec.momentHeadSize, axesHeadSize: spec.axesHeadSize, axesColours: spec.axesColoured ? spec.axesColours : undefined, arrowOutline: spec.momentOutline, axesOutline: spec.axesOutline, axesKeepReadable: spec.axesKeepReadable, atomMaterial: spec.atomMaterial, arrowMaterial: spec.arrowMaterial, bondMaterial: spec.bondMaterial, bondOutline: spec.bondOutline, cellStyle: spec.cellStyle, cellWidth: spec.cellWidth, glassOpacity: spec.glassOpacity, letterWeight: spec.letterWeight, fontFamily: spec.fontFamily, legendFollowsZoom: spec.legendFollowsZoom, legendSize: spec.legendSize, axesSize: spec.axesSize, legendFontPt: spec.legendFontPt, axesFontPt: spec.axesFontPt, angleFontPt: spec.angleFontPt, legend, axes, warnings: [...warnings, ...arrowNote] };
 }
 
 /**

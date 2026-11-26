@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { contourLoops, convexHull, DEFAULT_CANVAS, fitView, orbitalShade, renderSvg } from "../src/render/svg";
+import { contourLoops, convexHull, DEFAULT_CANVAS, fitView, orbitalShade, orbitalSilhouettes, renderSvg } from "../src/render/svg";
 import { DEFAULT_VIEW } from "../src/render/view";
 import { ORBITALS, orbitalById, orbitalField, orbitalFrame, orbitalSurface, orbitalUnitSurface } from "../src/scene/orbitals";
 import { bondAxis, buildScene, DEFAULT_ORBITAL_COLOURS, DEFAULT_SPEC, firstShell, ORBITAL_SCHEMES, withoutOrbitals } from "../src/scene/scene";
@@ -275,5 +275,78 @@ describe("orbital frames from each atom's bonds: LaMnO3, Pbnm (COD 1006141)", ()
       expect(x[1] * y[2] - x[2] * y[1]).toBeCloseTo(z[0], 9);
     }
     expect(renderSvg(scene, DEFAULT_VIEW)).toContain('class="orbital-lobe"');
+  });
+});
+
+describe("orbital outline (the user's choice A, 2026-11-26)", () => {
+  const srtio3 = readCif(readFileSync("examples/perovskite-SrTiO3_COD-9006864.cif", "utf8"));
+  const spec = { ...DEFAULT_SPEC, orbitals: [{ species: "Ti", orbitals: ["dz2", "dxy"], size: 1.6, colours: DEFAULT_ORBITAL_COLOURS, opacity: 0.6 }] };
+  const whole = (svg: string) => svg.replace(/<g clip-path="url\(#[^)]*\)"><g clip-path="url\(#[^)]*\)">.*?<\/g><\/g>(<\/g>)?/g, "");
+  const outlines = (svg: string) => whole(svg).match(/<path class="orbital-outline"[^>]*>/g) ?? [];
+
+  it("a ring's silhouette, traced from the orbital as a solid: seen face-on two circles (outer edge and hole), edge-on one loop", () => {
+    const dz2 = orbitalById("dz2")!;
+    const size = 1.6;
+    const ring = new Set(orbitalSurface(dz2, size, I, undefined).flatMap((f) => (f.ring !== undefined && f.lobe !== undefined ? [f.lobe] : [])));
+    expect(ring.size).toBe(12);
+    const field = orbitalField(dz2, size, I);
+    const scale = 100;
+    const box = [-size * scale, -size * scale, size * scale, size * scale] as const;
+    // Looking down the orbital's z axis (the view is the identity: screen x, y = x, y).
+    const faceOn = orbitalSilhouettes({ field, size, view: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], scale }, [0, 0], box).loops(ring);
+    expect(faceOn.length).toBe(2);
+    for (const loop of faceOn) {
+      const r = loop.map((p) => Math.hypot(p[0], p[1]));
+      const mean = r.reduce((a, b) => a + b, 0) / r.length;
+      // A circle, smooth: every point within 0.5 % of the mean radius (the segments' union is 3.4 % off at its chords).
+      expect(Math.max(...r.map((x) => Math.abs(x / mean - 1)))).toBeLessThan(0.005);
+    }
+    // Looking along x, the ring is seen edge-on: no hole, one loop.
+    const edgeOn = orbitalSilhouettes({ field, size, view: [[0, 1, 0], [0, 0, 1], [1, 0, 0]], scale }, [0, 0], box).loops(ring);
+    expect(edgeOn.length).toBe(1);
+    // A pz lobe seen from the side: its silhouette is smooth and mirror-symmetric about the z axis (screen y).
+    const pz = orbitalById("pz")!;
+    const pzField = orbitalField(pz, size, I);
+    const upper = new Set(orbitalSurface(pz, size, I, undefined).filter((f) => f.lobe !== undefined && f.corners[0][2] > 0).map((f) => f.lobe!));
+    const side = orbitalSilhouettes({ field: pzField, size, view: [[1, 0, 0], [0, 0, 1], [0, -1, 0]], scale }, [0, 0], box).loops(upper);
+    expect(side.length).toBe(1);
+    const pts = side[0]!;
+    // Mirror each point in x: it lies on the curve within half a grid step.
+    for (const p of pts.filter((_, i) => i % 7 === 0)) {
+      const d = Math.min(...pts.map((q) => Math.hypot(q[0] + p[0], q[1] - p[1])));
+      expect(d).toBeLessThan(1.5);
+    }
+  });
+
+  it("off by default: no outline, and the figure is as it was", () => {
+    expect(outlines(renderSvg(buildScene(srtio3, spec), DEFAULT_VIEW))).toEqual([]);
+    expect(buildScene(srtio3, spec).orbitalOutline).toBeUndefined();
+  });
+
+  it("on: one smooth closed path per lobe, and a ring as one band, in a darker tone of each lobe's colour or one colour", () => {
+    const scene = buildScene(srtio3, { ...spec, orbitalOutline: { width: 2 } });
+    const ti = scene.spheres.filter((s) => s.species === "Ti").length;
+    const paths = outlines(renderSvg(scene, DEFAULT_VIEW));
+    // dz2: 2 lobes and the ring's band (its outer edge, and its inner edge if the hole shows); dxy: 4 lobes.
+    expect(paths.length).toBeGreaterThanOrEqual((2 + 1 + 4) * ti);
+    expect(paths.length).toBeLessThanOrEqual((2 + 2 + 4) * ti);
+    for (const p of paths) {
+      expect(p).toMatch(/ d="M[-\d.,]+( C[-\d.,]+ [-\d.,]+ [-\d.,]+)+ Z" fill="none" stroke="#[0-9a-f]{6}" stroke-width="2" stroke-linejoin="round"/);
+      expect(p).not.toMatch(/opacity/);
+    }
+    // Two lobe colours, each darkened; no lobe colour itself.
+    const strokes = new Set(paths.map((p) => p.match(/stroke="(#[0-9a-f]{6})"/)![1]));
+    expect(strokes.size).toBe(2);
+    for (const c of DEFAULT_ORBITAL_COLOURS) expect(strokes.has(c.toLowerCase())).toBe(false);
+    const one = outlines(renderSvg(buildScene(srtio3, { ...spec, orbitalOutline: { width: 5, colour: "#123456" } }), DEFAULT_VIEW));
+    expect(one.length).toBe(paths.length);
+    for (const p of one) expect(p).toMatch(/stroke="#123456" stroke-width="5"/);
+  });
+
+  it("cut with its lobe where the lobe lies in front of an atom: the clipped copy carries the outline too", () => {
+    const svg = renderSvg(buildScene(srtio3, { ...spec, orbitalOutline: { width: 2 } }), DEFAULT_VIEW);
+    const clipped = svg.match(/<g clip-path="url\(#[^)]*\)"><g clip-path="url\(#[^)]*\)">.*?<\/g><\/g>/g) ?? [];
+    expect(clipped.length).toBeGreaterThan(0);
+    expect(clipped.every((c) => c.includes('class="orbital-outline"'))).toBe(true);
   });
 });

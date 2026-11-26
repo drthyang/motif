@@ -9,7 +9,8 @@
 //   2. the preview and the vector figure of one view cover the same pixels in nearly the same colours;
 //   3. without worker drawing (no OffscreenCanvas) the page still works, on SVG alone, and says so;
 //   5. the MCP server (dist-mcp/mcp-server.mjs, built here) saves the same SVG as the page, byte for byte, for
-//      olivine and every feature example (src/mcp/figure.ts mirrors the page's state: the user's choice, 2026-11-25).
+//      olivine and every feature example, and the orbital example with its outline on (src/mcp/figure.ts mirrors the
+//      page's state: the user's choice, 2026-11-25).
 const { chromium } = require(process.env.PLAYWRIGHT || "playwright-core");
 const fs = require("fs");
 const os = require("os");
@@ -187,6 +188,20 @@ const live = (page) => page.getAttribute("[data-testid=preview]", "data-live");
       const fromServer = await serverSvg(() => call("open_example", { number: i + 1 }), `feature-${i + 1}`);
       check(`MCP server SVG = page SVG: example ${i + 1}, ${f.title}`, fromPage === fromServer, `${fromPage.length} and ${fromServer.length} bytes`);
     }
+    // And one with the orbital outline on (Visual › Orbitals), on the orbital-order example.
+    const orbital = features.findIndex((f) => f.orbitals);
+    await page.goto(URL_BASE);
+    await page.click(`[data-testid="feature-${features[orbital].title}"]`);
+    await page.waitForTimeout(1500);
+    await page.click("[data-testid=tab-visual]");
+    await page.check("[data-testid=orbital-outline]");
+    await page.waitForTimeout(800);
+    const outlinedPage = await saveSvg(page, "page-outlined.svg");
+    const outlinedServer = await serverSvg(async () => {
+      await call("open_example", { number: orbital + 1 });
+      await call("change_settings", { changes: { orbitalOutline: true } });
+    }, "outlined");
+    check(`MCP server SVG = page SVG: example ${orbital + 1} with the orbital outline on`, outlinedPage === outlinedServer && outlinedPage.includes('class="orbital-outline"'), `${outlinedPage.length} and ${outlinedServer.length} bytes`);
     await client.close();
     await page.close();
   }

@@ -13,7 +13,7 @@ import {
   writeDirection, writeView, type Axis, type Direction, type ViewNumbers,
 } from "../render/camera";
 import { DEFAULT_TILT, DEFAULT_TURN, DEFAULT_VIEW, dragView, type View } from "../render/view";
-import { type ArrowStyle, AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, DEFAULT_MOMENT_TAIL, DEFAULT_ORBITAL_COLOURS, DEFAULT_ORBITAL_OPACITY, DEFAULT_ORBITAL_SIZE, ORBITAL_SCHEMES, ORBITAL_TEXTURES, type OrbitalTexture, type Look, type OrbitalRule, type Scene, withoutOrbitals } from "../scene/scene";
+import { type ArrowStyle, AXES_COLOURS, buildScene, MATERIALS, type CellStyle, type Material, DEFAULT_SPEC, DEFAULT_STICK, elementColour, largestDisplacement, largestMoment, speciesRadius, DEFAULT_DISPLACEMENT_LENGTH, DEFAULT_DISPLACEMENT_COLOUR, DEFAULT_DISPLACEMENT_THICKNESS, DEFAULT_MOMENT_TAIL, DEFAULT_ORBITAL_COLOURS, DEFAULT_ORBITAL_OPACITY, DEFAULT_ORBITAL_SIZE, DEFAULT_ORBITAL_OUTLINE_WIDTH, ORBITAL_OUTLINE_WIDTH_RANGE, ORBITAL_SCHEMES, ORBITAL_TEXTURES, type OrbitalTexture, type Look, type OrbitalRule, type Scene, withoutOrbitals } from "../scene/scene";
 import { DEFAULT_ISO, ORBITALS } from "../scene/orbitals";
 import { expandToUnitCell } from "../structure/expand";
 import { DEFAULT_ANGLE_LOOK, type AngleRule } from "../scene/angles";
@@ -349,6 +349,12 @@ export function App() {
   // Orbitals on the atoms of chosen species (see scene/orbitals.ts); reset for each new file.
   const [orbitalRules, setOrbitalRules] = useState<{ species: string; orbitals: string[]; sizeText: string; colours: [string, string]; opacityText: string; iso: number; texture: OrbitalTexture; zText: string; xText: string; zMode?: "uvw" | "longest" | "bridge"; zNeighbour?: string }[]>([]);
   const [newOrbitalSpecies, setNewOrbitalSpecies] = useState("");
+  // An outline round each orbital lobe (the user's choice "A", 2026-11-26): off by default; width in units of the
+  // 1440-wide drawing; colour "" for a darker tone of each lobe's own colour.
+  const [orbitalOutline, setOrbitalOutline] = useState(false);
+  const [orbitalOutlineWidthText, setOrbitalOutlineWidthText] = useState(String(DEFAULT_ORBITAL_OUTLINE_WIDTH));
+  const [orbitalOutlineColour, setOrbitalOutlineColour] = useState("");
+  const orbitalOutlineWidth = Number(orbitalOutlineWidthText) >= ORBITAL_OUTLINE_WIDTH_RANGE[0] && Number(orbitalOutlineWidthText) <= ORBITAL_OUTLINE_WIDTH_RANGE[1] ? Number(orbitalOutlineWidthText) : DEFAULT_ORBITAL_OUTLINE_WIDTH;
   const changeOrbitalRule = (index: number, change: Partial<(typeof orbitalRules)[number]>) => setOrbitalRules((all) => all.map((r, i) => (i === index ? { ...r, ...change } : r)));
   const sceneOrbitals = useMemo((): OrbitalRule[] => {
     const indices = (text: string): [number, number, number] | null => {
@@ -567,11 +573,11 @@ export function App() {
           const width = Number(r.widthText);
           return r.widthText !== undefined && width >= 0.02 && width <= 2 ? { ...r, width } : r;
         });
-      return { scene: buildScene(drawnStructure ?? structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, ...(sceneOrbitals.length ? { orbitals: sceneOrbitals } : {}), showMoments, showDisplacements, displacementLength, displacementColour, displacementThickness, ...(arrowStyle ? { arrowStyle } : {}), momentTail, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
+      return { scene: buildScene(drawnStructure ?? structure, { range, bonds, showCell, looks: sceneLooks, showVacancy, angles: sceneAngles, ...(sceneOrbitals.length ? { orbitals: sceneOrbitals } : {}), ...(orbitalOutline ? { orbitalOutline: { width: orbitalOutlineWidth, ...(orbitalOutlineColour ? { colour: orbitalOutlineColour } : {}) } } : {}), showMoments, showDisplacements, displacementLength, displacementColour, displacementThickness, ...(arrowStyle ? { arrowStyle } : {}), momentTail, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesKeepReadable: axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollowsZoom: legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes }), rangeError: "" };
     } catch (e) {
       return { scene: lastScene.current, rangeError: e instanceof Error ? e.message : String(e) };
     }
-  }, [sceneOrbitals, drawnStructure, showDisplacements, displacementLength, displacementColour, displacementThickness, arrowStyle, momentTail, structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
+  }, [sceneOrbitals, orbitalOutline, orbitalOutlineWidth, orbitalOutlineColour, drawnStructure, showDisplacements, displacementLength, displacementColour, displacementThickness, arrowStyle, momentTail, structure, rangeText, repeatBoundary, bondRules, showCell, sceneLooks, showVacancy, sceneAngles, showMoments, momentLength, momentColour, momentThickness, momentHeadSize, axesHeadSize, axesColoured, axesColours, momentOutline, axesOutline, axesReadable, atomMaterial, arrowMaterial, bondMaterial, bondOutline, cellStyle, cellWidth, glassOpacity, letterWeight, fontFamily, legendFollows, legendSize, axesSize, legendFontPt, axesFontPt, angleFontPt, showLegend, showAxes]);
   // Every pair of elements in the file, with the distances between them (a guide for the bond length).
   const pairs = useMemo(() => {
     if (!structure) return [];
@@ -912,6 +918,9 @@ export function App() {
       });
     }, isElementLooks),
     showVacancy: field(showVacancy, setShowVacancy, isBool),
+    orbitalOutline: field(orbitalOutline, setOrbitalOutline, isBool),
+    orbitalOutlineWidth: field(orbitalOutlineWidthText, setOrbitalOutlineWidthText, isText),
+    orbitalOutlineColour: field(orbitalOutlineColour, setOrbitalOutlineColour, (v) => v === "" || isColour(v)),
     momentColour: field(momentColour, setMomentColour, isColour),
     momentLength: field(momentLengthText, setMomentLengthText, isText),
     momentTail: field(momentTailText, setMomentTailText, isText),
@@ -2297,6 +2306,22 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                     </div>
                   </div>
                 ))}
+                <label className="row" title="A smooth outline round each lobe: its silhouette as seen, one closed curve per lobe (a ring as one band). Hidden or cut with the lobe where it goes behind or into an atom. Not for the mesh surface.">
+                  <input type="checkbox" data-testid="orbital-outline" checked={orbitalOutline} onChange={(e) => setOrbitalOutline(e.target.checked)} />
+                  Outline orbitals
+                </label>
+                {orbitalOutline && (
+                  <div className="row">
+                    <span className="lab">outline</span>
+                    <input type="number" step={0.5} min={ORBITAL_OUTLINE_WIDTH_RANGE[0]} max={ORBITAL_OUTLINE_WIDTH_RANGE[1]} data-testid="orbital-outline-width" title="Thickness of the outline, in px of the 1440-wide figure (the atoms' outline is 2)" value={orbitalOutlineWidthText} onChange={(e) => setOrbitalOutlineWidthText(e.target.value)} />
+                    <span className="unit">px</span>
+                    <select data-testid="orbital-outline-colour-mode" value={orbitalOutlineColour ? "one" : "lobe"} onChange={(e) => setOrbitalOutlineColour(e.target.value === "one" ? "#1b1a18" : "")}>
+                      <option value="lobe">darker lobe colour</option>
+                      <option value="one">one colour</option>
+                    </select>
+                    {orbitalOutlineColour && <input type="color" data-testid="orbital-outline-colour" title="Colour of every orbital outline" value={orbitalOutlineColour} onChange={(e) => setOrbitalOutlineColour(e.target.value)} />}
+                  </div>
+                )}
               </Section>
             )}
             {arrowStyle === "displacement" && (

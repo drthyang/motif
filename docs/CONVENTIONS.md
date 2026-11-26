@@ -292,6 +292,22 @@ Structure tab; the user's choices of 2026-11-23.
   zero on every point of the drawn surface away from a lobe's rim and positive just inside; a lobe inside its
   atom is never drawn over it, and one that reaches out is drawn over it only on the near side; marching
   squares returns a disc's rim.
+- **Outline** (2026-11-26, the user's choice "A", defaults accepted with it): "Outline orbitals" in Visual › Orbitals,
+  off by default (figures without it are unchanged, byte for byte). Each lobe gets its own outline, one smooth closed
+  path; a ring (of dz²) is one band, its outer edge and, where its hole shows, its inner edge; lobes of opposite sign
+  are outlined each, so the sign change shows. The outline is cut with its lobe where the lobe goes behind or into an
+  atom. Thickness 2 px of the 1440-wide figure (as the atoms' outline), 0.5 to 8; colour a darker tone of each lobe's
+  own colour (45 % towards black, as the arrows' outline), or one colour. Not for the mesh surface.
+  "Smooth" here: with the outline on, each lobe is drawn (fill and outline alike) from its exact silhouette, not from
+  its mesh: on a grid over the orbital's place on screen (one point every 1.5 px of the figure), the largest value of
+  |psi| / level - 1 along each line of sight (64 samples), kept per lobe; the silhouette is where that crosses zero,
+  traced by marching squares with interpolation, spaced every 3 px and drawn as a closed spline (Catmull-Rom as cubic
+  Béziers). An ordinary lobe still runs into the nucleus (convex hull of the silhouette and the atom's centre, as
+  before); a ring is one path, its hole cut out (even-odd). Without the outline the lobes are drawn from the mesh as
+  before; the ring's segments' union has straight chords round the hole (3.4 % of its radius), which the exact
+  silhouette does not. Checked: seen face-on, the ring's outer edge and hole are circles within 0.5 %; a pz lobe from
+  the side is mirror-symmetric within a grid step (`tests/orbitals.test.ts`); page and MCP server SVGs agree with it
+  on (`scripts/browser_check.cjs`). The GPU preview does not draw orbitals while the view moves, so it is unchanged.
 
 ## How it looks
 

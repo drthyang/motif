@@ -8,7 +8,7 @@
 import { mulVec } from "../structure/cell";
 import { mixHex } from "../scene/elementStyle";
 import { hullEdges } from "../scene/polyhedra";
-import type { Material, OrbitalTexture, Scene, StickStyle, Wedge } from "../scene/scene";
+import type { Material, OrbitalOutline, OrbitalTexture, Scene, StickStyle, Wedge } from "../scene/scene";
 import { orbitalById, orbitalField, orbitalSurface, type OrbitalFace } from "../scene/orbitals";
 import type { Vec3 } from "../structure/types";
 import type { View } from "./view";
@@ -326,6 +326,8 @@ function orbitalLobes(
   project: (p: Vec3) => Vec3,
   o: { readonly colours: readonly [string, string]; readonly opacity: number; readonly texture: OrbitalTexture },
   id: string,
+  outline?: OrbitalOutline,
+  sight?: OrbitalSight,
 ): OrbitalUnit[] {
   const lobes = new Map<number, { sign: 1 | -1; ring?: number; points: Vec3[]; faces: OrbitalFace[] }>();
   for (const f of faces) {
@@ -338,10 +340,21 @@ function orbitalLobes(
     const corners = f.ring !== undefined ? f.corners : [f.corners[0]];
     for (const c of corners) lobe.points.push(project([centre[0] + c[0], centre[1] + c[1], centre[2] + c[2]]));
   }
+  // With the outline, every lobe is drawn from its exact silhouette (fill and outline alike), so both are smooth.
+  const [ax0, ay0] = project(centre);
+  const allPoints = [...lobes.values()].flatMap((l) => l.points);
+  const silhouettes =
+    outline && sight && allPoints.length
+      ? orbitalSilhouettes(sight, [ax0, ay0], [Math.min(...allPoints.map((p) => p[0])), Math.min(...allPoints.map((p) => p[1])), Math.max(...allPoints.map((p) => p[0])), Math.max(...allPoints.map((p) => p[1]))])
+      : null;
   const out: OrbitalUnit[] = [];
   // Segments of a ring are drawn solid, in one see-through group, so they join without seams and do not darken
   // where they overlap.
-  const ringParts = new Map<number, { depth: number; defs: string; svg: string; faces: OrbitalFace[] }[]>();
+  const ringParts = new Map<number, { depth: number; defs: string; svg: string; faces: OrbitalFace[]; xy: [number, number][]; base: string; fill: string; lobe: number }[]>();
+  // The outline: one smooth closed path, over the lobe (not see-through, so it reads as a line).
+  const stroke = (base: string): string => outline?.colour ?? mixHex(base, "#000000", 0.45);
+  const outlinePath = (d: string, base: string): string =>
+    outline ? `<path class="orbital-outline" d="${d}" fill="none" stroke="${stroke(base)}" stroke-width="${outline.width}" stroke-linejoin="round"/>` : "";
   // Each ring's centre and reach on screen, from all its segments' points, for its one gradient.
   const ringShade = new Map<number, [number, number, number]>();
   const ringWritten = new Set<number>();
@@ -362,9 +375,11 @@ function orbitalLobes(
     // centre is part of the outline. A ring circles the nucleus and keeps its own shape.
     const [ax, ay] = project(centre);
     const outline = lobe.ring === undefined ? [...pts.map((p) => [p[0], p[1]] as const), [ax, ay] as const] : pts.map((p) => [p[0], p[1]] as const);
-    const hull = convexHull(outline);
+    // With the outline: the same, from the lobe's exact silhouette (densely traced) instead of its mesh points.
+    const exact = silhouettes && lobe.ring === undefined ? silhouettes.loops(new Set([k])).flat() : [];
+    const hull = convexHull(exact.length >= 3 ? [...exact, [ax, ay] as const] : outline);
     if (hull.length < 3) continue;
-    const xy = resampleClosed(hull, LOBE_STEPS);
+    const xy = exact.length >= 3 ? resampleClosed(hull, Math.max(LOBE_STEPS, Math.round(hull.reduce((sum, p, i) => sum + Math.hypot(p[0] - hull[(i + 1) % hull.length]![0], p[1] - hull[(i + 1) % hull.length]![1]), 0) / SILHOUETTE_POINT))) : resampleClosed(hull, LOBE_STEPS);
     const radius = Math.max(...xy.map((p) => Math.hypot(p[0] - cx, p[1] - cy)));
     if (!(radius > 0.3)) continue;
     const d = smoothClosed(xy);
@@ -393,20 +408,106 @@ function orbitalLobes(
     const edge = mixHex(base, "#000000", 0.3);
     if (lobe.ring !== undefined) {
       const all = ringParts.get(lobe.ring) ?? [];
-      all.push({ depth: cz, defs, svg: `<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${fill}" stroke-width="0.6"/>`, faces: lobe.faces });
+      all.push({ depth: cz, defs, svg: `<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${fill}" stroke-width="0.6"/>`, faces: lobe.faces, xy, base, fill, lobe: k });
       ringParts.set(lobe.ring, all);
       continue;
     }
-    out.push({ depth: cz, defs, body: `<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${edge}" stroke-width="0.8" stroke-opacity="0.5"${opacity}/>`, faces: lobe.faces });
+    out.push({ depth: cz, defs, body: `<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${edge}" stroke-width="0.8" stroke-opacity="0.5"${opacity}/>${outlinePath(d, base)}`, faces: lobe.faces });
   }
   // A ring is drawn as one see-through layer at its atom's depth, so its near and far halves, which overlap at the
   // ring's ends seen from the side, never lie over one another.
   const opacity = o.opacity < 1 ? ` opacity="${o.opacity}"` : "";
   for (const parts of ringParts.values()) {
     const svg = parts.sort((p, q) => p.depth - q.depth).map((p) => p.svg).join("");
-    out.push({ depth: centreDepth, defs: parts.map((p) => p.defs).join(""), body: `<g class="orbital-ring"${opacity}>${svg}</g>`, faces: parts.flatMap((p) => p.faces) });
+    const defs = parts.map((p) => p.defs).join("");
+    const faces = parts.flatMap((p) => p.faces);
+    if (silhouettes) {
+      // With the outline, the ring is drawn as its silhouette: one smooth path (the hole cut out, even-odd), filled
+      // as its segments are, and outlined along the same curves, so fill and outline agree.
+      const loops = silhouettes.loops(new Set(parts.map((p) => p.lobe)));
+      if (loops.length > 0) {
+        const d = loops.map((loop) => smoothClosed(loop)).join(" ");
+        out.push({ depth: centreDepth, defs, body: `<g class="orbital-ring"${opacity}><path class="orbital-lobe" d="${d}" fill="${parts[0]!.fill}" fill-rule="evenodd"/></g>${outlinePath(d, parts[0]!.base)}`, faces });
+        continue;
+      }
+    }
+    out.push({ depth: centreDepth, defs, body: `<g class="orbital-ring"${opacity}>${svg}</g>`, faces });
   }
   return out;
+}
+
+/** Grid step for tracing silhouettes, in units of the drawing; samples along each line of sight; outline spacing. */
+const SILHOUETTE_GRID = 1.5;
+const SILHOUETTE_SAMPLES = 64;
+const SILHOUETTE_POINT = 3;
+
+/** What an orbital's silhouettes are traced from: the orbital as a solid, and how it is seen. */
+export interface OrbitalSight {
+  readonly field: { value: (x: number, y: number, z: number) => number; lobe: (x: number, y: number, z: number) => number };
+  /** The orbital's reach from its atom, angstrom. */
+  readonly size: number;
+  readonly view: View;
+  /** Px per angstrom. */
+  readonly scale: number;
+}
+
+/**
+ * The silhouettes of an orbital's lobes as seen (for the outline, the user's choice "A", 2026-11-26), traced from
+ * the orbital as a solid rather than from its mesh: on a grid over its place on screen (`atom` is its atom on
+ * screen, `box` its extent), the largest value of |psi| / level - 1 along each line of sight, kept for each lobe
+ * apart. `loops(lobes)` gives where the largest over those lobes crosses zero, by marching squares (so between grid
+ * points by interpolation, not in steps), as closed loops spaced evenly: a lobe's outline, or a ring's outer edge
+ * and, where its hole shows, its inner edge.
+ */
+export function orbitalSilhouettes(sight: OrbitalSight, atom: readonly [number, number], box: readonly [number, number, number, number]): { loops: (lobes: ReadonlySet<number>) => [number, number][][] } {
+  const { field, size, view, scale } = sight;
+  const [x0, y0] = [box[0] - 3 * SILHOUETTE_GRID, box[1] - 3 * SILHOUETTE_GRID];
+  const span = Math.max(box[2] - box[0], box[3] - box[1]) + 6 * SILHOUETTE_GRID;
+  const n = Math.min(320, Math.ceil(span / SILHOUETTE_GRID) + 1);
+  const step = span / (n - 1);
+  const [vx, vy, vz] = view;
+  const grids = new Map<number, Float64Array>();
+  const gridOf = (lobe: number): Float64Array => {
+    let g = grids.get(lobe);
+    if (!g) grids.set(lobe, (g = new Float64Array(n * n).fill(FRONT_FLOOR)));
+    return g;
+  };
+  const best = new Map<number, number>();
+  for (let i = 1; i < n - 1; i++) {
+    for (let j = 1; j < n - 1; j++) {
+      // The point in view axes about the atom (screen y runs down), and its line of sight through the orbital.
+      const [x, y] = [(x0 + i * step - atom[0]) / scale, -(y0 + j * step - atom[1]) / scale];
+      const side = Math.hypot(x, y);
+      if (side >= size) continue;
+      const half = Math.sqrt(size * size - side * side);
+      const px = x * vx[0] + y * vy[0], py = x * vx[1] + y * vy[1], pz = x * vx[2] + y * vy[2];
+      best.clear();
+      for (let k = 0; k <= SILHOUETTE_SAMPLES; k++) {
+        const z = -half + (2 * half * k) / SILHOUETTE_SAMPLES;
+        const [qx, qy, qz] = [px + z * vz[0], py + z * vz[1], pz + z * vz[2]];
+        const f = field.value(qx, qy, qz);
+        if (f <= FRONT_FLOOR) continue;
+        const lobe = field.lobe(qx, qy, qz);
+        if (lobe < 0) continue;
+        if (f > (best.get(lobe) ?? -Infinity)) best.set(lobe, f);
+      }
+      for (const [lobe, f] of best) gridOf(lobe)[i * n + j] = f;
+    }
+  }
+  return {
+    loops: (lobes) => {
+      const v = new Float64Array(n * n).fill(FRONT_FLOOR);
+      for (const lobe of lobes) {
+        const g = grids.get(lobe);
+        if (g) for (let k = 0; k < n * n; k++) if (g[k]! > v[k]!) v[k] = g[k]!;
+      }
+      return contourLoops(v, n).map((loop) => {
+        const xy = loop.map(([i, j]) => [x0 + i * step, y0 + j * step] as [number, number]);
+        const length = xy.reduce((sum, p, k) => sum + Math.hypot(p[0] - xy[(k + 1) % xy.length]![0], p[1] - xy[(k + 1) % xy.length]![1]), 0);
+        return resampleClosed(xy, Math.max(12, Math.round(length / SILHOUETTE_POINT)));
+      });
+    },
+  };
 }
 
 /**
@@ -829,7 +930,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       const [x, y] = project(sphere.centre);
       const key = orbitalKey(o);
       let first = outlines.get(key);
-      if (!first) outlines.set(key, (first = { units: orbitalLobes(faces, sphere.centre, centreDepth, project, o, `orb-${orbitalIndex}`), x, y, depth: centreDepth }));
+      if (!first) outlines.set(key, (first = { units: orbitalLobes(faces, sphere.centre, centreDepth, project, o, `orb-${orbitalIndex}`, scene.orbitalOutline, scene.orbitalOutline ? { field: field(o), size: o.size, view, scale } : undefined), x, y, depth: centreDepth }));
       const [dx, dy, dz] = [x - first.x, y - first.y, centreDepth - first.depth];
       const units =
         dx === 0 && dy === 0 && dz === 0
