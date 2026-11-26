@@ -159,6 +159,12 @@ let gpu = true;
     }
     check(`feature examples (${names.length}) open, turn and zoom with no console error`, names.length >= 5 && errors.length === 0, [...new Set(errors)].join("; "));
     check("no local model server contacted while the examples were opened", local.length === 0, local.slice(0, 2).join(", "));
+    // A figure with orbitals: drawn exactly after the page has painted, "Rendering…" over it meanwhile (2026-11-26).
+    await page.goto(URL_BASE);
+    await page.click('[data-testid="feature-Orbital order"]');
+    const shown = await page.waitForSelector("[data-testid=rendering]", { timeout: 3000 }).then(() => true, () => false);
+    const cleared = await page.waitForSelector("[data-testid=rendering]", { state: "detached", timeout: 15000 }).then(() => true, () => false);
+    check("a figure with orbitals: \"Rendering…\" shown, then cleared once drawn", shown && cleared);
     await page.click("[data-testid=drawer-text]");
     await page.waitForTimeout(1500);
     check("clicking into the assistant's box contacts the local server (Ollama by default)", local.length > 0, `${local.length} request(s)`);

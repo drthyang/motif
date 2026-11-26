@@ -703,11 +703,47 @@ export function App() {
   // While the view moves, the structure is drawn without its orbitals (atoms and bonds keep their places);
   // the orbitals come back once it is still, and are in every saved figure.
   const bareScene = useMemo(() => (scene ? withoutOrbitals(scene) : null), [scene]);
+  // While an isovalue slider is dragged, the orbitals are drawn quickly from their mesh; once it has been still for a
+  // moment, exactly (svg.ts, RenderOptions.quickOrbitals; the user's request, 2026-11-26). Saved figures are always exact.
+  const [adjusting, setAdjusting] = useState(false);
+  const adjustTimer = useRef(0);
+  const adjusted = () => {
+    setAdjusting(true);
+    clearTimeout(adjustTimer.current);
+    adjustTimer.current = window.setTimeout(() => setAdjusting(false), SETTLE_MS);
+  };
+  // A figure with orbitals is drawn exactly after the page has painted, with "Rendering…" over the figure meanwhile
+  // (the user's request, 2026-11-26): the drawing shown until then is the last one of this structure, or, for a new
+  // structure, the quick one. Figures without orbitals draw fast enough to be drawn at once.
+  const hasOrbitals = (scene?.orbitals?.length ?? 0) > 0;
+  const [exact, setExact] = useState<{ svg: string; key: readonly unknown[] } | null>(null);
+  const exactKey = [scene, view, canvasOptions, fit];
+  const exactReady = exact !== null && exact.key.every((k, i) => k === exactKey[i]);
+  const wantExact = hasOrbitals && !moving && !previewing && !adjusting && scene !== null && fit !== null;
+  const rendering = wantExact && !exactReady;
+  useEffect(() => {
+    if (!wantExact || exactReady || !scene || !fit) return;
+    let timer = 0;
+    // Two steps: the frame lets the browser paint "Rendering…", the timer runs the drawing after it.
+    const frame = requestAnimationFrame(() => {
+      timer = window.setTimeout(() => setExact({ svg: renderSvg(scene, view, canvasOptions, fit, "structure"), key: [scene, view, canvasOptions, fit] }), 0);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
+  }, [wantExact, exactReady, scene, view, canvasOptions, fit]);
+  const lastStructureOf = useRef<Structure | null>(null);
   const structureSvg = useMemo(() => {
     if (!scene || !bareScene || !fit) return "";
-    if (!previewing) lastStructure.current = renderSvg(moving ? bareScene : scene, view, canvasOptions, fit, "structure");
+    if (previewing) return lastStructure.current;
+    if (!hasOrbitals || moving) lastStructure.current = renderSvg(moving ? bareScene : scene, view, canvasOptions, fit, "structure");
+    else if (adjusting) lastStructure.current = renderSvg(scene, view, canvasOptions, fit, "structure", { quickOrbitals: true });
+    else if (exactReady) lastStructure.current = exact.svg;
+    else if (lastStructureOf.current !== structure) lastStructure.current = renderSvg(scene, view, canvasOptions, fit, "structure", { quickOrbitals: true });
+    lastStructureOf.current = structure;
     return lastStructure.current;
-  }, [scene, bareScene, view, canvasOptions, fit, previewing, moving]);
+  }, [scene, bareScene, view, canvasOptions, fit, previewing, moving, adjusting, hasOrbitals, exactReady, exact, structure]);
   const bandSvg = useMemo(() => (scene && fit ? renderSvg(scene, view, canvasOptions, fit, "band") : ""), [scene, view, canvasOptions, fit]);
   /** What "Save" writes: always the full vector figure, as shown, or (if chosen) the whole structure fitted. */
   const figureToSave = (): string => {
@@ -1476,6 +1512,11 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                 >
                   <div className="layer" data-testid="layer-structure" data-hidden={previewLive ? "yes" : "no"} style={{ opacity: previewLive ? 0 : 1 }} dangerouslySetInnerHTML={{ __html: structureSvg }} />
                   <div className="layer" data-testid="layer-band" dangerouslySetInnerHTML={{ __html: bandSvg }} />
+                  {rendering && (
+                    <div className="rendering" data-testid="rendering" role="status">
+                      Rendering…
+                    </div>
+                  )}
                 </div>
                 <canvas
                   ref={preview.canvasRef}
@@ -2298,7 +2339,10 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
                     </div>
                     <div className="row slider" title="The isosurface |ψ| = value × the largest |ψ| of a schematic hydrogen-like orbital (1s, 2p, 3d, 4f): low gives full, rounded lobes, high slim ones. The size keeps the overall reach.">
                       <span className="lab">isovalue</span>
-                      <input type="range" min={0.05} max={0.9} step={0.05} data-testid={`orbital-iso-${index}`} value={r.iso} onChange={(e) => changeOrbitalRule(index, { iso: Number(e.target.value) })} />
+                      <input type="range" min={0.05} max={0.9} step={0.05} data-testid={`orbital-iso-${index}`} value={r.iso} onChange={(e) => {
+                          adjusted();
+                          changeOrbitalRule(index, { iso: Number(e.target.value) });
+                        }} />
                       <span className="sub">{r.iso.toFixed(2)}</span>
                     </div>
                     <div className="row">

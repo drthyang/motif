@@ -337,6 +337,14 @@ describe("orbital outline (the user's choice A, 2026-11-26)", () => {
     expect(gap(0.8)).toBeLessThan(0.3);
   });
 
+  it("quick orbitals (while an isovalue slider is dragged): the lobes from their mesh, the ring as its segments; exact otherwise", () => {
+    const scene = buildScene(srtio3, spec);
+    const ti = scene.spheres.filter((s) => s.species === "Ti").length;
+    const lobes = (svg: string) => (whole(svg).match(/<path class="orbital-lobe"/g) ?? []).length;
+    expect(lobes(renderSvg(scene, DEFAULT_VIEW, DEFAULT_CANVAS, undefined, "all", { quickOrbitals: true }))).toBe((2 + 12 + 4) * ti);
+    expect(lobes(renderSvg(scene, DEFAULT_VIEW))).toBe((2 + 1 + 4) * ti);
+  });
+
   it("off by default: no outline, and the figure is as it was", () => {
     expect(outlines(renderSvg(buildScene(srtio3, spec), DEFAULT_VIEW))).toEqual([]);
     expect(buildScene(srtio3, spec).orbitalOutline).toBeUndefined();

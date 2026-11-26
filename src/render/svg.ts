@@ -967,13 +967,13 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       const [x, y] = project(sphere.centre);
       const key = orbitalKey(o);
       let first = outlines.get(key);
-      if (!first) outlines.set(key, (first = { units: orbitalLobes(faces, sphere.centre, centreDepth, project, o, `orb-${orbitalIndex}`, scene.orbitalOutline, { field: field(o), size: o.size, view, scale, key: `${o.kind}|${o.size}|${o.iso}|${o.frame.flat().map((v) => v.toFixed(9)).join(",")}` }), x, y, depth: centreDepth }));
+      if (!first) outlines.set(key, (first = { units: orbitalLobes(faces, sphere.centre, centreDepth, project, o, `orb-${orbitalIndex}`, scene.orbitalOutline, options.quickOrbitals ? undefined : { field: field(o), size: o.size, view, scale, key: `${o.kind}|${o.size}|${o.iso}|${o.frame.flat().map((v) => v.toFixed(9)).join(",")}` }), x, y, depth: centreDepth }));
       const [dx, dy, dz] = [x - first.x, y - first.y, centreDepth - first.depth];
       const units =
         dx === 0 && dy === 0 && dz === 0
           ? first.units
           : first.units.map((u) => ({ depth: u.depth + dz, defs: "", body: `<g transform="translate(${n1(dx)} ${n1(dy)})">${u.body}</g>`, faces: u.faces }));
-      drawn.push(...placeOrbital(units, sphere.centre, o.size, field(o), atoms, view, project, scale, `orb-${orbitalIndex}`, options.draft));
+      drawn.push(...placeOrbital(units, sphere.centre, o.size, field(o), atoms, view, project, scale, `orb-${orbitalIndex}`, options.draft || options.quickOrbitals));
       orbitalIndex += 1;
       continue;
     }
@@ -1883,6 +1883,13 @@ function axesSvg(scene: Scene, view: View, canvas: Canvas): { svg: string; defs:
 /** How a figure is drawn. `draft`: orbitals with a coarser edge where they meet atoms, for drawing while the view moves. */
 export interface RenderOptions {
   readonly draft?: boolean;
+  /**
+   * Orbital lobes from their precomputed mesh (the convex hull of each lobe's surface points, rings as their
+   * segments) instead of their exact silhouettes, several times faster: for the page while an orbital's isovalue
+   * slider is being dragged; the exact drawing follows once it stops (the user's request, 2026-11-26). Never used for
+   * a saved figure.
+   */
+  readonly quickOrbitals?: boolean;
 }
 
 export function renderSvg(scene: Scene, view: View, canvas: Canvas = DEFAULT_CANVAS, fit?: Fit, part: "all" | "structure" | "band" = "all", options: RenderOptions = {}): string {

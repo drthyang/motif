@@ -283,6 +283,11 @@ Structure tab; the user's choices of 2026-11-23.
   2026-11-26 only the line's single largest value was kept, so where two lobes (a lobe and the dz² ring, say) both
   lay in front of an atom the border between their regions followed the grid in steps (the user's report). Atoms beyond an orbital's reach are ordered by depth as
   usual.
+- **While the isovalue slider is dragged** (2026-11-26, the user's request): the lobes are drawn quickly from their
+  mesh (the convex hull of each lobe's surface points, a ring as its segments), each step in about 0.03 to 0.13 s;
+  once the slider has been still for a moment the exact drawing follows. A figure with orbitals is drawn exactly
+  after the page has painted, with "Rendering…" over the figure meanwhile (the last drawing of the structure stays
+  until then). Saved figures are always exact.
 - **No orbitals while the view moves** (2026-11-24, commit 1cd3e18). While the view moves the page draws the
   structure without its orbitals: atoms, bonds and cell stay in their places (the same scene, the orbitals
   left out). The orbitals come back once the view is still, and are in every saved figure. Until then a draft
