@@ -260,10 +260,14 @@ Structure tab; the user's choices of 2026-11-23.
   "line through two" along the line through its two nearest atoms of that species (as for an O between two
   metals). Checked on LaMnO3 against a hand calculation from the published sites (`tests/orbitals.test.ts`;
   [examples/README.md](../examples/README.md#the-orbital-order-example)).
-- **A lobe.** Each lobe is drawn as one smooth shape: its outline seen from the viewer (the convex hull of the
-  projected points of its surface, resampled evenly and drawn as a smooth curve; a lobe is nearly convex, so
-  only a slight dent is filled). An ordinary lobe is drawn running into the nucleus, as in the textbook
-  picture (the isosurface of a p, d or f orbital stops short of it, its radial part being zero there).
+- **A lobe** (since 2026-11-26, the user's choice): each lobe is drawn as one smooth shape, its exact silhouette,
+  the isosurface as seen (traced as under "Outline" below). It is not joined to the nucleus: the isosurface of a
+  p, d or f orbital stops short of it (its radial part is zero there), by about 4 % of the lobe's reach for a p
+  lobe at the default isovalue 0.3, hidden by the atom, and by about a quarter at 0.8, where the lobe is a slim
+  blob standing off the nucleus. Until 2026-11-26 each lobe was the convex hull of its surface and the atom's
+  centre ("running into the nucleus, as in the textbook picture", 2026-11-23), which drew long cones at high
+  isovalues. Silhouettes are kept between drawings (they depend on the orbital, isovalue, frame, view and scale),
+  so a change of colour or opacity redraws at once; a new view takes about 0.3 s for the orbital example.
 - **A ring** (the band of dz², the cones of fz³) keeps its own shape, filled with a gradient as atoms are,
   see-through (60 % by default), at the depth of its centre. It is cut into 12 segments, shaded with one
   gradient for the whole ring, and drawn as one see-through layer (so its halves never lie over one another).
@@ -298,14 +302,12 @@ Structure tab; the user's choices of 2026-11-23.
   are outlined each, so the sign change shows. The outline is cut with its lobe where the lobe goes behind or into an
   atom. Thickness 2 px of the 1440-wide figure (as the atoms' outline), 0.5 to 8; colour a darker tone of each lobe's
   own colour (45 % towards black, as the arrows' outline), or one colour. Not for the mesh surface.
-  "Smooth" here: with the outline on, each lobe is drawn (fill and outline alike) from its exact silhouette, not from
-  its mesh: on a grid over the orbital's place on screen (one point every 1.5 px of the figure), the largest value of
+  "Smooth" here: each lobe is drawn (fill and outline alike) from its exact silhouette, not from its mesh: on a grid over the orbital's place on screen (one point every 1.5 px of the figure), the largest value of
   |psi| / level - 1 along each line of sight (64 samples), kept per lobe; the silhouette is where that crosses zero,
   traced by marching squares with interpolation, spaced every 3 px and drawn as a closed spline (Catmull-Rom as cubic
-  Béziers). An ordinary lobe still runs into the nucleus (convex hull of the silhouette and the atom's centre, as
-  before); a ring is one path, its hole cut out (even-odd). Without the outline the lobes are drawn from the mesh as
-  before; the ring's segments' union has straight chords round the hole (3.4 % of its radius), which the exact
-  silhouette does not. Checked: seen face-on, the ring's outer edge and hole are circles within 0.5 %; a pz lobe from
+  Béziers); a ring is one path, its hole cut out (even-odd). The fill uses the same curves, with or without the
+  outline (since 2026-11-26). The ring's segments' union, used before, had straight chords round the hole (3.4 % of
+  its radius), which the exact silhouette does not. Checked: seen face-on, the ring's outer edge and hole are circles within 0.5 %; a pz lobe from
   the side is mirror-symmetric within a grid step (`tests/orbitals.test.ts`); page and MCP server SVGs agree with it
   on (`scripts/browser_check.cjs`). The GPU preview does not draw orbitals while the view moves, so it is unchanged.
 

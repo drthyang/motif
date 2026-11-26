@@ -96,10 +96,10 @@ describe("orbitals: the real spherical harmonics", () => {
     const ti = scene.spheres.filter((s) => s.species === "Ti").length;
     expect(scene.orbitals!.length).toBe(2 * ti);
     const svg = renderSvg(scene, DEFAULT_VIEW);
-    // One smooth see-through shape per lobe: dz2 has 2 lobes and a ring cut into 12 segments, dxy 4 lobes. Each is
-    // drawn whole once; where it lies in front of an atom it is drawn again over that atom, clipped.
+    // One smooth see-through shape per lobe, its exact silhouette: dz2 has 2 lobes and a ring (one path, its hole cut
+    // out), dxy 4 lobes. Each is drawn whole once; where it lies in front of an atom it is drawn again, clipped.
     const whole = svg.replace(/<g clip-path="url\(#[^)]*\)"><g clip-path="url\(#[^)]*\)">.*?<\/g><\/g>(<\/g>)?/g, "");
-    expect((whole.match(/<path class="orbital-lobe"/g) ?? []).length).toBe((14 + 4) * ti);
+    expect((whole.match(/<path class="orbital-lobe"/g) ?? []).length).toBe((2 + 1 + 4) * ti);
     // A lobe carries its own opacity; a ring's segments share it in one group per atom.
     expect((whole.match(/<path class="orbital-lobe"[^>]* opacity="0.6"/g) ?? []).length).toBe((2 + 4) * ti);
     expect((whole.match(/<g class="orbital-ring" opacity="0.6">/g) ?? []).length).toBe(ti);
@@ -316,6 +316,25 @@ describe("orbital outline (the user's choice A, 2026-11-26)", () => {
       const d = Math.min(...pts.map((q) => Math.hypot(q[0] + p[0], q[1] - p[1])));
       expect(d).toBeLessThan(1.5);
     }
+  });
+
+  it("a lobe is the isosurface as seen: near the nucleus at a low isovalue, standing off it at a high one (no cone to the nucleus)", () => {
+    const pz = orbitalById("pz")!;
+    const size = 1.6;
+    const scale = 100;
+    const box = [-size * scale, -size * scale, size * scale, size * scale] as const;
+    const side = [[1, 0, 0], [0, 0, 1], [0, -1, 0]] as const; // the z axis up the screen
+    const gap = (iso: number): number => {
+      const upper = new Set(orbitalSurface(pz, size, I, iso).filter((f) => f.lobe !== undefined && f.corners[0][2] > 0).map((f) => f.lobe!));
+      const loops = orbitalSilhouettes({ field: orbitalField(pz, size, I, iso), size, view: side as never, scale }, [0, 0], box).loops(upper);
+      expect(loops.length).toBe(1);
+      return Math.min(...loops[0]!.map((p) => Math.hypot(p[0], p[1]))) / (size * scale);
+    };
+    // Hand calculation, R = r e^(-r/2): the lobe's inner end along its axis lies at 0.036 of its reach at 0.3, at
+    // 0.26 of it at 0.8 (where r e^(-r/2) = iso x 2/e, inner and outer roots).
+    expect(gap(0.3)).toBeLessThan(0.06);
+    expect(gap(0.8)).toBeGreaterThan(0.2);
+    expect(gap(0.8)).toBeLessThan(0.3);
   });
 
   it("off by default: no outline, and the figure is as it was", () => {

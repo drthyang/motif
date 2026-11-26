@@ -327,7 +327,7 @@ function orbitalLobes(
   o: { readonly colours: readonly [string, string]; readonly opacity: number; readonly texture: OrbitalTexture },
   id: string,
   outline?: OrbitalOutline,
-  sight?: OrbitalSight,
+  sight?: OrbitalSight & { readonly key: string },
 ): OrbitalUnit[] {
   const lobes = new Map<number, { sign: 1 | -1; ring?: number; points: Vec3[]; faces: OrbitalFace[] }>();
   for (const f of faces) {
@@ -340,13 +340,11 @@ function orbitalLobes(
     const corners = f.ring !== undefined ? f.corners : [f.corners[0]];
     for (const c of corners) lobe.points.push(project([centre[0] + c[0], centre[1] + c[1], centre[2] + c[2]]));
   }
-  // With the outline, every lobe is drawn from its exact silhouette (fill and outline alike), so both are smooth.
+  // Every lobe is drawn from its exact silhouette, the isosurface as seen (the user's choice, 2026-11-26), smooth
+  // and true at any isovalue; its outline, when asked for, follows the same curve.
   const [ax0, ay0] = project(centre);
   const allPoints = [...lobes.values()].flatMap((l) => l.points);
-  const silhouettes =
-    outline && sight && allPoints.length
-      ? orbitalSilhouettes(sight, [ax0, ay0], [Math.min(...allPoints.map((p) => p[0])), Math.min(...allPoints.map((p) => p[1])), Math.max(...allPoints.map((p) => p[0])), Math.max(...allPoints.map((p) => p[1]))])
-      : null;
+  const silhouettes = sight && allPoints.length ? cachedSilhouettes(sight, [ax0, ay0], allPoints) : null;
   const out: OrbitalUnit[] = [];
   // Segments of a ring are drawn solid, in one see-through group, so they join without seams and do not darken
   // where they overlap.
@@ -367,22 +365,19 @@ function orbitalLobes(
   for (const [k, lobe] of lobes) {
     const pts = lobe.points;
     const [cx, cy, cz] = [0, 1, 2].map((i) => pts.reduce((sum, p) => sum + p[i]!, 0) / pts.length) as [number, number, number];
-    // The outline: the convex hull of the projected points (a lobe, or a segment of a ring, is nearly convex, so this
-    // is its outline up to a slight dent at the nucleus, and it cannot be ragged), resampled evenly along its length
-    // and drawn as a smooth closed curve.
-    // An ordinary lobe runs into the nucleus, as in the textbook picture: the isosurface of a p, d or f orbital stops
-    // short of it (the radial part is zero there), which would leave a hollow closed off by a flat edge, so the atom's
-    // centre is part of the outline. A ring circles the nucleus and keeps its own shape.
-    const [ax, ay] = project(centre);
-    const outline = lobe.ring === undefined ? [...pts.map((p) => [p[0], p[1]] as const), [ax, ay] as const] : pts.map((p) => [p[0], p[1]] as const);
-    // With the outline: the same, from the lobe's exact silhouette (densely traced) instead of its mesh points.
-    const exact = silhouettes && lobe.ring === undefined ? silhouettes.loops(new Set([k])).flat() : [];
-    const hull = convexHull(exact.length >= 3 ? [...exact, [ax, ay] as const] : outline);
-    if (hull.length < 3) continue;
-    const xy = exact.length >= 3 ? resampleClosed(hull, Math.max(LOBE_STEPS, Math.round(hull.reduce((sum, p, i) => sum + Math.hypot(p[0] - hull[(i + 1) % hull.length]![0], p[1] - hull[(i + 1) % hull.length]![1]), 0) / SILHOUETTE_POINT))) : resampleClosed(hull, LOBE_STEPS);
+    // A lobe is drawn as its exact silhouette: the isosurface as seen, smooth, with the dent or gap at the nucleus
+    // that the isosurface has (its radial part is zero there). It is no longer joined to the nucleus: at a high
+    // isovalue that join drew a long cone the isosurface does not have (the user's choice, 2026-11-26). Without a
+    // traced silhouette (a lobe too small to trace), the convex hull of its projected surface points.
+    // A segment of a ring keeps the hull of its points; the ring as a whole is drawn from its silhouette below.
+    const loops = silhouettes && lobe.ring === undefined ? silhouettes.loops(new Set([k])).filter((l) => l.length >= 3) : [];
+    const hull = loops.length ? [] : convexHull(pts.map((p) => [p[0], p[1]] as const));
+    if (!loops.length && hull.length < 3) continue;
+    const xy = loops.length ? loops.flat() : resampleClosed(hull, LOBE_STEPS);
     const radius = Math.max(...xy.map((p) => Math.hypot(p[0] - cx, p[1] - cy)));
     if (!(radius > 0.3)) continue;
-    const d = smoothClosed(xy);
+    const d = loops.length ? loops.map((l) => smoothClosed(l)).join(" ") : smoothClosed(xy);
+    const evenOdd = loops.length > 1 ? ` fill-rule="evenodd"` : "";
     const base = lobe.sign > 0 ? o.colours[0] : o.colours[1];
     // A segment of a ring is shaded with one gradient for the whole ring (its centre and reach), so the ring reads
     // as one smooth band, not as a patchwork of segments each lit on its own.
@@ -412,7 +407,7 @@ function orbitalLobes(
       ringParts.set(lobe.ring, all);
       continue;
     }
-    out.push({ depth: cz, defs, body: `<path class="orbital-lobe" d="${d}" fill="${fill}" stroke="${edge}" stroke-width="0.8" stroke-opacity="0.5"${opacity}/>${outlinePath(d, base)}`, faces: lobe.faces });
+    out.push({ depth: cz, defs, body: `<path class="orbital-lobe" d="${d}" fill="${fill}"${evenOdd} stroke="${edge}" stroke-width="0.8" stroke-opacity="0.5"${opacity}/>${outlinePath(d, base)}`, faces: lobe.faces });
   }
   // A ring is drawn as one see-through layer at its atom's depth, so its near and far halves, which overlap at the
   // ring's ends seen from the side, never lie over one another.
@@ -508,6 +503,37 @@ export function orbitalSilhouettes(sight: OrbitalSight, atom: readonly [number, 
       });
     },
   };
+}
+
+/**
+ * Silhouettes kept between drawings: tracing them is the slow part of a figure with orbitals, and they depend only on
+ * the orbital (kind, size, isovalue, frame), the view and the scale, not on colours, opacity or where the atom sits on
+ * the canvas. Traced about the atom and moved to it; the most recent SILHOUETTE_CACHE kept.
+ */
+const SILHOUETTE_CACHE = 64;
+const silhouetteCache = new Map<string, { loops: (lobes: ReadonlySet<number>) => [number, number][][] }>();
+function cachedSilhouettes(sight: OrbitalSight & { readonly key: string }, atom: readonly [number, number], points: readonly Vec3[]): { loops: (lobes: ReadonlySet<number>) => [number, number][][] } {
+  const rel = points.map((p) => [p[0] - atom[0], p[1] - atom[1]] as const);
+  const box = [Math.min(...rel.map((p) => p[0])), Math.min(...rel.map((p) => p[1])), Math.max(...rel.map((p) => p[0])), Math.max(...rel.map((p) => p[1]))] as const;
+  const key = `${sight.key}|${sight.view.flat().map((v) => v.toFixed(9)).join(",")}|${sight.scale.toFixed(9)}|${box.map((v) => v.toFixed(3)).join(",")}`;
+  let traced = silhouetteCache.get(key);
+  if (traced) silhouetteCache.delete(key);
+  else {
+    const raw = orbitalSilhouettes(sight, [0, 0], box);
+    const done = new Map<string, [number, number][][]>();
+    traced = {
+      loops: (lobes) => {
+        const k = [...lobes].sort((a, b) => a - b).join(",");
+        let l = done.get(k);
+        if (!l) done.set(k, (l = raw.loops(lobes)));
+        return l;
+      },
+    };
+  }
+  silhouetteCache.set(key, traced);
+  if (silhouetteCache.size > SILHOUETTE_CACHE) silhouetteCache.delete(silhouetteCache.keys().next().value!);
+  const found = traced;
+  return { loops: (lobes) => found.loops(lobes).map((loop) => loop.map(([x, y]) => [x + atom[0], y + atom[1]] as [number, number])) };
 }
 
 /**
@@ -930,7 +956,7 @@ export function layoutAll(scene: Scene, view: View, canvas: Canvas, fit: Fit = f
       const [x, y] = project(sphere.centre);
       const key = orbitalKey(o);
       let first = outlines.get(key);
-      if (!first) outlines.set(key, (first = { units: orbitalLobes(faces, sphere.centre, centreDepth, project, o, `orb-${orbitalIndex}`, scene.orbitalOutline, scene.orbitalOutline ? { field: field(o), size: o.size, view, scale } : undefined), x, y, depth: centreDepth }));
+      if (!first) outlines.set(key, (first = { units: orbitalLobes(faces, sphere.centre, centreDepth, project, o, `orb-${orbitalIndex}`, scene.orbitalOutline, { field: field(o), size: o.size, view, scale, key: `${o.kind}|${o.size}|${o.iso}|${o.frame.flat().map((v) => v.toFixed(9)).join(",")}` }), x, y, depth: centreDepth }));
       const [dx, dy, dz] = [x - first.x, y - first.y, centreDepth - first.depth];
       const units =
         dx === 0 && dy === 0 && dz === 0
