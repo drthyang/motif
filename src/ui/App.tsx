@@ -3,6 +3,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { svgToPng } from "../render/png";
+import { VERSION } from "../version";
 import { previewFrame } from "../preview/data";
 import { PREVIEW_FROM, usePreview } from "../preview/usePreview";
 import { AnglePlot } from "./AnglePlot";
@@ -2928,7 +2929,6 @@ goTo(presetView(structure.cell, e.target.value as ViewPreset));
   );
 }
 
-const VERSION = "0.1";
 /** Text sizes a figure opens with, in pt: Nature asks for 5 to 7 pt (the user's choice, 2026-11-23). */
 const DEFAULT_TEXT_PT = { legend: "7", axes: "7", angle: "7" };
 /** Where the code and its documentation (the README) live. */

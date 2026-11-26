@@ -163,9 +163,9 @@ local models only); no Claude trailer in MOTIF commits; unpublished structures s
 
 ## Open questions for the user (none blocking)
 
-- Version: the page footer shows "MOTIF 0.1" (`VERSION` in `src/ui/App.tsx`) while `package.json` says
-  0.0.0, and no release has been made. The shared rules want one version source and a dev suffix on `main`
-  (`0.1.0-dev.0`). The README no longer states a number.
+- Version: answered 2026-11-26. 0.1.0 for the first public release, `package.json` the one source (`src/version.ts`,
+  shown in the footer and reported by the MCP server); tag v0.1.0 on the published commit; later work on `main`
+  is 0.1.1-dev.
 - A subtitle for the header was tried and removed; "Science, with an eye for design" and similar were
   offered. The browser tab still says "MOTIF · Crystal Structure Visualizer".
 - Proposed, not started: click an atom or bond in the figure to edit it; undo/redo; symmetrize a folded RMC

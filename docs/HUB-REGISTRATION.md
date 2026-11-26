@@ -34,8 +34,8 @@ In `plugin/.mcp.json`, under `mcpServers`:
 "motif": { "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/bin/launch.mjs", "motif"] }
 ```
 
-No `min_version` yet: MOTIF has made no release and its version is an open question for the user (`package.json`
-says 0.0.0, the page footer 0.1). Add one once the user settles it.
+`"min_version": "0.1.0"` can be added: the first public release is 0.1.0 (the user, 2026-11-26), read from
+`package.json`, its one source.
 
 ## The command, without the hub
 

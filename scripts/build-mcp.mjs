@@ -30,7 +30,7 @@ await build({
   input: resolve(root, "src/mcp/server.ts"),
   platform: "node",
   logLevel: "warn",
-  transform: { define: { __MOTIF_EXAMPLES__: JSON.stringify(examples) } },
+  transform: { define: { __MOTIF_EXAMPLES__: JSON.stringify(examples), __MOTIF_VERSION__: JSON.stringify(JSON.parse(readFileSync(join(root, "package.json"), "utf8")).version) } },
   output: { file, format: "esm", banner: "#!/usr/bin/env node" },
 });
 process.stderr.write(`built ${file}\n`);

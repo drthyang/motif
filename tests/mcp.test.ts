@@ -106,6 +106,11 @@ describe("the server, through an MCP client", () => {
   });
   afterAll(async () => client.close());
 
+  test("reports MOTIF's version, from package.json", async () => {
+    const pkg = JSON.parse(readFileSync(resolve(__dirname, "..", "package.json"), "utf8")) as { version: string };
+    expect(client.getServerVersion()?.version).toBe(pkg.version);
+  });
+
   test("lists its tools", async () => {
     expect((await client.listTools()).tools.length).toBe(TOOL_REGISTRY.length);
   });

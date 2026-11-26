@@ -8,11 +8,13 @@
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { VERSION } from "../version";
 import { Figure } from "./figure";
 import { defaultRoots } from "./files";
 import { TOOL_REGISTRY, type Context } from "./registry";
 
-export const SERVER_VERSION = "0.1.0-dev.0";
+/** The server's version is MOTIF's (package.json). */
+export const SERVER_VERSION = VERSION;
 
 const INSTRUCTIONS = `MOTIF: vector figures of crystal structures (CIF, magnetic CIF, ISODISTORT, RMCProfile and other formats), the same drawing code as the MOTIF page.
 
