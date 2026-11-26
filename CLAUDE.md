@@ -54,6 +54,9 @@ explicit question, and wait. Never decide provisionally. Accuracy comes before s
   element colours and sizes, bonds and their look, view, cells, journal template); it does not open files or save
   figures. Built and tested against a local model and stand-ins for the companies' servers only, no paid API
   calls. Its conversation is in a drawer at the bottom of the side panel and in the Assistant tab.
+- Assistant providers confirmed (the user, 2026-11-26, "A"): Claude, OpenAI and Gemini, each with the user's own
+  key, and local models (Ollama, LM Studio). OpenAI and Gemini stay offered; they are not yet tried against the
+  real services, only stand-ins, until the user tests them with their own keys.
 - Assistant beyond look and layout (the user, 2026-11-24): it may add magnetic moments and save structures.
   Moments only as stated, per atom: size in μB and a direction [u v w], for an element, optionally only the atoms
   at one fractional coordinate; set on those atoms of one unit cell, nothing spread by symmetry (no magnetic

@@ -177,9 +177,8 @@ local models only); no Claude trailer in MOTIF commits; unpublished structures s
   clear_angles; polyhedra through change_bonds. The user has not yet tried it with Claude
   (with their key); it was built and tried on local models only. OpenAI and Gemini (f8b5708) likewise have not
   been tried against the real services.
-- `CLAUDE.md` ("Decided by the user", in-app assistant, 2026-11-24) names Claude with the user's key and local
-  models only; the code since f8b5708 also offers OpenAI and Gemini with the user's key. The writing session does
-  not edit `CLAUDE.md`: the user should confirm OpenAI and Gemini there.
+- Answered 2026-11-26 ("A"): OpenAI and Gemini stay offered beside Claude and local models, recorded in `CLAUDE.md`
+  ("Decided by the user"); untried against the real services until the user tests them with their own keys.
 - Filled triangles: should they get a contrasting colour by default (not the pale tint of their atoms)? The user
   chose a contrasting blue by hand for a cluster figure; asked, not answered.
 - Blank canvas while moving ("simplified while moving" with nothing drawn): found and fixed in 1cd3e18. Close
