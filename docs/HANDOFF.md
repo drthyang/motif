@@ -1,4 +1,4 @@
-# MOTIF handoff (2026-11-25)
+# MOTIF handoff (2026-11-26, end of day)
 
 For the next session, on any computer. Read `CLAUDE.md` first: it has the working rules and the decisions
 already taken by the user. This note is the state of play. docs/CONVENTIONS.md lists every convention.
@@ -124,40 +124,45 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
   start page, and the Examples menu); the other files in `examples/` stay because the tests use them. A Close
   button returns to the start page.
 
-## Next: the queue (the user's yes in the MOTIF chat, 2026-11-25: "Yes, all three")
+## State on 2026-11-26 (end of day)
 
-The Session monitor relayed the user's "go for all" (15:20 EST) and the user confirmed it in this chat. Item (c) is
-done; (b) and (a) are next, one checked commit each, a message to the Session monitor (send_message, "@parent" from
-a session it created, else its id session_018FAHe7jSmFWHBKsHtxQSBh) after each.
+main 0df1af3, clean, CI green (check, Firefox on Linux, deploy). Nothing uncommitted, no other branches.
 
-1. **(c) Incommensurate-k warning: done** (519d741). docs/CONVENTIONS.md, "Magnetic CIF", "Propagation vector".
-2. **(b) Camera defaults: record them as the user's decision**, accepted as built: tilt stops at ±90°; the axis
-   buttons put c up (b when looking along c); snapping on; animation on; scale "fit each view"; keep view when a
-   file is opened off. Add them to `CLAUDE.md`, "Decided by the user" (the user said yes in the MOTIF chat, so the
-   building session records it there), and to docs/CONVENTIONS.md, "View and camera". No code change.
-3. **(a) MCP server**, for agents outside the page, in MOTIF only: a tool registry, a host and a stdio server shaped
-   like MATERIA's (`~/GitHub/web-refinement/src/mcp/`: registry.ts, host.ts with file roots from an environment
-   variable, server.ts; bundled with esbuild to one `dist/mcp-server.mjs`), reusing MOTIF's pure code (structure,
-   scene, render) and the same tool surface as the in-page assistant where it makes sense (open a file from an
-   allowed folder, describe, settings, bonds, view, cells, journal, moments, angles, save the structure, save the
-   figure as SVG). With tests. **Do not edit `scattering-agent-tools`** (another repo): write down exactly what
-   the hub needs (the entry, the command, the tool list) in a file in MOTIF, e.g. docs/HUB-REGISTRATION.md, and
-   tell the Session monitor; a separate agent registers it there.
-   **Done** (2026-11-25, merged to main): `src/mcp/`, docs/HUB-REGISTRATION.md, docs/CONVENTIONS.md "MCP
-   server"; bundled with rolldown (Vite's) to `dist-mcp/mcp-server.mjs`. The user chose option "A": a headless
-   `Figure` (`src/mcp/figure.ts`) mirrors the page's state; App.tsx keeps its own mapping. **Any new page setting
-   that changes the saved figure must be added to `src/mcp/figure.ts` too, or the parity check fails**
-   (`scripts/browser_check.cjs` part 5: page SVG = server SVG, byte for byte, for olivine and the five examples).
-   That check found a page bug: the `fit` memo in App.tsx left `canvas` out of its dependencies, so the page fitted
-   the structure to the canvas from before the frame was measured (1440 × 1100, drawn on 1440 × 1080: 2.6 % too
-   large). Fixed with the user's yes (2026-11-25, commit 1e2fb1d): saved figures changed, structures 2.6 % smaller in
-   the default canvas.
-   Hub registration waits until MOTIF is public (the user, 2026-11-25); then a separate agent registers it from
-   docs/HUB-REGISTRATION.md.
+- **Public and live** since 2026-11-26: https://drthyang.github.io/motif/ (GitHub Pages, deployed from main by
+  `.github/workflows/pages.yml`, so the live footer shows main's version, now 0.1.1-dev.0). **v0.1.0** is tagged
+  (annotated) on 87f4e21, the first published commit. History was rewritten on 2026-11-26 to drop old co-author
+  lines (backup bundle in ~/.local/share/motif-backup/2026-11-26/); CI now fails on any `Co-Authored-By:` or
+  "Generated with" line.
+- **Done today**, each with its checks (docs/CONVENTIONS.md has every one):
+  - camera defaults recorded as the user's decision; MCP server (`src/mcp/`, 20 tools, page-vs-server SVG parity);
+    the page's stale-canvas fit fixed;
+  - copyright review: third-party licences shipped (`public/third-party-licenses.txt`, footer "Licences"),
+    citations and a not-affiliated line in the README;
+  - orbitals: outline option; lobes drawn as the true isosurface (no cone to the nucleus); smooth borders where
+    lobes meet atoms; quick drawing while the isovalue slider moves, "Rendering…" while the exact one is drawn;
+  - assistant: the chat only in the drawer, the Assistant tab for the connection; Auto | Ask and the context meter
+    at the drawer's foot; set_orbitals / remove_orbitals, atom positions and pair directions in describe_figure;
+    fixes from six local trial rounds (the trial driver and the user's structure are in `local/trials/`,
+    git-ignored, never named in the repo);
+  - nothing contacted on page load (a local model server only once the person turns to the assistant);
+  - browser check in Chromium, WebKit and Firefox (Firefox in CI; Playwright's Firefox does not start on the
+    user's macOS);
+  - README: lead on vector, pt text, journal sizes; screenshots retaken; the orbital example shown once; the
+    gallery's captions balanced and its cells top-aligned;
+  - phones and tablets: device layout pass (CONVENTIONS "Phones and tablets");
+  - receiver for MATERIA's "Open in MOTIF" (`src/ui/fromMateria.ts`, CONVENTIONS "From MATERIA"); MATERIA's sender
+    is still to come, so the receiver is dormant until then.
 
-Limits for all three: correctness first; no paid API calls (no trial with the user's Claude, OpenAI or Gemini key;
-local models only); no Claude trailer in MOTIF commits; unpublished structures stay local; nothing automated past
-30 minutes (per-case limits in every trial).
+## Open items (none started; ask or wait for the Session monitor)
+
+- **Hub registration**: MOTIF is public now, so a separate agent may register it in scattering-agent-tools from
+  docs/HUB-REGISTRATION.md (20 tools; `min_version` 0.1.0 can be added). MOTIF does not edit that repo.
+- **GitHub Release for v0.1.0**: optional; only the tag exists.
+- **Footer licence**: the footer says "AGPL-3.0" while the licence is AGPL-3.0-or-later; whether to write "or later".
+- **Assistant width drift**: a local model sometimes picks half a column width unasked (2 of 6 trial rounds); the
+  tool's description asks for full width unless asked. Enforcing it in code would be the user's choice.
+- Not tried: the assistant with Claude, OpenAI or Gemini (no paid calls); the MCP server from Claude Desktop or a
+  Claude Code session.
 
 ## Open questions for the user (none blocking)
 
@@ -185,7 +190,7 @@ local models only); no Claude trailer in MOTIF commits; unpublished structures s
   now gets a new worker (`src/preview/usePreview.ts`). Earlier guards stay: the preview checks that its first
   frame painted (bdbf658), and an endless update loop that could blank the figure was fixed (399e17c). Ask the
   user whether it still happens.
-- Firefox not yet tested.
+- Firefox: tested in CI (Linux) since 2026-11-26, not by hand.
 
 ## Rules that are easy to break
 
