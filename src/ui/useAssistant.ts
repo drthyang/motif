@@ -112,7 +112,13 @@ export function useAssistant(page: Page): AssistantChat {
   const [context, setContext] = useState<AssistantChat["context"]>(null);
   // LM Studio's loaded context, once known (the meter's window).
   const lmContext = useRef<number | null>(null);
-  const [drawerOpen, setDrawerOpenState] = useState(() => read(DRAWER_KEY) !== "shut");
+  // Open by default on a wide screen; on a phone or a tablet upright (the panel under the figure, the drawer stuck to
+  // the foot of the screen) shut to its one-line bar until opened, so it does not cover the controls (2026-11-26).
+  const [drawerOpen, setDrawerOpenState] = useState(() => {
+    const stored = read(DRAWER_KEY);
+    if (stored !== null) return stored !== "shut";
+    return typeof matchMedia === "undefined" || matchMedia("(min-width: 1000px)").matches;
+  });
   const [engaged, setEngaged] = useState(false);
   const [mode, setModeState] = useState<"auto" | "ask">(() => (read(MODE_KEY) === "ask" ? "ask" : "auto"));
   const [pending, setPending] = useState<string | null>(null);

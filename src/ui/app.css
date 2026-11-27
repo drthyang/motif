@@ -208,16 +208,26 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .angle-plot { width: 100%; height: auto; display: block; margin: 6px 0 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; cursor: crosshair; touch-action: none; user-select: none; }
 .error { color: var(--warn-ink); font-size: var(--fz-small); }
 
-.foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; padding: 7px var(--edge) 9px; color: var(--faint); font-size: 11.5px; border-top: 1px solid var(--line); }
+.foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px; padding: 7px max(var(--edge), env(safe-area-inset-right)) max(9px, env(safe-area-inset-bottom)) max(var(--edge), env(safe-area-inset-left)); color: var(--faint); font-size: 11.5px; border-top: 1px solid var(--line); }
 
 /* Narrow windows: the controls go under the figure and the page scrolls. */
 /* Narrower: the PNG's pixel size moves into the dpi field's tooltip. */
 @media (max-width: 1100px) {
   .px-size { display: none; }
 }
-@media (max-width: 900px) {
-  .topbar { flex-wrap: wrap; }
-  .actions { flex-wrap: wrap; }
+/* Tablets upright (to 1000 px): the header stays on one row, its menus and fields narrower and its gaps tighter. */
+@media (min-width: 601px) and (max-width: 1000px) {
+  .topbar { gap: 10px; }
+  .mark { font-size: 22px; }
+  .actions { gap: 6px; }
+  .actions > select { flex: 0 1 128px; width: 128px; min-width: 96px; }
+  .actions input[type="number"] { width: 60px; }
+  .actions button, .actions .button { padding-left: 8px; padding-right: 8px; }
+}
+/* Below 800 px (an iPad mini upright): the name on its own row, the actions on one row under it. */
+@media (min-width: 601px) and (max-width: 800px) {
+  .topbar { flex-wrap: wrap; row-gap: 8px; }
+  .actions { width: 100%; }
 }
 @media (max-width: 860px) {
   .shell { height: auto; min-height: 100dvh; }
@@ -254,6 +264,8 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
   .help, .info { width: 30px; height: 30px; }
   button.plain { min-width: 32px; min-height: 32px; justify-content: center; }
   .controls { font-size: 13px; }
+  /* At 16 px every field, the assistant's box too, so Safari does not zoom in when one is tapped. */
+  textarea, input, select { font-size: 16px; }
 }
 /* Phones: the header's buttons and the toolbar each stay on one line that scrolls sideways, so the figure
    starts near the top of the screen; the zoom bar is smaller. */
@@ -261,11 +273,20 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
   :root { --edge: 14px; }
   .topbar { padding: 10px var(--edge); gap: 8px; }
   .mark { font-size: 24px; }
-  .actions, .toolbar, .tools { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
-  .actions::-webkit-scrollbar, .toolbar::-webkit-scrollbar, .tools::-webkit-scrollbar { display: none; }
-  .actions > *, .toolbar > *, .tools > * { flex: none; }
+  /* The header's buttons scroll sideways on one line; the view toolbar wraps instead, so none of it is cut off. */
+  .topbar { flex-wrap: wrap; }
+  .actions { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+  .actions::-webkit-scrollbar { display: none; }
+  /* A fade at the right edge says the row goes on: scroll it sideways. */
+  .actions { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); padding-right: 24px; }
+  .actions > * { flex: none; }
+  .toolbar { gap: 4px 10px; }
   .stage { padding-top: 10px; gap: 8px; }
   .zoom-bar { right: 6px; top: 6px; }
+  /* A phone zooms with a pinch and fits with a double tap (listed under the figure): the bar would cover the figure. */
+  @media (pointer: coarse) {
+    .zoom-bar { display: none; }
+  }
   .zoom-bar button { min-width: 34px; height: 32px; font-size: 14px; padding: 2px 6px; }
   .zoom-value { min-width: 40px; }
 }
@@ -275,7 +296,7 @@ input[type="color"]::-webkit-color-swatch { border: 0; border-radius: 50%; }
 .ruler line { stroke: var(--faint); stroke-width: 1; shape-rendering: crispEdges; }
 .ruler text { fill: var(--secondary); font-size: 9.5px; font-variant-numeric: tabular-nums; }
 .ruler-corner { display: flex; align-items: flex-start; justify-content: flex-start; padding: 2px 0 0 2px; font-size: 9.5px; color: var(--faint); }
-.figure-size { color: var(--faint); }
+.figure-size { color: var(--faint); white-space: nowrap; }
 .ruler-corner.switch { pointer-events: auto; cursor: pointer; border: 0; border-radius: 4px; background: none; height: auto; padding: 1px 3px; font: inherit; font-size: 9.5px; font-weight: 600; color: var(--ink); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--control); }
 .ruler-corner.switch:hover { background: var(--muted); }
 /* The RMC switch over the figure: the chosen one is marked like the open tab. */
@@ -352,3 +373,8 @@ button.plain-text:hover:not(:disabled) { background: none; text-decoration-color
 .context-meter.filling .context-bar > span { background: #d9a21b; }
 .context-meter.full { color: var(--warn-ink); }
 .context-meter.full .context-bar > span { background: var(--warn-ink); }
+
+/* Touch screens: the assistant's box at 16 px too (after its own rule above), so Safari does not zoom in on it. */
+@media (hover: none) and (pointer: coarse) {
+  .drawer-input textarea, .assistant-input textarea { font-size: 16px; }
+}

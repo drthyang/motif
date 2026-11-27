@@ -594,6 +594,18 @@ Structure tab; the user's choices of 2026-11-23.
   polyhedra one, moments for the magnetic one, orbitals on every atom of the species named), and the RMC example opens as its supercell and folds into the five sites of cubic SrTiO3,
   each within 0.02 Å of the published site.
 
+### Phones and tablets (2026-11-26)
+
+- Checked at iPhone 15 Pro (393 px), iPhone 16 Pro Max (440), iPad mini (744), iPad Pro 11 upright (834) and
+  landscape (1194): no sideways scrolling, every field at 16 px on a touch screen (Safari zooms into a smaller one).
+- Upright tablets (to 1000 px) keep the header on one row (narrower Examples menu and dpi field); below 800 px the
+  name takes its own row and the actions one row under it. Phones: the actions scroll sideways with a fade at the
+  edge; the view toolbar wraps instead of being cut; the zoom bar is hidden (pinch and double-tap, listed under the
+  figure, do its work); the figure's size stays on one line.
+- The assistant's drawer starts shut (its one-line bar) on screens under 1000 px, where it sticks to the foot of the
+  screen over the controls; a choice made by opening or shutting it is kept. The page's foot keeps clear of the
+  home bar and the notch (safe-area insets).
+
 ### Large structures
 
 - Moving a large structure (1,200 drawn atoms and bonds or more; orbitals do not count, since 1cd3e18 they
