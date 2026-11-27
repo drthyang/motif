@@ -3,6 +3,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { svgToPng } from "../render/png";
+import { receiveFromMateria } from "./fromMateria";
 import { VERSION } from "../version";
 import { previewFrame } from "../preview/data";
 import { PREVIEW_FROM, usePreview } from "../preview/usePreview";
@@ -489,6 +490,7 @@ export function App() {
   }, []);
   /** Close the structure: back to the start page. */
   const closeStructure = () => {
+    setFromMateria(false);
     lastFile.current = null;
     lastScene.current = null;
     setStructure(null);
@@ -500,8 +502,21 @@ export function App() {
   /** A file opened by hand. An RMC configuration opens as its whole supercell; "Fold" then averages it to one cell. */
   const openFile = (text: string, name: string) => {
     foldRmc.current = false;
+    setFromMateria(false);
     load(text, name);
   };
+  // A structure sent by MATERIA (?from=materia): opened as a file is, said where the file name shows (fromMateria.ts).
+  const [fromMateria, setFromMateria] = useState(false);
+  const openFileRef = useRef(openFile);
+  openFileRef.current = openFile;
+  useEffect(
+    () =>
+      receiveFromMateria(window, (sent) => {
+        openFileRef.current(sent.text, sent.name);
+        setFromMateria(true);
+      }),
+    [],
+  );
   /** Read the RMC configuration last opened again, folded into one cell or as the whole supercell. */
   const refold = (fold: boolean) => {
     foldRmc.current = fold;
@@ -509,6 +524,7 @@ export function App() {
   };
   /** Open a feature example with the settings that show its feature. */
   const loadFeature = (f: (typeof FEATURES)[number]) => {
+    setFromMateria(false);
     foldRmc.current = f.fold ?? false;
     const read = load(f.text, f.file);
     if (read && f.along) {
@@ -1422,7 +1438,7 @@ export function App() {
           {scene ? (
             <>
               <div className="stage-head">
-                <b>{fileName}</b>
+                <b data-testid="file-name">{fromMateria ? `Opened from MATERIA: ${fileName}` : fileName}</b>
                 <span data-testid="counts">{scene.spheres.length} atoms{counts && `: ${counts}`}</span>
               </div>
               <div className="toolbar">

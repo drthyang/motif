@@ -10,7 +10,8 @@
 //   3. without worker drawing (no OffscreenCanvas) the page still works, on SVG alone, and says so;
 //   5. the MCP server (dist-mcp/mcp-server.mjs, built here) saves the same SVG as the page, byte for byte, for
 //      olivine and every feature example, and the orbital example with its outline on (src/mcp/figure.ts mirrors the
-//      page's state: the user's choice, 2026-11-25).
+//      page's state: the user's choice, 2026-11-25);
+//   6. a structure sent by MATERIA opens as the same file does (2 MB magnetic CIF), and only once.
 const playwright = require(process.env.PLAYWRIGHT || "playwright-core");
 // BROWSER=firefox or webkit runs the same checks there (default chromium); WebKit stands in for Safari.
 const BROWSER = process.env.BROWSER || "chromium";
@@ -235,6 +236,51 @@ let gpu = true;
     check(`MCP server SVG = page SVG: example ${orbital + 1} with the orbital outline on`, same(outlinedPage, outlinedServer) && outlinedPage.includes('class="orbital-outline"'), `${outlinedPage.length} and ${outlinedServer.length} bytes`);
     await client.close();
     await page.close();
+  }
+
+  // 6. A structure sent by MATERIA (?from=materia, src/ui/fromMateria.ts): a page on a MATERIA origin opens MOTIF,
+  //    waits for "motif-ready", posts a magnetic CIF over 2 MB, then a second one that must be ignored. The figure
+  //    must equal opening the same file by hand, byte for byte.
+  {
+    const http = require("http");
+    const root = path.join(__dirname, "..");
+    const base = fs.readFileSync(path.join(root, "examples", "MnF2-antiferromagnet_handwritten.mcif"), "utf8");
+    const pad = "# padding to test a large file sent between tabs\n".repeat(Math.ceil(2.1e6 / 49));
+    const big = base + pad;
+    const server = http.createServer((req, res) => {
+      res.writeHead(200, { "content-type": "text/html" });
+      res.end(`<button id="go">open</button><script>
+        let w;
+        document.getElementById("go").onclick = () => { w = window.open(${JSON.stringify(URL_BASE + "?from=materia")}, "_blank"); };
+        window.addEventListener("message", (e) => {
+          if (e.source !== w || !e.data || e.data.type !== "motif-ready") return;
+          const to = new URL(${JSON.stringify(URL_BASE)}).origin;
+          w.postMessage({ type: "structure", v: 1, name: "MnF2-big.mcif", text: window.BIG, format: "mcif" }, to);
+          w.postMessage({ type: "structure", v: 1, name: "second.cif", text: "data_second", format: "cif" }, to);
+        });
+      </script>`);
+    });
+    await new Promise((r) => server.listen(4173, "127.0.0.1", r));
+    const context = await browser.newContext({ acceptDownloads: true, viewport: { width: 1500, height: 1000 } });
+    const opener = await context.newPage();
+    await opener.goto("http://127.0.0.1:4173/");
+    await opener.evaluate((t) => (window.BIG = t), big);
+    const [motif] = await Promise.all([context.waitForEvent("page"), opener.click("#go")]);
+    const label = await motif.waitForSelector("[data-testid=file-name]", { timeout: 30000 }).then((h) => h.textContent());
+    await motif.waitForTimeout(1500);
+    check("from MATERIA: the file opened and said so", label === "Opened from MATERIA: MnF2-big.mcif", label);
+    const [d1] = await Promise.all([motif.waitForEvent("download"), motif.click("[data-testid=export-svg]")]);
+    const sent = fs.readFileSync(await d1.path(), "utf8");
+    const byHand = await context.newPage();
+    await byHand.goto(URL_BASE);
+    await byHand.setInputFiles("[data-testid=file]", { name: "MnF2-big.mcif", mimeType: "text/plain", buffer: Buffer.from(big) });
+    await byHand.waitForTimeout(1500);
+    const [d2] = await Promise.all([byHand.waitForEvent("download"), byHand.click("[data-testid=export-svg]")]);
+    const opened = fs.readFileSync(await d2.path(), "utf8");
+    check(`from MATERIA: ${(big.length / 1e6).toFixed(1)} MB mCIF, the figure = opening the file by hand`, sent === opened && sent.includes("<circle"), `${sent.length} and ${opened.length} bytes`);
+    check("from MATERIA: the second structure was ignored", (await motif.textContent("[data-testid=file-name]")) === label);
+    await context.close();
+    server.close();
   }
 
   await browser.close();

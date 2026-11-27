@@ -594,6 +594,15 @@ Structure tab; the user's choices of 2026-11-23.
   polyhedra one, moments for the magnetic one, orbitals on every atom of the species named), and the RMC example opens as its supercell and folds into the five sites of cubic SrTiO3,
   each within 0.02 Å of the published site.
 
+### From MATERIA (2026-11-26)
+
+- Opened with `?from=materia` by MATERIA's tab, MOTIF posts `{type: "motif-ready", v: 1}` to it and takes exactly one
+  `{type: "structure", v: 1, name, text, format: "cif" | "mcif"}` from a MATERIA origin (`MATERIA_ORIGINS` in
+  `src/ui/fromMateria.ts`) and from that same opening tab (the origin alone would admit any page of
+  drthyang.github.io); it opens it as a file is opened and says "Opened from MATERIA: <name>". Everything else is
+  ignored, a second structure too; without `?from=materia` no listener is added. Checked by unit tests and in the
+  browser (a 2.1 MB magnetic CIF gives the same SVG as opening the file by hand).
+
 ### Phones and tablets (2026-11-26)
 
 - Checked at iPhone 15 Pro (393 px), iPhone 16 Pro Max (440), iPad mini (744), iPad Pro 11 upright (834) and

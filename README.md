@@ -82,6 +82,8 @@ size in Illustrator, Inkscape or Keynote; the PNG is drawn from the same SVG.
   save the structure as CIF, VASP POSCAR, XYZ or extended XYZ (every atom of one cell). An API key is kept only
   in your browser; with a key, the structure is sent to that company, and with a local model nothing leaves your
   computer.
+- **From MATERIA:** MATERIA's "Open in MOTIF" sends its refined structure straight to a MOTIF tab, browser to
+  browser; nothing is uploaded.
 - **Works with a mouse, a trackpad or fingers:** drag to turn, pinch to zoom, two fingers to move and twist.
 - **Checked, not just drawn:** symmetry expansion against gemmi, moment directions against pymatgen,
   displacements against published coordinates, orbitals for orthogonality, and every file format against the
