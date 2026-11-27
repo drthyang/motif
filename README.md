@@ -1,6 +1,6 @@
 # MOTIF
 
-[![App: not yet live](https://img.shields.io/badge/app-not%20yet%20live-8a8f98)](https://drthyang.github.io/motif/)
+[![App: live](https://img.shields.io/badge/app-live-3c8c3c)](https://drthyang.github.io/motif/)
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--3.0-3c8c3c)](LICENSE)
 
 **Publication-quality crystal structure figures, in the browser.** MOTIF turns a structure file into a clean
@@ -16,7 +16,6 @@ figure for a paper or a slide, ready to place in your figure layout. Nothing to 
   has the same lettering, with no rescaling by hand.
 
 **▶ [Open MOTIF](https://drthyang.github.io/motif/)**: your file is read on your own machine and never uploaded.
-*The app is not online yet; this link will work once it is published.*
 
 <p align="center">
   <img src="docs/media/app.jpg" alt="The MOTIF page: one layer of LaMnO3 seen down c, its MnO6 octahedra drawn as glass polyhedra on a canvas with rulers, and the Structure tab with the bond rules and the polyhedra round Mn" width="100%" />
@@ -32,16 +31,16 @@ In crystallography the *motif* is the group of atoms repeated at every lattice p
 
 <table>
   <tr>
-    <td width="50%" align="center"><img src="docs/media/orbital-order.png" alt="Orbital order in LaMnO3: the Mn eg orbitals alternate in direction from site to site, with the O 2p orbitals along the Mn–O–Mn bonds" width="100%" /><br /><b>Orbital order</b>: LaMnO₃, Mn e<sub>g</sub> and O 2p orbitals, coloured by the sign of the lobe</td>
-    <td width="50%" align="center"><img src="docs/media/magnetic-structure.svg" alt="MnF2: Mn moments as red arrows along ±c, F neighbours" width="100%" /><br /><b>Magnetic structure</b>: MnF₂, moments along ±c from the magnetic CIF</td>
+    <td width="50%" align="center" valign="top"><img src="docs/media/orbital-order.png" alt="Orbital order in LaMnO3: the Mn eg orbitals alternate in direction from site to site, with the O 2p orbitals along the Mn–O–Mn bonds" width="100%" /><br /><b>Orbital order</b>: LaMnO₃, Mn e<sub>g</sub> and O 2p orbitals, coloured by the sign of the lobe</td>
+    <td width="50%" align="center" valign="top"><img src="docs/media/magnetic-structure.svg" alt="MnF2: Mn moments as red arrows along ±c, F neighbours" width="100%" /><br /><b>Magnetic structure</b>: MnF₂, moments along ±c from the magnetic CIF</td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="docs/media/distortion-mode.svg" alt="SrTiO3: TiO6 octahedra turned about c, O displacements as green arrows" width="100%" /><br /><b>Distortion mode</b>: SrTiO₃, the octahedra turned about <i>c</i> (ISODISTORT)</td>
-    <td width="50%" align="center"><img src="docs/media/rmc-configuration.png" alt="An RMCProfile configuration of SrTiO3: a 6 × 6 × 6 supercell of Sr, Ti and O atoms" width="100%" /><br /><b>RMC configuration</b>: a 6 × 6 × 6 SrTiO₃ supercell; <b>Fold</b> averages it to one cell</td>
+    <td width="50%" align="center" valign="top"><img src="docs/media/distortion-mode.svg" alt="SrTiO3: TiO6 octahedra turned about c, O displacements as green arrows" width="100%" /><br /><b>Distortion mode</b>: SrTiO₃, the octahedra turned about <i>c</i> (ISODISTORT)</td>
+    <td width="50%" align="center" valign="top"><img src="docs/media/rmc-configuration.png" alt="An RMCProfile configuration of SrTiO3: a 6 × 6 × 6 supercell of Sr, Ti and O atoms" width="100%" /><br /><b>RMC configuration</b>: a 6 × 6 × 6 SrTiO₃ supercell; <b>Fold</b> averages it to one cell</td>
   </tr>
   <tr>
-    <td width="50%" align="center"><img src="docs/media/quartz-metal.svg" alt="Quartz drawn with metallic atoms and bonds" width="100%" /><br /><b>Metal surface</b>: quartz, Si–O, with the Metallic preset</td>
-    <td width="50%" align="center"><img src="docs/media/quartz-glass.svg" alt="Quartz drawn with see-through glass atoms, the Si–O bonds showing through" width="100%" /><br /><b>Glass surface</b>: quartz, Si–O, glass atoms with the bonds seen through them</td>
+    <td width="50%" align="center" valign="top"><img src="docs/media/quartz-metal.svg" alt="Quartz with metallic atoms and bonds" width="100%" /><br /><b>Metal surface</b>: quartz, metallic atoms and bonds</td>
+    <td width="50%" align="center" valign="top"><img src="docs/media/quartz-glass.svg" alt="Quartz with see-through glass atoms" width="100%" /><br /><b>Glass surface</b>: quartz, bonds seen through atoms</td>
   </tr>
 </table>
 

@@ -110,10 +110,8 @@ in good shape. Every step of the table in docs/CONVENTIONS.md is done.
 - Since 2026-11-23 writing and building are done by separate sessions: the writing session owns `README.md`,
   `docs/CONVENTIONS.md`, `docs/HANDOFF.md` and `examples/README.md`; the building session owns the code and
   the example data, and may add a line to `docs/CONVENTIONS.md` when it records a convention.
-- The app link `https://drthyang.github.io/motif/` does not work yet (the repo is private, GitHub Pages is not
-  set up). The user's choice (2026-11-23): keep the link in the README, with a grey "app: not yet live" badge
-  and a line saying it will work once published. When the app goes live, change the badge back to "app: live"
-  and drop that line.
+- The app is live at `https://drthyang.github.io/motif/` since 2026-11-26: the repo was made public, GitHub Pages
+  deploys from main (`.github/workflows/pages.yml`), the README badge says "app: live". v0.1.0 is tagged.
 - Five feature examples (commits 6547441, 2329288, f239ef1 and e016d7f): coordination polyhedra, magnetic
   structure, distortion mode, orbital order and an RMC configuration (opened as its supercell), listed in `examples/features.json` and described in
   `examples/README.md`; the format is in docs/CONVENTIONS.md. The first is one MnO2 layer of LaMnO3 (COD 1006141)
