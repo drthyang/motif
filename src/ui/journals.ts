@@ -6,9 +6,14 @@
  *
  * - Nature: 89 mm (single column), 120 to 136 mm (one and a half), 183 mm (double); text 5 to 7 pt; lines 0.25
  *   to 1 pt; height at most 170 mm. nature.com, Final submission and the Research figure guide.
- * - Science: 5.7 cm (1 column), 12.1 cm (2), 18.4 cm (3); lettering about 7 pt after reduction, not smaller
- *   than 5 pt, sans serif. science.org, Instructions for preparing an initial manuscript (the user's choice of
- *   2026-11-23, where another Science page gives 3.5, 5.0 and 7.3 in).
+ * - Science family (Science, Science Advances, Science Translational Medicine, Science Immunology, Science Robotics,
+ *   Science Signaling; one template, the user's choice of 2026-11-28, "Yes, all including Sci. Adv."): 5.7 cm
+ *   (1 column), 12.1 cm (2), 18.4 cm (3); lettering about 7 pt (2.5 mm high) after reduction, not smaller than 5 pt;
+ *   avoid wide variation in type size within a figure. Source: Science's figure instructions as provided by the user,
+ *   2026-11-28 (the same numbers science.org's Instructions for preparing an initial manuscript gave on 2026-11-23,
+ *   where another Science page gives 3.5, 5.0 and 7.3 in). A 2026 Science Advances figure guide may state other
+ *   widths (about 9 cm and 18.4 cm, seen in a search summary only; its PDF refuses automated access and was not
+ *   read): the user chose the family rule for Science Advances too.
  * - Physical Review (APS): a single column 8.5 cm (3 3/8 in), or 1.5 or 2 columns; smallest capitals and numerals
  *   at least 2 mm high; lines at least 0.5 pt. journals.aps.org, Style Basics. APS gives no number for 2 columns:
  *   17.8 cm (7 in) is the REVTeX two-column page width.
@@ -42,8 +47,8 @@
  *   journal's Notes for authors, section 4.3 (read in the browser pane, 2026-11-23). The template sets capitals
  *   2 mm high in the chosen font, within that range (8 pt in Open Sans).
  *
- * Not included, because their pages could not be read (refused to automated access): Science Advances, and
- * Wiley's journals (Angewandte Chemie, Advanced Materials, Chemistry - A European Journal).
+ * Not included, because their pages could not be read (refused to automated access): Wiley's journals (Angewandte
+ * Chemie, Advanced Materials, Chemistry - A European Journal).
  */
 export interface JournalSize {
   readonly id: string;
@@ -80,14 +85,15 @@ export const JOURNALS: readonly Journal[] = [
   },
   {
     publisher: "AAAS",
-    name: "Science",
+    // The Science family shares Science's figure rules (the user's choice, 2026-11-28); the ids stay Science's.
+    name: "Science, Science Advances, Science Translational Medicine, Science Immunology, Science Robotics, Science Signaling",
     sizes: [
       { id: "science-1", label: "1 column, 5.7 cm", width: 5.7, unit: "cm" },
       { id: "science-2", label: "2 columns, 12.1 cm", width: 12.1, unit: "cm" },
       { id: "science-3", label: "3 columns, 18.4 cm", width: 18.4, unit: "cm" },
     ],
     text: { pt: 7 },
-    note: "Science: lettering about 7 pt, not smaller than 5 pt, sans serif.",
+    note: "Science family: lettering about 7 pt (2.5 mm high), not smaller than 5 pt; avoid wide variation in type size within a figure.",
   },
   {
     publisher: "American Physical Society",

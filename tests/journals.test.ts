@@ -114,4 +114,14 @@ describe("journal templates", () => {
     const nature = matchJournal({ publisher: "Springer Nature", journal: "Nature" }, "1");
     expect(typeof nature === "string" ? nature : describeJournal(nature.id, nature.part)).toMatch(/^Nature,/);
   });
+
+  it("the Science family shares Science's sizes and text (the user's choice, 2026-11-28)", () => {
+    for (const journal of ["Science", "Science Advances", "Sci. Adv.", "Science Translational Medicine", "Science Immunology", "Science Robotics", "Science Signaling"]) {
+      const found = matchJournal({ publisher: "AAAS", journal, column: "1 column" }, "1");
+      expect(typeof found === "string" ? found : found.id, journal).toBe("science-1");
+    }
+    const two = matchJournal({ journal: "Science Advances", column: "2 columns" }, "1");
+    expect(typeof two === "string" ? two : describeJournal(two.id, two.part)).toMatch(/2 columns, 12\.1 cm, full width$/);
+    expect(journalSize("science-1")!.of.note).toMatch(/7 pt.*not smaller than 5 pt.*avoid wide variation in type size/);
+  });
 });

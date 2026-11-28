@@ -415,7 +415,7 @@ Structure tab; the user's choices of 2026-11-23.
   | Journal | Widths | Text |
   |---------|--------|------|
   | Nature | 89 mm (single column), 120 mm (one and a half, of 120 to 136), 183 mm (double) | 7 pt (5 to 7 asked) |
-  | Science | 5.7, 12.1, 18.4 cm (1, 2, 3 columns) | 7 pt (not smaller than 5) |
+  | Science family (Science, Sci. Adv., Sci. Transl. Med., Sci. Immunol., Sci. Robot., Sci. Signal.; 2026-11-28) | 5.7, 12.1, 18.4 cm (1, 2, 3 columns) | 7 pt (not smaller than 5) |
   | Physical Review | 8.5 cm (1 column), 17.8 cm (2 columns) | capitals and numerals 2 mm high |
   | ACS journals (JACS, Inorg. Chem., Chem. Mater.) | 3.33 in (single), 7 in (double) | 7 pt (at least 4.5) |
   | Nature Communications, Nature Materials, Nature Physics (one template) | 88 mm (single), 180 mm (double) | 7 pt (5 to 7 asked) |
@@ -435,7 +435,9 @@ Structure tab; the user's choices of 2026-11-23.
   template sets 7 pt: for Nature Communications the largest size of the Nature journals' guide, for RSC the size
   RSC gives for atom labels in chemical structures. The Elsevier template uses Elsevier's common artwork rules,
   as the journals' own guides could not be read; a journal may have rules beyond these. Not included, because
-  their pages refuse automated access: Science Advances and Wiley's journals.
+  their pages refuse automated access: Wiley's journals. The Science family template takes Science's rules as the
+  user provided them (2026-11-28) for all six journals, Science Advances included, by the user's choice; a 2026
+  Science Advances guide may give other widths (seen in a search summary only, not read).
   For Physical Review and the IUCr journals the text size is 2 mm over the cap height of the chosen font
   (measured in the browser), rounded up to half a point: 8 pt in Open Sans. Checked in `tests/journals.test.ts`:
   the widths against the journals' numbers, and capitals at least 2 mm high whatever the font's cap height.

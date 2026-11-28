@@ -57,7 +57,8 @@ column, for one panel in a row. Rulers beside the figure show its size in cm or 
 </p>
 
 Templates, each from the publisher's own author pages: Nature; Nature Communications, Nature Materials and
-Nature Physics; Science; Physical Review; ACS journals; RSC journals; Elsevier journals; J. Phys.: Condens.
+Nature Physics; Science and its family (Science Advances, Science Translational Medicine, Science Immunology,
+Science Robotics, Science Signaling); Physical Review; ACS journals; RSC journals; Elsevier journals; J. Phys.: Condens.
 Matter; the IUCr journals; American Mineralogist. The SVG states its size on paper, so it opens at exactly that
 size in Illustrator, Inkscape or Keynote; the PNG is drawn from the same SVG.
 
