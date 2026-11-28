@@ -19,7 +19,7 @@ function fakePage(over: Partial<Page> = {}) {
     removeBonds: (p) => (calls.push(["remove", p]), null),
     setView: (v) => (calls.push(["view", v]), null),
     setCells: (f, t) => (calls.push(["cells", f, t]), null),
-    useJournal: (r) => (calls.push(["journal", r]), { applied: "Physical Review, 1 column, 8.5 cm, 1/2 width = 4.25 cm" }),
+    useJournal: (r) => (calls.push(["journal", r]), { applied: "Physical Review Letters, …, 1 column, 8.6 cm, 1/2 width = 4.3 cm" }),
     setMoments: (r) => (calls.push(["moments", r]), { applied: "Mn: 5 μB along [0 0 1] on 2 atoms" }),
     clearMoments: () => (calls.push(["clear"]), null),
     markAngles: (r) => (calls.push(["angles", r]), { applied: "O–Mn–O from 79 to 101°" }),

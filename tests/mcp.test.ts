@@ -133,7 +133,7 @@ describe("the server, through an MCP client", () => {
     const saved = await call("save_figure", { folder: out });
     expect(saved.text).toMatch(/saved the figure to .*olivine-FeMg_COD-1541262\.svg/);
     const svg = readFileSync(join(out, "olivine-FeMg_COD-1541262.svg"), "utf8");
-    expect(svg).toMatch(/^<svg[^>]* width="8.5cm" height="6.375cm"/);
+    expect(svg).toMatch(/^<svg[^>]* width="8.6cm" height="6.45cm"/);
     expect(svg).toContain("<circle");
     expect((await call("save_figure", { folder: out })).text).toMatch(/exists/);
     expect((await call("save_structure", { format: "cif", folder: out, file_name: "olivine-p1" })).text).toMatch(/28 atoms of one unit cell/);

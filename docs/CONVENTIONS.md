@@ -416,7 +416,7 @@ Structure tab; the user's choices of 2026-11-23.
   |---------|--------|------|
   | Nature | 89 mm (single column), 120 mm (one and a half, of 120 to 136), 183 mm (double) | 7 pt (5 to 7 asked) |
   | Science family (Science, Sci. Adv., Sci. Transl. Med., Sci. Immunol., Sci. Robot., Sci. Signal.; 2026-11-28) | 5.7, 12.1, 18.4 cm (1, 2, 3 columns) | 7 pt (not smaller than 5) |
-  | Physical Review | 8.5 cm (1 column), 17.8 cm (2 columns) | capitals and numerals 2 mm high |
+  | Physical Review journals (PRL, PRX, PRX Quantum, PRA to PRE, PR Applied, Materials, Research; 2026-11-28) | 8.6 cm (1 column, as APS states; 8.5 cm until 2026-11-28), 17.8 cm (2 columns) | lettering and symbols 2 mm high |
   | ACS journals (JACS, Inorg. Chem., Chem. Mater.) | 3.33 in (single), 7 in (double) | 7 pt (at least 4.5) |
   | Nature Communications, Nature Materials, Nature Physics (one template) | 88 mm (single), 180 mm (double) | 7 pt (5 to 7 asked) |
   | RSC journals (Dalton Trans., CrystEngComm, J. Mater. Chem. A and C) | 8.3 cm (single), 17.1 cm (double) | 7 pt (no figure text size given) |
@@ -427,7 +427,8 @@ Structure tab; the user's choices of 2026-11-23.
 
   Science gives two sets of widths; the user chose those of its "initial manuscript" page over the 3.5, 5.0
   and 7.3 in of another Science page. APS gives no number for two columns: 17.8 cm (7 in) is the REVTeX
-  two-column page width; Physical Review B and Materials follow the general APS rules. The templates after
+  two-column page width; every Physical Review journal follows the same APS rules (the user, 2026-11-28, with APS's
+  text: 8.6 cm or 3 3/8 in a column, lettering at least 2 mm, lines at least 0.18 mm, 600 dpi or more). The templates after
   the first four were added on 2026-11-23, each from the publisher's own page. For the IUCr journals that is the
   same text in every journal's Notes for authors (section 4.3, journals.iucr.org), read in the browser pane: the
   figure, lettering included, is narrower than one column (8.8 cm), with lettering "ideally 1.5–3 mm in height"

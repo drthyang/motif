@@ -8,7 +8,7 @@ const pt = (s: { width: number; unit: "cm" | "in" }) => (s.unit === "in" ? s.wid
 
 describe("journal templates", () => {
   it("widths are those the journals give", () => {
-    // Nature: 89, 120 (of 120 to 136) and 183 mm. Science: 5.7, 12.1, 18.4 cm. Physical Review: 8.5 cm. ACS: 240 pt
+    // Nature: 89, 120 (of 120 to 136) and 183 mm. Science: 5.7, 12.1, 18.4 cm. Physical Review: 8.6 cm. ACS: 240 pt
     // at most for one column, 300 to 504 pt for two.
     expect(journalSize("nature-1")!.width).toBe(8.9);
     expect(journalSize("nature-2")!.width).toBe(18.3);
@@ -16,7 +16,7 @@ describe("journal templates", () => {
     expect(n15).toBeGreaterThanOrEqual(12);
     expect(n15).toBeLessThanOrEqual(13.6);
     expect(["science-1", "science-2", "science-3"].map((id) => journalSize(id)!.width)).toEqual([5.7, 12.1, 18.4]);
-    expect(journalSize("aps-1")!.width).toBe(8.5);
+    expect(journalSize("aps-1")!.width).toBe(8.6);
     expect(pt(journalSize("acs-1")!)).toBeLessThanOrEqual(240);
     expect(pt(journalSize("acs-2")!)).toBeGreaterThanOrEqual(300);
     expect(pt(journalSize("acs-2")!)).toBeLessThanOrEqual(504);
@@ -98,7 +98,7 @@ describe("journal templates", () => {
     expect(matchJournal({ journal: "Physical Review", column: "2/3" }, "1")).toMatch(/no column/);
     // The journal's name given as the publisher (a small model did this).
     expect(matchJournal({ publisher: "Physical Review", column: "one column", width: "half" }, "1")).toEqual({ id: "aps-1", part: "1/2" });
-    expect(describeJournal("aps-1", "1/2")).toBe("Physical Review, 1 column, 8.5 cm, 1/2 width = 4.25 cm");
+    expect(describeJournal("aps-1", "1/2")).toMatch(/^Physical Review Letters, .*Physical Review Research, 1 column, 8\.6 cm, 1\/2 width = 4\.3 cm$/);
     expect(describeJournal("nature-2", "1")).toBe("Nature, double column, 183 mm, full width");
   });
 
@@ -123,5 +123,14 @@ describe("journal templates", () => {
     const two = matchJournal({ journal: "Science Advances", column: "2 columns" }, "1");
     expect(typeof two === "string" ? two : describeJournal(two.id, two.part)).toMatch(/2 columns, 12\.1 cm, full width$/);
     expect(journalSize("science-1")!.of.note).toMatch(/7 pt.*not smaller than 5 pt.*avoid wide variation in type size/);
+  });
+
+  it("every Physical Review journal finds the APS template, 8.6 cm a column as APS states (the user, 2026-11-28)", () => {
+    for (const journal of ["Physical Review", "Physical Review Letters", "PRL", "Phys. Rev. Lett.", "Physical Review X", "PRX Quantum", "Physical Review B", "Phys. Rev. B", "Physical Review Materials", "Physical Review Applied", "Physical Review Research", "Physical Review E"]) {
+      const found = matchJournal({ journal, column: "1 column" }, "1");
+      expect(typeof found === "string" ? found : found.id, journal).toBe("aps-1");
+    }
+    expect(journalSize("aps-2")!.width).toBe(17.8);
+    expect(journalSize("aps-1")!.of.note).toMatch(/2 mm.*0\.18 mm \(0\.5 pt\).*600 dpi/);
   });
 });

@@ -14,10 +14,14 @@
  *   where another Science page gives 3.5, 5.0 and 7.3 in). A 2026 Science Advances figure guide may state other
  *   widths (about 9 cm and 18.4 cm, seen in a search summary only; its PDF refuses automated access and was not
  *   read): the user chose the family rule for Science Advances too.
- * - Physical Review (APS): a single column 8.5 cm (3 3/8 in), or 1.5 or 2 columns; smallest capitals and numerals
- *   at least 2 mm high; lines at least 0.5 pt. journals.aps.org, Style Basics. APS gives no number for 2 columns:
- *   17.8 cm (7 in) is the REVTeX two-column page width.
- *   Physical Review B and Physical Review Materials follow these rules (their author pages link to them).
+ * - Physical Review journals (APS; one template, the user's word of 2026-11-28, "physical reviews are the same"):
+ *   "Figures should be planned for the column width (8.6 cm or 3 3/8 in.) of the journal. If the detail shown
+ *   requires it, 1.5 or 2 columns may be used." Symbol width and lettering height on the page at least 2 mm; lines at
+ *   least 0.18 mm (0.5 pt); output preferably 600 dpi or more. Source: APS's figure instructions as provided by the
+ *   user, 2026-11-28 (journals.aps.org refuses automated access). The template uses 8.6 cm, the value APS states
+ *   (3 3/8 in is 8.57 cm; until 2026-11-28 the template had 8.5 cm). APS gives no number for 1.5 or 2 columns:
+ *   17.8 cm (7 in) is the REVTeX two-column page width, and no 1.5-column size is offered. Reviews of Modern Physics
+ *   is not included (not a Physical Review journal, and not covered by that text).
  * - ACS journals: single column up to 240 pt (3.33 in), double 300 to 504 pt (4.17 to 7 in); lettering at least
  *   4.5 pt; lines at least 0.5 pt; height at most 660 pt (9.17 in) with the caption. ACS author guidelines: the same
  *   paragraph on the pages of JACS, Inorganic Chemistry and Chemistry of Materials.
@@ -69,6 +73,8 @@ export interface Journal {
   readonly text: { readonly pt: number } | { readonly capitalsMm: number };
   /** What the journal asks of a figure, in a few words, shown with the template. */
   readonly note: string;
+  /** Short names that also find the template ("PRL"), beside its name and words that start its name. */
+  readonly aliases?: readonly string[];
 }
 
 export const JOURNALS: readonly Journal[] = [
@@ -97,13 +103,15 @@ export const JOURNALS: readonly Journal[] = [
   },
   {
     publisher: "American Physical Society",
-    name: "Physical Review",
+    // Every Physical Review journal shares these rules (the user, 2026-11-28); the ids stay as they were.
+    name: "Physical Review Letters, Physical Review X, PRX Quantum, Physical Review A, B, C, D, E, Physical Review Applied, Physical Review Materials, Physical Review Research",
     sizes: [
-      { id: "aps-1", label: "1 column, 8.5 cm", width: 8.5, unit: "cm" },
+      { id: "aps-1", label: "1 column, 8.6 cm", width: 8.6, unit: "cm" },
       { id: "aps-2", label: "2 columns, 17.8 cm", width: 17.8, unit: "cm" },
     ],
     text: { capitalsMm: 2 },
-    note: "Physical Review: capitals and numerals at least 2 mm high, lines at least 0.5 pt.",
+    aliases: ["PRL", "PRA", "PRB", "PRC", "PRD", "PRE"],
+    note: "Physical Review journals: lettering and symbols at least 2 mm high, lines at least 0.18 mm (0.5 pt), 600 dpi or more; 1.5 or 2 columns only if the detail needs it.",
   },
   {
     publisher: "American Chemical Society",
@@ -254,7 +262,7 @@ export function matchJournal(req: { publisher?: string; journal?: string; column
   const part = req.width ? shareOf(req.width) : currentPart;
   if (!part) return 'width must be "full", "1/2", "1/3" or "1/4".';
   // A journal's name and its publisher are searched together: "Physical Review" given as the publisher still finds it.
-  const names = (j: Journal) => [j.publisher, j.name, `${j.publisher} ${j.name}`];
+  const names = (j: Journal) => [j.publisher, j.name, `${j.publisher} ${j.name}`, ...(j.aliases ?? [])];
   const templates = JOURNALS.filter((j) => names(j).some((n) => fit(n, req.publisher)) && names(j).some((n) => fit(n, req.journal)));
   if (templates.length === 0) return `No journal template matches. Give publisher and journal as one of: ${JOURNALS.map((j) => `"${j.publisher}" / "${j.name}"`).join("; ")}.`;
   const template = templates[0]!;
